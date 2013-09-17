@@ -51,13 +51,13 @@ mt19937ar.o:
 	$(CXX) -c -O mt19937ar.cpp
 
 main.o:
-	$(CXX) -c -O main.cpp
+	$(NVCC) $(CFLAGS) -c -O main.cpp
 
 print_banner.o:
-	$(CXX) -c -O print_banner.cpp
+	$(NVCC) $(CFLAGS) -c -O print_banner.cpp
 
 gpu: $(ptx_objects) $(COBJS)
-	 $(CXX) $(COBJS) -o $@ 
+	 $(NVCC) $(CFLAGS) $(NVCCLIBS) $(COBJS) -o $@ 
 
 debug: 	$(ptx_objects) mt19937ar.o
 	$(NVCC) -Xcompiler -rdynamic -lineinfo -O mt19937ar.o $(ARCH) $(NVCCFLAGS) $(LIBS) $(NVCCLIBS) $(CUDPP) -g -G -o mcgpu mcgpu.cu

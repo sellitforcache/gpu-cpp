@@ -1,6 +1,7 @@
 #include <vector> 
 #include <iostream>
 #include <cmath>
+#include <optixu/optixpp_namespace.h>
 #include "datadef.h"
 
 /////////////////////////////////////////////////////////////////////////
@@ -19,12 +20,12 @@ void print_banner();
 /////////////////////////////////////////////////////////////////////////
 
 
-class primative
+class primitive
 {	
 	public:
-	 primative();
-	 primative(int,int,int,float,float,float,float,float,float,float,float,float);
-	~primative();
+	 primitive();
+	 primitive(int,int,int,float,float,float,float,float,float,float,float,float);
+	~primitive();
 	void add_transform();
 	void add_transform(int,float,float,float,float,float);
 	void print_transform();
@@ -33,24 +34,25 @@ class primative
 	float       min[3];
 	float       max[3];
 	float       location[3];
-	static int  num_primatives;
+	static int  num_primitives;
 	int			type;      // 0=box, 1=cyl, 2=hex
-	int 		primative_id;
+	int 		primitive_id;
 	int         n_transforms;
 	int         material;
-	std::vector<transform>   transforms;
+	int         is_outer_boundary;
+	std::vector<wtransform>   transforms;
 };
 
-int primative::num_primatives=0;
+int primitive::num_primitives=0;
 
-primative::primative(){
+primitive::primitive(){
 	//box default constructor
 	min[0]=0;min[1]=0;min[2]=0;
 	max[0]=0;max[1]=0;max[2]=0;
 	location[0]=0;location[1]=0;location[2]=0;
 	type=0;
 	material=0;
-	transform this_transform;
+	wtransform this_transform;
 	this_transform.cellnum = 0;
 	this_transform.cellmat = 0;
 	this_transform.dx      = 0;
@@ -59,18 +61,19 @@ primative::primative(){
 	this_transform.theta   = 0;
 	this_transform.phi     = 0;
 	transforms.push_back(this_transform);
+	is_outer_boundary=0;
 	n_transforms=1;
-	primative_id=num_primatives;
-	num_primatives++;
+	primitive_id=num_primitives;
+	num_primitives++;
 }
-primative::primative(int ptype, int cellnum ,int cellmat ,float xmin,float ymin,float zmin,float xmax,float ymax,float zmax,float x,float y,float z){
+primitive::primitive(int ptype, int cellnum ,int cellmat ,float xmin,float ymin,float zmin,float xmax,float ymax,float zmax,float x,float y,float z){
 	//box valued constructor
 	min[0]=xmin;min[1]=ymin;min[2]=zmin;
 	max[0]=xmax;max[1]=ymax;max[2]=zmax;
 	location[0]=x;location[1]=y;location[2]=z;
 	type=ptype;
 	material=cellmat;
-	transform this_transform;
+	wtransform this_transform;
 	this_transform.cellnum = cellnum;
 	this_transform.cellmat = cellmat;
 	this_transform.dx      = 0;
@@ -79,11 +82,12 @@ primative::primative(int ptype, int cellnum ,int cellmat ,float xmin,float ymin,
 	this_transform.theta   = 0;
 	this_transform.phi     = 0;
 	transforms.push_back(this_transform);
+	is_outer_boundary=0;
 	n_transforms=1;
-	primative_id=num_primatives;
-	num_primatives++;
+	primitive_id=num_primitives;
+	num_primitives++;
 }
-primative::~primative(){
+primitive::~primitive(){
 	//box destructor
 	//delete min;
 	//delete max;
@@ -92,8 +96,8 @@ primative::~primative(){
 	//delete &n_transforms;
 	//delete   &transforms;
 }
-void primative::add_transform(){
-	transform this_transform;
+void primitive::add_transform(){
+	wtransform this_transform;
 	this_transform.cellnum = 0;
 	this_transform.cellmat = material;
 	this_transform.dx      = 0;
@@ -104,8 +108,8 @@ void primative::add_transform(){
 	transforms.push_back(this_transform);
 	n_transforms++;
 }
-void primative::add_transform(int cellnum , float dx , float dy , float dz , float theta , float phi ){
-	transform this_transform;
+void primitive::add_transform(int cellnum , float dx , float dy , float dz , float theta , float phi ){
+	wtransform this_transform;
 	this_transform.cellnum = cellnum;
 	this_transform.cellmat = material;
 	this_transform.dx      = dx;
@@ -116,10 +120,10 @@ void primative::add_transform(int cellnum , float dx , float dy , float dz , flo
 	transforms.push_back(this_transform);
 	n_transforms++;
 }
-void primative::print_transform(){
-	std::cout << "--- primative id  = " << primative_id << " ---" << "\n";
-	std::cout << "   min,max  = (" << min[0] << min[1] << min[2] << "),(" << max[0] << max[1] << max[2] << ")" << "\n";
-	std::cout << "   location = (" << location[0] << location[1] << location[2] << ")" << "\n";
+void primitive::print_transform(){
+	std::cout << "--- primitive id  = " << primitive_id << " ---" << "\n";
+	std::cout << "   min,max  = (" << min[0] << " , " << min[1] << " , " << min[2] << "),(" << max[0] << " , " << max[1] << " , " << max[2] << ")" << "\n";
+	std::cout << "   location = (" << location[0] << " , " << location[1] << " , " << location[2] << ")" << "\n";
 	std::cout << "   type =  " << type << "\n";
 	std::cout << "   material = " << material << "\n";
 	for (int tnum=0;tnum<n_transforms;tnum++){
@@ -134,10 +138,10 @@ void primative::print_transform(){
 		std::cout << "   phi      = " << transforms[tnum].phi << "\n";
 	}
 }
-void primative::print_transform(int tnum){
-	std::cout << "--- primative id  = " << primative_id << " ---" << "\n";
-	std::cout << "   min,max  = (" << min[0] << min[1] << min[2] << "),(" << max[0] << max[1] << max[2] << ")" << "\n";
-	std::cout << "   location = (" << location[0] << location[1] << location[2] << ")" << "\n";
+void primitive::print_transform(int tnum){
+	std::cout << "--- primitive id  = " << primitive_id << " ---" << "\n";
+	std::cout << "   min,max  = (" << min[0] << " , " << min[1] << " , " << min[2] << "),(" << max[0] << " , " << max[1] << " , " << max[2] << ")" << "\n";
+	std::cout << "   location = (" << location[0] << " , " << location[1] << " , " << location[2] << ")" << "\n";
 	std::cout << "   type =  " << type << "\n";
 	std::cout << "   material = " << material << "\n";
 	std::cout << "   ************ " << "\n";
@@ -151,7 +155,7 @@ void primative::print_transform(int tnum){
 	std::cout << "   phi      = " << transforms[tnum].phi << "\n";
 }
 
-void primative::make_hex_array(int n, float x, float y, int starting_index){
+void primitive::make_hex_array(int n, float x, float y, int starting_index){
 
 	int k, j, num, cnt;
 	float offsetx, offsety, fnum, lattr, PD_ratio;
@@ -159,7 +163,7 @@ void primative::make_hex_array(int n, float x, float y, int starting_index){
 	// add num of transforms to whatever is there
     n_transforms += 3*n*(n-1)+1;
 
-    transform this_transform;
+    wtransform this_transform;
 	num=n;
 	cnt=0;
 	PD_ratio=1.164;
@@ -197,55 +201,69 @@ void primative::make_hex_array(int n, float x, float y, int starting_index){
 }
 
 
-class geometry {
+class wgeometry {
 	int n_box;
 	int n_cyl;
 	int n_hex;
-	int n_primatives;
+	int n_primitives;
 	int n_transforms;
 public:
-	 geometry();
-	~geometry();
-	void add_primative();
+	 wgeometry();
+	~wgeometry();
+	int get_primitive_count();
+	void add_primitive();
 	void update();
-	std::vector<primative>   primatives;
+	void print();
+	std::vector<primitive>   primitives;
 };
 
-geometry::geometry(){
+wgeometry::wgeometry(){
 	n_box        = 0;
 	n_cyl        = 0;
 	n_hex        = 0;
-	n_primatives = 0;
+	n_primitives = 0;
 	n_transforms = 0;
 }
-geometry::~geometry(){
+wgeometry::~wgeometry(){
 	
 }
-void geometry::add_primative(){
-	primative this_primative;
-	primatives.push_back(this_primative);
-	n_primatives++;
+void wgeometry::add_primitive(){
+	primitive this_primitive;
+	primitives.push_back(this_primitive);
+	n_primitives++;
 }
-void geometry::update(){
+void wgeometry::update(){
 	n_box        = 0;
 	n_cyl        = 0;
 	n_hex        = 0;
 	n_transforms = 0;
-	for(int k=0;k<n_primatives;k++){
-		switch (primatives[k].type){
-			case 0:
-				n_box+=primatives[k].n_transforms;
-			case 1:
-				n_cyl+=primatives[k].n_transforms;
-			case 2:
-				n_hex+=primatives[k].n_transforms;
+	for(int k=0;k<n_primitives;k++){
+		if(primitives[k].type==0){
+				n_box+=primitives[k].n_transforms;
 		}
-		n_transforms+=primatives[k].n_transforms;
+		else if(primitives[k].type==1){
+				n_cyl+=primitives[k].n_transforms;
+		}
+		else if(primitives[k].type==2){
+				n_hex+=primitives[k].n_transforms;
+		}
+		n_transforms+=primitives[k].n_transforms;
 	}
+}
+void wgeometry::print(){
+	std::cout << "--- GEOMETRY SUMMARY ---"       << "\n";
+	std::cout << "rectangular prisms = " << n_box << "\n";
+	std::cout << "cylinders          = " << n_cyl << "\n";
+	std::cout << "hexagons           = " << n_hex << "\n";
+	std::cout << "total primitives   = " << n_primitives << "\n";
+	std::cout << "total transforms   = " << n_transforms << "\n";
+}
+int wgeometry::get_primitive_count(){
+	return(n_primitives);
 }
 
 
-/*
+
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 //							OptiX stuff
@@ -254,59 +272,64 @@ void geometry::update(){
 
 
 class optix_stuff{
-	void * positions_ptr; 
-	void * rxn_ptr; 
-	void * done_ptr;
-	void * cellnum_ptr;
+	optix::Context 	context;
+	void make_geom(wgeometry);
 public:
-	int        stack_size_multiplier;
-	RTcontext  context;
-	RTvariable trace_type_var;
-	void init();
-	void read_geometry();
+	CUdeviceptr * 			positions_ptr; 
+	CUdeviceptr * 			rxn_ptr; 
+	CUdeviceptr * 			done_ptr;
+	CUdeviceptr * 			cellnum_ptr;
+	int 			stack_size_multiplier;
+	optix_stuff(int,wgeometry);
+	void set_trace_type(int);
 };
 
-void optix_stuff::init(int N){
+optix_stuff::optix_stuff(int N,wgeometry problem_geom){
+
+	using namespace optix;
 
 	// local variables
+
 	char                path_to_ptx[512];
-	RTprogram           ray_gen_program;
-	RTprogram           exception_program;  
-	RTprogram           miss_program;
-	RTgroup             top_level_group;
-	RTvariable          top_object;
-	RTacceleration      top_level_acceleration;
-	RTbuffer            particles_obj;
-	RTbuffer 			rxn_obj;
-	RTbuffer 			done_obj;
-	RTbuffer 			cellnum_obj;
-	RTvariable          particles;
-	RTvariable 			rxn_buffer;
-	RTvariable 			done_buffer;
-	RTvariable 			cellnum_buffer;
-	RTvariable          outer_cell_var;
-	RTvariable 			boundary_condition_var;
+	Program           	ray_gen_program;
+	Program           	exception_program;  
+	Program           	miss_program;
+	Buffer 				particles_buffer;
+	Buffer 				      rxn_buffer;
+	Buffer 				     done_buffer;
+	Buffer 				  cellnum_buffer;
+	Variable          	particles_obj;
+	Variable 			      rxn_obj;
+	Variable 			     done_obj;
+	Variable 			  cellnum_obj;
+	Variable          	outer_cell_var;
+	Variable 			boundary_condition_var;
+	Variable 			trace_type_var;
 	RTsize              stack_size;
 	
 	// create OptiX context
-	rtContextCreate( context );
-	rtContextSetPrintEnabled(*context, 1);
-	rtContextSetExceptionEnabled(*context, RT_EXCEPTION_ALL, 1);
-	rtContextSetRayTypeCount( *context, 1 ); 
-	rtContextSetEntryPointCount( *context, 1 );
-	rtContextGetStackSize(*context, &stack_size);
+	// Set up context
+	//context = Context::create();
+  	context->setRayTypeCount( 1 );
+  	context->setEntryPointCount( 1 );
+  	context["radiance_ray_type"]->setUint( 0u );
+  	context["scene_epsilon"]->setFloat( 1.e-4f );
+	context->setPrintEnabled( 1);
+	context->setExceptionEnabled( RT_EXCEPTION_ALL, 1);
+
+	stack_size = context->getStackSize();
 	stack_size = stack_size_multiplier*stack_size;
-	rtContextSetStackSize(*context, stack_size);
+	context->setStackSize( stack_size );
 	printf("OptiX stack size is %d bytes\n",(unsigned) stack_size);
 	
 	// Render particle buffer and attach to variable, get pointer for CUDA
-	rtContextDeclareVariable( *context, "particles", &particles );
-	rtBufferCreate( *context, RT_BUFFER_INPUT_OUTPUT, &particles_obj );
-	rtBufferSetFormat( particles_obj, RT_FORMAT_USER );
-	rtBufferSetElementSize( particles_obj, sizeof(source_point) );
-	rtBufferSetSize1D( particles_obj, N );
-	rtVariableSetObject( particles, particles_obj );
-	rtBufferGetDevicePointer(particles_obj,0,&positions_ptr);
+	particles_obj = context["particles"];
+	particles_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	particles_buffer->setElementSize( sizeof(source_point) );
+	particles_obj->set(particles_buffer);
+	particles_buffer->getDevicePointer(0,positions_ptr);
+
+	/*
 
 	// Render reaction buffer and attach to variable, get pointer for CUDA
 	rtContextDeclareVariable( *context, "rxn_buffer", &rxn_buffer );
@@ -334,63 +357,87 @@ void optix_stuff::init(int N){
 	rtBufferSetSize1D( cellnum_obj, N );
 	rtVariableSetObject( cellnum_buffer, cellnum_obj );
 	rtBufferGetDevicePointer(cellnum_obj,0,&cellnum_ptr);
+
+	*/
 	
 	// Ray generation program 
 	sprintf( path_to_ptx, "%s", "camera.ptx" );
-	rtProgramCreateFromPTXFile( *context, path_to_ptx, "camera", &ray_gen_program );
-	rtContextSetRayGenerationProgram( *context, 0, ray_gen_program  );
+	ray_gen_program = context->createProgramFromPTXFile( path_to_ptx, "camera" );
+	context->setRayGenerationProgram( 0, ray_gen_program );
 	
 	// Exception program
-	rtProgramCreateFromPTXFile( *context, path_to_ptx, "exception", &exception_program ) ;
-	rtContextSetExceptionProgram( *context, 0, exception_program  );    
+	exception_program = context->createProgramFromPTXFile( path_to_ptx, "exception" );
+	context->setExceptionProgram( 0, exception_program ); 
 	
 	// Miss program 
 	sprintf( path_to_ptx, "%s", "miss.ptx" );
-	rtProgramCreateFromPTXFile( *context, path_to_ptx, "miss", &miss_program  );
-	rtContextSetMissProgram( *context, 0, miss_program  );
+	miss_program = context->createProgramFromPTXFile( path_to_ptx, "miss" );
+	context->setMissProgram( 0, miss_program ); 
 	
 	//set outer cell number as (basically) global
-	rtContextDeclareVariable(*context,"outer_cell",&outer_cell_var);
-	rtVariableSet1i(outer_cell_var,all_geom[0].outer_cell);
+	context["outer_cell"]->setUint(0);
 
 	//set boundary condition for outer cell
-	rtContextDeclareVariable(*context,"boundary_condition",&boundary_condition_var);
-	rtVariableSet1i(boundary_condition_var,all_geom[0].boundary_condition);
+	context["boundary_condition"]->setUint(0);
 
 	//set trace type, 1=transport (writes intersection point and next cell), 2=fission (writes origin and current cell)
-	rtContextDeclareVariable(*context,"trace_type",trace_type_var);
-	rtVariableSet1i(*trace_type_var,1);
-	
-	// Make top level group/accel as children of the top level object 
-	rtGroupCreate( *context, &top_level_group );
-	rtGroupSetChildCount( top_level_group, all_geom[0].all_total );
-	rtContextDeclareVariable( *context, "top_object", &top_object );
-	rtVariableSetObject( top_object, top_level_group );
-	rtAccelerationCreate( *context, &top_level_acceleration );
-	rtAccelerationSetBuilder(top_level_acceleration,"Sbvh");
-	rtAccelerationSetTraverser(top_level_acceleration,"Bvh");
-	rtGroupSetAcceleration( top_level_group, top_level_acceleration);
-
-}
-
-void optix_stuff::read_geometry(){
+	context["trace_type"]->setUint(1);
 
 	// make all geometry instances
-	make_geom(all_geom, context, &top_level_group); 
-	
-	// mark acceleration as dirty
-	RTresult result = rtAccelerationMarkDirty( top_level_acceleration );
-	
-	//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-	//const char * oerr;
-	//rtContextGetErrorString(*context,result,&oerr);
-	//printf("OPTIX ERROR, %s\n",oerr);
+	optix_stuff::make_geom(problem_geom);
 
 	//validate and compile
-	result = rtContextValidate( *context );
-	result = rtContextCompile( *context );
+	context->validate();
+    context->compile();
 }
 
+void optix_stuff::set_trace_type(int trace_type){
+	context["trace_type"]->setUint(trace_type);
+}
+void optix_stuff::make_geom(wgeometry problem_geom){
+
+	using namespace optix;
+
+	Group             	top_level_group;
+	Variable          	top_object;
+	RTacceleration      top_level_acceleration;
+	Acceleration 		this_accel;
+	GeometryGroup 		this_geom_group;
+
+	// Make top level group/accel as children of the top level object 
+	top_level_group = context->createGroup();
+	context["top_object"]->set( top_level_group );
+	top_level_group->setChildCount(problem_geom.get_primitive_count());
+	this_accel = context->createAcceleration("Sbvh","Bvh");
+	this_accel -> markDirty();
+	top_level_group -> setAcceleration( this_accel );
+
+	for(int j=0;j<problem_geom.get_primitive_count();j++){
+
+		this_geom_group = context->createGeometryGroup();
+		this_geom_group -> setChildCount(problem_geom.primitives[j].n_transforms);
+		this_accel = context->createAcceleration("Sbvh","Bvh");
+		this_accel -> markDirty();
+		this_geom_group -> setAcceleration( this_accel );
+
+		for (int k=0;k<problem_geom.primitives[j].n_transforms;k++){
+
+
+
+		}
+
+	}
+	
+
+	//make boxes
+
+
+	//make cylinders
+
+
+	//make hexes
+
+}
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -401,7 +448,7 @@ void optix_stuff::read_geometry(){
 
 
 //history struct
-typedef history { 
+struct history { 
     source_point *  space;
     float *         E;
     float *         Q;
@@ -414,5 +461,5 @@ typedef history {
     unsigned *      yield;
 };
 
-*/
+
 

@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////
 
 
-struct transform {
+struct wtransform {
     int   cellnum;
     int   cellmat;
     float dx;
