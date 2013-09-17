@@ -1,8 +1,12 @@
 #include <vector> 
 #include <iostream>
 #include <cmath>
+#include <cuda.h>
+#include <curand.h>
 #include <optixu/optixpp_namespace.h>
 #include "datadef.h"
+#include <cudpp_hash.h>
+
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -285,16 +289,21 @@ public:
 	CUdeviceptr * 	  cellnum_ptr;
 	CUdeviceptr * 	   matnum_ptr;
 	int 			stack_size_multiplier;
+	int 			N;
 	optix_stuff(int,wgeometry);
+	void trace();
+	void trace(int);
 	void set_trace_type(int);
 };
 
-optix_stuff::optix_stuff(int N,wgeometry problem_geom){
+optix_stuff::optix_stuff(int Nin,wgeometry problem_geom){
 
 	using namespace optix;
 
-	// local variables
+	//set main N
+	N=Nin;
 
+	// local variables
 	char                path_to_ptx[512];
 	Program           	ray_gen_program;
 	Program           	exception_program;  
@@ -396,6 +405,13 @@ optix_stuff::optix_stuff(int N,wgeometry problem_geom){
 
 void optix_stuff::set_trace_type(int trace_type){
 	context["trace_type"]->setUint(trace_type);
+}
+void optix_stuff::trace(int trace_type){
+	context["trace_type"]->setUint(trace_type);
+	context -> launch( 0 , N );
+}
+void optix_stuff::trace(){
+	context -> launch( 0 , N );
 }
 void optix_stuff::make_geom(wgeometry problem_geom){
 
@@ -521,8 +537,25 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 
 
 //history struct
-struct history { 
+class whistory { 
+	int 	N;
+	int     RNUM_PER_THREAD;
+	int 	NUM_THREADS;
+	int 	blks;
+	source_point *  d_space;
+    float *			d_xs_data;
+    float *         d_E;
+    float *         d_Q;
+    float *         d_rn_bank;
+    unsigned *      d_cellnum;
+    unsigned *      d_matnum;
+    unsigned *      d_isonum;
+    unsigned *      d_rxn;
+    unsigned *      d_done;
+    unsigned *      d_yield;
+public:
     source_point *  space;
+    float *			xs_data;
     float *         E;
     float *         Q;
     float *         rn_bank;
@@ -532,7 +565,178 @@ struct history {
     unsigned *      rxn;
     unsigned *      done;
     unsigned *      yield;
+     whistory(int,optix_stuff);
+    ~whistory();
+    void init_RNG();
+    void init_CUDPP();
+    void copy_to_device();
+    void load_cross_sections(std::string);
 };
+whistory::whistory(int Nin, optix_stuff optix_obj){
+	// CUDA stuff
+	NUM_THREADS = 256;
+	RNUM_PER_THREAD = 15;
+	blks = ( N + NUM_THREADS-1 ) / NUM_THREADS;
+	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
+	// device data stuff
+	N = Nin;
+				 d_space 	= (source_point*) optix_obj.positions_ptr;
+				 d_cellnum 	= (unsigned*)     optix_obj.cellnum_ptr;
+				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
+				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
+				 d_done 	= (unsigned*)     optix_obj.done_ptr;
+	cudaMalloc( &d_E 		, N*sizeof(float)    );
+	cudaMalloc( &d_Q 		, N*sizeof(float)    );
+	cudaMalloc( &d_rn_bank  , N*sizeof(float)    );
+	cudaMalloc( &d_isonum   , N*sizeof(unsigned) );
+	cudaMalloc( &d_yield	, N*sizeof(unsigned) );
+	// host data stuff
+	space 		= new source_point [N];
+	E 			= new float [N];
+	Q 			= new float [N];
+	rn_bank  	= new float [N];
+	cellnum 	= new unsigned [N];
+	matnum 		= new unsigned [N];
+	rxn 		= new unsigned [N];
+	done 		= new unsigned [N];
+	isonum   	= new unsigned [N];
+	yield	   	= new unsigned [N];
+}
+whistory::~whistory(){
+	cudaFree( d_xs_data );
+	cudaFree( E         );
+	cudaFree( Q         );
+	cudaFree( rn_bank   );
+	cudaFree( isonum    );
+	cudaFree( yield     );
+	delete xs_data;
+	delete space;
+	delete E;
+	delete Q;
+	delete rn_bank;
+	delete cellnum;
+	delete matnum;
+	delete rxn;
+	delete done;
+	delete isonum;
+	delete yield; 
+}
+void whistory::init_RNG(){
+	curandGenerator_t rand_gen ;
+	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
+	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
+	curandGenerateUniform( rand_gen , rn_bank , N * RNUM_PER_THREAD );
+}
+void whistory::init_CUDPP(){
+
+	CUDPPHandle            theCudpp;
+	CUDPPHashTableConfig   hash_config;
+	CUDPPConfiguration     compact_config;
+	CUDPPConfiguration     redu_int_config;
+	CUDPPConfiguration     redu_float_config;
+	CUDPPHandle            mate_hash_table_handle;
+	CUDPPHandle            fiss_hash_table_handle;
+	CUDPPHandle            reduplan_int;
+	CUDPPHandle            reduplan_float;
+	CUDPPHandle            compactplan;
+	CUDPPResult            res = CUDPP_SUCCESS;
+	
+	printf("\e[1;32m%-6s\e[m \n","Initializing CUDPP...");
+	// global objects
+	res = cudppCreate(&theCudpp);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error initializing CUDPP Library.\n");}
+	
+	printf("\e[0;32m%-6s\e[m \n","  Configuring sort...");
+	// sort stuff
+	compact_config.op = CUDPP_ADD;
+	compact_config.datatype = CUDPP_INT;
+	compact_config.algorithm = CUDPP_COMPACT;
+	compact_config.options = CUDPP_OPTION_FORWARD;
+	res = cudppPlan(theCudpp, &compactplan, compact_config, N, 1, 0);
+	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for compact\n");exit(-1);}
+	cudaThreadSynchronize();
+
+	printf("\e[0;32m%-6s\e[m \n","  Configuring reduction...");
+	// int reduction stuff
+	redu_int_config.op = CUDPP_ADD;
+	redu_int_config.datatype = CUDPP_INT;
+	redu_int_config.algorithm = CUDPP_REDUCE;
+	redu_int_config.options = 0;
+	res = cudppPlan(theCudpp, &reduplan_int, redu_int_config, N, 1, 0);
+	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
+	cudaThreadSynchronize();
+	// float reduction stuff
+	redu_float_config.op = CUDPP_ADD;
+	redu_float_config.datatype = CUDPP_FLOAT;
+	redu_float_config.algorithm = CUDPP_REDUCE;
+	redu_float_config.options = 0;
+	res = cudppPlan(theCudpp, &reduplan_float, redu_float_config, N, 1, 0);
+	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
+	cudaThreadSynchronize();
+	
+	printf("\e[0;32m%-6s\e[m \n","  Configuring hashes...");
+	// hash config stuff
+	//hash_config.type = CUDPP_BASIC_HASH_TABLE;
+	//hash_config.kInputSize = all_geom.all_total;
+	//hash_config.space_usage = 1.2f;
+
+	//material hash stuff
+	//res = cudppHashTable(theCudpp, &mate_hash_table_handle, &hash_config);
+	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in cudppHashTable call (make sure your device is at least compute version 2.0\n");exit(-1);}
+	//printf("\e[0;32m%-6s\e[m \n","  Inserting values into cellnum/matnum hash table...");
+	//res = cudppHashInsert(mate_hash_table_handle, d_hash_key, d_hash_val_mate, hash_config.kInputSize);
+	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in inserting values into hash table\n");exit(-1);}
+	//cudaThreadSynchronize();
+
+	//// fissile hash stuff
+	//res = cudppHashTable(theCudpp, &fiss_hash_table_handle, &hash_config);
+	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in cudppHashTable call (make sure your device is at least compute version 2.0\n");exit(-1);}
+	//printf("\e[0;32m%-6s\e[m \n","  Inserting values into cellnum/fissile hash table...");
+	//res = cudppHashInsert(fiss_hash_table_handle, d_hash_key, d_hash_val_fiss, hash_config.kInputSize);
+	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in inserting values into hash table\n");exit(-1);}
+	//cudaThreadSynchronize();
+
+}
+void whistory::copy_to_device(){
+
+    cudaMemcpy( d_space,		space,		N*sizeof(source_point),	cudaMemcpyHostToDevice );
+    cudaMemcpy( d_E,			E,			N*sizeof(float),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_done,			done,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_matnum,		matnum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+
+}
+void whistory::load_cross_sections(std::string path_to_xsdir){
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

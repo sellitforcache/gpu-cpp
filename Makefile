@@ -4,10 +4,14 @@ CXX = /usr/bin/g++
 OPTIX=/Developer/OptiX
 NVCC = /usr/local/cuda/bin/nvcc
 ARCH = -arch sm_30
-CFLAGS = -O3 -m64 -I$(OPTIX)/include -L$(OPTIX)/lib64
-NVCCFLAGS = -m64 -I$(OPTIX)/include 
-NVCCLIBS = -L$(OPTIX)/lib64 -loptix
-CUDPP = -lcudpp_hash -lcudpp -lcurand
+C_FLAGS = -O3 -m64
+NVCC_FLAGS = -m64 
+CURAND_LIBS = -lcurand
+OPTIX_FLAGS = -I$(OPTIX)/include -L$(OPTIX)/lib64 
+OPTIX_LIBS = -loptix 
+CUDPP_PATH = /usr/local/cudpp-2.0/
+CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
+CUDPP_LIBS = -lcudpp_hash -lcudpp
 LIBS =
 
 
@@ -30,34 +34,34 @@ clean:
 	rm -f *.ptx *.o gpu
 
 camera.ptx:
-	$(NVCC) $(ARCH) $(NVCCFLAGS) $(NVCCLIBS) -ptx camera.cu
+	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
 
 hits.ptx:
-	$(NVCC) $(ARCH) $(NVCCFLAGS) $(NVCCLIBS) -ptx hits.cu
+	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hits.cu
 
 miss.ptx:
-	$(NVCC) $(ARCH) $(NVCCFLAGS) $(NVCCLIBS) -ptx miss.cu
+	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx miss.cu
 
 box.ptx:
-	$(NVCC) $(ARCH) $(NVCCFLAGS) $(NVCCLIBS) -ptx box.cu
+	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx box.cu
 
 cylinder.ptx:
-	$(NVCC) $(ARCH) $(NVCCFLAGS) $(NVCCLIBS) -ptx cylinder.cu
+	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx cylinder.cu
 
 hex.ptx:
-	$(NVCC) $(ARCH) $(NVCCFLAGS) $(NVCCLIBS) -ptx hex.cu
+	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hex.cu
 
 mt19937ar.o:
-	$(CXX) -c -O mt19937ar.cpp
+	$(CXX) $(C_FLAGS) -c -O mt19937ar.cpp
 
 main.o:
-	$(NVCC) $(CFLAGS) -c -O main.cpp
+	$(NVCC) $(NVCCC_FLAGS) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) -c -O main.cpp
 
 print_banner.o:
-	$(NVCC) $(CFLAGS) -c -O print_banner.cpp
+	$(NVCC) $(NVCC_FLAGS) -c -O print_banner.cpp
 
 gpu: $(ptx_objects) $(COBJS)
-	 $(NVCC) $(CFLAGS) $(NVCCLIBS) $(COBJS) -o $@ 
+	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(COBJS) -o $@ 
 
 debug: 	$(ptx_objects) mt19937ar.o
 	$(NVCC) -Xcompiler -rdynamic -lineinfo -O mt19937ar.o $(ARCH) $(NVCCFLAGS) $(LIBS) $(NVCCLIBS) $(CUDPP) -g -G -o mcgpu mcgpu.cu
