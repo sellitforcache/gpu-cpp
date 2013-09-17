@@ -5,10 +5,11 @@
 
 using namespace optix;
 
-rtDeclareVariable(float3, hex_param, , );
+rtDeclareVariable(float3, mins, , );
+rtDeclareVariable(float3, maxs, , );
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 
-RT_PROGRAM void hex_intersect(int)
+RT_PROGRAM void intersect(int)
 {
   float   tvec[8], tmin, ndD;
   float   ax, ay, az;
@@ -17,7 +18,7 @@ RT_PROGRAM void hex_intersect(int)
   bool    report;
 
   // box/line region delimiters
-  float x1 = hex_param.x/sqrt(3.0);
+  float x1 = maxs.y/sqrt(3.0);
   float x2 = 2*x1;
   
   // normal vectors
@@ -27,10 +28,10 @@ RT_PROGRAM void hex_intersect(int)
   float3 l_hat = make_float3(-1.0 , 1/sqrt(3.0) , 0.0 );
 
   // points that define all planes
-  float3 p4 = make_float3(  x2,  0           , hex_param.y );
-  float3 p1 = make_float3(  x2,  0           , hex_param.z );
-  float3 p2 = make_float3( -x1,  hex_param.x , hex_param.z );
-  float3 p3 = make_float3( -x1, -hex_param.x , hex_param.z );
+  float3 p4 = make_float3(  x2,  0           , mins.x );
+  float3 p1 = make_float3(  x2,  0           , maxs.x );
+  float3 p2 = make_float3( -x1,  maxs.y , maxs.x );
+  float3 p3 = make_float3( -x1, -maxs.y , maxs.x );
 
   // find all plane intersections
   ndD=dot(z_hat,ray.direction);
@@ -70,8 +71,8 @@ RT_PROGRAM void hex_intersect(int)
         ay = fabsf(pvec[k].y);
         az = fabsf(pvec[k].z);
         // is in box region
-        if (ax<=x1 && ay<=hex_param.x) {
-            if (az>=hex_param.y && az<=hex_param.z) {
+        if (ax<=x1 && ay<=maxs.y) {
+            if (az>=mins.x && az<=maxs.x) {
                 if (tvec[k] >= 1e-8 && tvec[k] <= tmin) {
                     tmin=tvec[k];
                     report=true;
@@ -79,8 +80,8 @@ RT_PROGRAM void hex_intersect(int)
             }
         }
         // is in line region
-        else if (ax>x1 && ax<=x2 && (ay-(hex_param.x*(2-ax/x1)))<=1e-6){
-            if (az>=hex_param.y && az<=hex_param.z) {
+        else if (ax>x1 && ax<=x2 && (ay-(maxs.y*(2-ax/x1)))<=1e-6){
+            if (az>=mins.x && az<=maxs.x) {
                 if (tvec[k] >= 1e-8 && tvec[k] <= tmin) {
                     tmin=tvec[k];
                     report=true;
@@ -98,12 +99,12 @@ RT_PROGRAM void hex_intersect(int)
 
 }
 
-RT_PROGRAM void hex_bounds (int, float result[6])
+RT_PROGRAM void bounds (int, float result[6])
 {
-  result[0] = -2*hex_param.x/sqrt(3.0);
-  result[1] = -hex_param.x;
-  result[2] = hex_param.y;
-  result[3] = 2*hex_param.x/sqrt(3.0);
-  result[4] = hex_param.x;
-  result[5] = hex_param.z;
+  result[0] = -2*maxs.y/sqrt(3.0);
+  result[1] = -maxs.y;
+  result[2] = mins.x;
+  result[3] = 2*maxs.y/sqrt(3.0);
+  result[4] = maxs.y;
+  result[5] = maxs.x;
 }

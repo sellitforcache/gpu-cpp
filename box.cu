@@ -5,18 +5,18 @@
 
 using namespace optix;
 
-rtDeclareVariable(float3, boxmin, , );
-rtDeclareVariable(float3, boxmax, , );
+rtDeclareVariable(float3, mins, , );
+rtDeclareVariable(float3, maxs, , );
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 
-RT_PROGRAM void box_intersect(int)
+RT_PROGRAM void intersect(int)
 {
-  float3 t0 = (boxmin - ray.origin)/ray.direction;
-  float3 t1 = (boxmax - ray.origin)/ray.direction;
+  float3 t0 = (mins - ray.origin)/ray.direction;
+  float3 t1 = (maxs - ray.origin)/ray.direction;
   float3 near = fminf(t0, t1);
-  float3 far = fmaxf(t0, t1);
-  float tmin = fmaxf( near );
-  float tmax = fminf( far );
+  float3 far  = fmaxf(t0, t1);
+  float tmin  = fmaxf( near );
+  float tmax  = fminf( far  );
 
   if(tmin <= tmax) {
     bool check_second = true;
@@ -32,8 +32,8 @@ RT_PROGRAM void box_intersect(int)
   }
 }
 
-RT_PROGRAM void box_bounds (int, float result[6])
+RT_PROGRAM void bounds (int, float result[6])
 {
   optix::Aabb* aabb = (optix::Aabb*)result;
-  aabb->set(boxmin, boxmax);
+  aabb->set(mins, maxs);
 }

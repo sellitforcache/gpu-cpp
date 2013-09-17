@@ -4,11 +4,10 @@
 
 using namespace optix;
 
-//rtBuffer<intersection_point, 1>   output_buffer;
-rtBuffer<source_point,1>          particles;
-rtBuffer<unsigned,1>              rxn_buffer;
-rtBuffer<unsigned,1>              done_buffer;
-rtBuffer<unsigned,1>              cellnum_buffer;
+rtBuffer<source_point,1>            positions_buffer;
+rtBuffer<unsigned,1>                rxn_buffer;
+rtBuffer<unsigned,1>                done_buffer;
+rtBuffer<unsigned,1>                cellnum_buffer;
 rtDeclareVariable(rtObject,      top_object, , );
 rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
 rtDeclareVariable(uint, launch_dim,   rtLaunchDim, );
@@ -26,11 +25,11 @@ RT_PROGRAM void camera()
   float               epsilon=0.0001; 
   float               dist_to_surf = 0.0;
   float               x,y,z;
-  float               samp_dist = particles[launch_index].samp_dist;
+  float               samp_dist = positions_buffer[launch_index].samp_dist;
   intersection_point  payload;
   unsigned            rxn, done, cellnum;
-  float3 ray_direction  = make_float3(particles[launch_index].xhat, particles[launch_index].yhat, particles[launch_index].zhat);
-  float3 ray_origin     = make_float3(particles[launch_index].x,    particles[launch_index].y,    particles[launch_index].z);
+  float3 ray_direction  = make_float3(positions_buffer[launch_index].xhat, positions_buffer[launch_index].yhat, positions_buffer[launch_index].zhat);
+  float3 ray_origin     = make_float3(positions_buffer[launch_index].x,    positions_buffer[launch_index].y,    positions_buffer[launch_index].z);
   optix::Ray ray        = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
 
   // init payload
@@ -46,9 +45,9 @@ RT_PROGRAM void camera()
    if (trace_type==1){   // transport trace type
       dist_to_surf = payload.surf_dist;
       if ( (dist_to_surf- 1.5*epsilon) >= samp_dist ){
-         x = particles[launch_index].x + samp_dist*particles[launch_index].xhat;
-         y = particles[launch_index].y + samp_dist*particles[launch_index].yhat;
-         z = particles[launch_index].z + samp_dist*particles[launch_index].zhat;
+         x = positions_buffer[launch_index].x + samp_dist*positions_buffer[launch_index].xhat;
+         y = positions_buffer[launch_index].y + samp_dist*positions_buffer[launch_index].yhat;
+         z = positions_buffer[launch_index].z + samp_dist*positions_buffer[launch_index].zhat;
          rxn = rxn_buffer[launch_index];
          done = 0;
          cellnum = cellnum_buffer[launch_index];
@@ -60,9 +59,9 @@ RT_PROGRAM void camera()
               done = 1;   // set done flag
               // move out of geometry to "interaction point"
               cellnum = payload.cell_first;
-              x = particles[launch_index].x + samp_dist*particles[launch_index].xhat;
-              y = particles[launch_index].y + samp_dist*particles[launch_index].yhat;
-              z = particles[launch_index].z + samp_dist*particles[launch_index].zhat;
+              x = positions_buffer[launch_index].x + samp_dist*positions_buffer[launch_index].xhat;
+              y = positions_buffer[launch_index].y + samp_dist*positions_buffer[launch_index].yhat;
+              z = positions_buffer[launch_index].z + samp_dist*positions_buffer[launch_index].zhat;
             }
             else if(boundary_condition == 1){
               rtPrintf("CRAPPPPPPPPP\n");
@@ -76,9 +75,9 @@ RT_PROGRAM void camera()
           done = 0;
           // move to surface
           cellnum = payload.cell_first;
-          x = particles[launch_index].x + dist_to_surf*particles[launch_index].xhat;
-          y = particles[launch_index].y + dist_to_surf*particles[launch_index].yhat;
-          z = particles[launch_index].z + dist_to_surf*particles[launch_index].zhat;
+          x = positions_buffer[launch_index].x + dist_to_surf*positions_buffer[launch_index].xhat;
+          y = positions_buffer[launch_index].y + dist_to_surf*positions_buffer[launch_index].yhat;
+          z = positions_buffer[launch_index].z + dist_to_surf*positions_buffer[launch_index].zhat;
          }
       }
    //write positions to buffers
@@ -86,9 +85,9 @@ RT_PROGRAM void camera()
    rxn_buffer[launch_index]  = rxn;
    done_buffer[launch_index] = done;
    cellnum_buffer[launch_index] = cellnum;
-   particles[launch_index].x = x;
-   particles[launch_index].y = y;
-   particles[launch_index].z = z;
+   positions_buffer[launch_index].x = x;
+   positions_buffer[launch_index].y = y;
+   positions_buffer[launch_index].z = z;
    }
    else if(trace_type==2){   // fission source trace
       // check if bc
@@ -113,13 +112,13 @@ RT_PROGRAM void camera()
     }
     else{
       // move to surface
-      x = particles[launch_index].x + dist_to_surf*particles[launch_index].xhat;
-      y = particles[launch_index].y + dist_to_surf*particles[launch_index].yhat;
-      z = particles[launch_index].z + dist_to_surf*particles[launch_index].zhat;
+      x = positions_buffer[launch_index].x + dist_to_surf*positions_buffer[launch_index].xhat;
+      y = positions_buffer[launch_index].y + dist_to_surf*positions_buffer[launch_index].yhat;
+      z = positions_buffer[launch_index].z + dist_to_surf*positions_buffer[launch_index].zhat;
     }
-    particles[launch_index].x = x;
-    particles[launch_index].y = y;
-    particles[launch_index].z = z;
+    positions_buffer[launch_index].x = x;
+    positions_buffer[launch_index].y = y;
+    positions_buffer[launch_index].z = z;
    }
 
 

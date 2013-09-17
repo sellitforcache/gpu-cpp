@@ -211,6 +211,7 @@ public:
 	 wgeometry();
 	~wgeometry();
 	int get_primitive_count();
+	int get_transform_count();
 	void add_primitive();
 	void update();
 	void print();
@@ -261,6 +262,9 @@ void wgeometry::print(){
 int wgeometry::get_primitive_count(){
 	return(n_primitives);
 }
+int wgeometry::get_transform_count(){
+	return(n_transforms);
+}
 
 
 
@@ -275,10 +279,11 @@ class optix_stuff{
 	optix::Context 	context;
 	void make_geom(wgeometry);
 public:
-	CUdeviceptr * 			positions_ptr; 
-	CUdeviceptr * 			rxn_ptr; 
-	CUdeviceptr * 			done_ptr;
-	CUdeviceptr * 			cellnum_ptr;
+	CUdeviceptr * 	positions_ptr; 
+	CUdeviceptr * 	      rxn_ptr; 
+	CUdeviceptr * 	     done_ptr;
+	CUdeviceptr * 	  cellnum_ptr;
+	CUdeviceptr * 	   matnum_ptr;
 	int 			stack_size_multiplier;
 	optix_stuff(int,wgeometry);
 	void set_trace_type(int);
@@ -294,22 +299,22 @@ optix_stuff::optix_stuff(int N,wgeometry problem_geom){
 	Program           	ray_gen_program;
 	Program           	exception_program;  
 	Program           	miss_program;
-	Buffer 				particles_buffer;
+	Buffer 				positions_buffer;
 	Buffer 				      rxn_buffer;
 	Buffer 				     done_buffer;
 	Buffer 				  cellnum_buffer;
-	Variable          	particles_obj;
-	Variable 			      rxn_obj;
-	Variable 			     done_obj;
-	Variable 			  cellnum_obj;
+	Buffer 				   matnum_buffer;
+	Variable          	positions_var;
+	Variable 			      rxn_var;
+	Variable 			     done_var;
+	Variable 			  cellnum_var;
+	Variable 			   matnum_var;
 	Variable          	outer_cell_var;
 	Variable 			boundary_condition_var;
 	Variable 			trace_type_var;
 	RTsize              stack_size;
 	
-	// create OptiX context
 	// Set up context
-	//context = Context::create();
   	context->setRayTypeCount( 1 );
   	context->setEntryPointCount( 1 );
   	context["radiance_ray_type"]->setUint( 0u );
@@ -317,49 +322,47 @@ optix_stuff::optix_stuff(int N,wgeometry problem_geom){
 	context->setPrintEnabled( 1);
 	context->setExceptionEnabled( RT_EXCEPTION_ALL, 1);
 
+	// set stack size
 	stack_size = context->getStackSize();
 	stack_size = stack_size_multiplier*stack_size;
 	context->setStackSize( stack_size );
 	printf("OptiX stack size is %d bytes\n",(unsigned) stack_size);
 	
 	// Render particle buffer and attach to variable, get pointer for CUDA
-	particles_obj = context["particles"];
-	particles_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
-	particles_buffer->setElementSize( sizeof(source_point) );
-	particles_obj->set(particles_buffer);
-	particles_buffer->getDevicePointer(0,positions_ptr);
-
-	/*
+	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	positions_buffer -> setElementSize( sizeof(source_point) );
+	positions_buffer -> getDevicePointer(0,positions_ptr);
+	positions_var = context["positions_buffer"];
+	positions_var -> set(positions_buffer);
 
 	// Render reaction buffer and attach to variable, get pointer for CUDA
-	rtContextDeclareVariable( *context, "rxn_buffer", &rxn_buffer );
-	rtBufferCreate( *context, RT_BUFFER_INPUT_OUTPUT, &rxn_obj );
-	rtBufferSetFormat( rxn_obj, RT_FORMAT_USER );
-	rtBufferSetElementSize( rxn_obj, sizeof(unsigned) );
-	rtBufferSetSize1D( rxn_obj, N );
-	rtVariableSetObject( rxn_buffer, rxn_obj );
-	rtBufferGetDevicePointer(rxn_obj,0,&rxn_ptr);
+	rxn_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	rxn_buffer -> setElementSize( sizeof(unsigned) );
+	rxn_buffer -> getDevicePointer(0,rxn_ptr);
+	rxn_var = context["rxn_buffer"];
+	rxn_var -> set(rxn_buffer);
 
 	// Render done buffer and attach to variable, get pointer for CUDA
-	rtContextDeclareVariable( *context, "done_buffer", &done_buffer );
-	rtBufferCreate( *context, RT_BUFFER_INPUT_OUTPUT, &done_obj );
-	rtBufferSetFormat( done_obj, RT_FORMAT_USER );
-	rtBufferSetElementSize( done_obj, sizeof(unsigned) );
-	rtBufferSetSize1D( done_obj, N );
-	rtVariableSetObject( done_buffer, done_obj );
-	rtBufferGetDevicePointer(done_obj,0,&done_ptr);
+	done_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	done_buffer -> setElementSize( sizeof(unsigned) );
+	done_buffer -> getDevicePointer(0,done_ptr);
+	done_var = context["done_buffer"];
+	done_var -> set(done_buffer);
 
-	// Render done buffer and attach to variable, get pointer for CUDA
-	rtContextDeclareVariable( *context, "cellnum_buffer", &cellnum_buffer );
-	rtBufferCreate( *context, RT_BUFFER_INPUT_OUTPUT, &cellnum_obj );
-	rtBufferSetFormat( cellnum_obj, RT_FORMAT_USER );
-	rtBufferSetElementSize( cellnum_obj, sizeof(unsigned) );
-	rtBufferSetSize1D( cellnum_obj, N );
-	rtVariableSetObject( cellnum_buffer, cellnum_obj );
-	rtBufferGetDevicePointer(cellnum_obj,0,&cellnum_ptr);
+	// Render cellnum buffer and attach to variable, get pointer for CUDA
+	cellnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	cellnum_buffer -> setElementSize( sizeof(unsigned) );
+	cellnum_buffer -> getDevicePointer(0,cellnum_ptr);
+	cellnum_var = context["cellnum_buffer"];
+	cellnum_var -> set(cellnum_buffer);
 
-	*/
-	
+	// Render matnum buffer and attach to variable, get pointer for CUDA
+	matnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	matnum_buffer -> setElementSize( sizeof(unsigned) );
+	matnum_buffer -> getDevicePointer(0,matnum_ptr);
+	matnum_var = context["matnum_buffer"];
+	matnum_var -> set(matnum_buffer);
+
 	// Ray generation program 
 	sprintf( path_to_ptx, "%s", "camera.ptx" );
 	ray_gen_program = context->createProgramFromPTXFile( path_to_ptx, "camera" );
@@ -384,7 +387,7 @@ optix_stuff::optix_stuff(int N,wgeometry problem_geom){
 	context["trace_type"]->setUint(1);
 
 	// make all geometry instances
-	optix_stuff::make_geom(problem_geom);
+	make_geom(problem_geom);
 
 	//validate and compile
 	context->validate();
@@ -398,44 +401,114 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 
 	using namespace optix;
 
-	Group             	top_level_group;
-	Variable          	top_object;
-	RTacceleration      top_level_acceleration;
+	Group 				top_level_group;
+	Variable 			top_object;
+	Acceleration 		top_level_acceleration;
 	Acceleration 		this_accel;
+
 	GeometryGroup 		this_geom_group;
+	Variable 			this_geom_min;
+	Variable 			this_geom_max;
+	Geometry 			this_geom;
+	GeometryInstance 	ginst;
+	Material 			material;
+	Program  			intersection_program;
+	Program  			bounding_box_program;
+	Program  			closest_hit_program;
+	Transform 			this_transform;
+	Acceleration  		acceleration;
+	Variable  			cellnum_var;
+	Variable  			cellmat_var;
+
+	char 				path_to_ptx[512];
+	int 				cellnum,cellmat,uniqueindex;
+	float 				dx,dy,dz,theta,phi;
+	float 				m[16];
 
 	// Make top level group/accel as children of the top level object 
+	this_accel 	= context -> createAcceleration("Sbvh","Bvh");
+	this_accel 	-> markDirty();
 	top_level_group = context->createGroup();
-	context["top_object"]->set( top_level_group );
-	top_level_group->setChildCount(problem_geom.get_primitive_count());
-	this_accel = context->createAcceleration("Sbvh","Bvh");
-	this_accel -> markDirty();
+	top_level_group ->setChildCount(problem_geom.get_transform_count());   // every primitive has at least 1 transform, so the total number of transforms is the number of instances
 	top_level_group -> setAcceleration( this_accel );
+	context["top_object"] -> set( top_level_group );
 
 	for(int j=0;j<problem_geom.get_primitive_count();j++){
 
-		this_geom_group = context->createGeometryGroup();
-		this_geom_group -> setChildCount(problem_geom.primitives[j].n_transforms);
-		this_accel = context->createAcceleration("Sbvh","Bvh");
-		this_accel -> markDirty();
-		this_geom_group -> setAcceleration( this_accel );
+		//create this geometry type
+		this_geom = context->createGeometry();
+		this_geom -> setPrimitiveCount(1u);
+
+		//set intersection and BB programs
+		if (problem_geom.primitives[j].type == 0)		{sprintf( path_to_ptx, "%s", "box.ptx" );}
+		else if (problem_geom.primitives[j].type == 1)	{sprintf( path_to_ptx, "%s", "cylinder.ptx" );}
+		else if (problem_geom.primitives[j].type == 2)	{sprintf( path_to_ptx, "%s", "hex.ptx" );}
+		bounding_box_program = context->createProgramFromPTXFile( path_to_ptx, "bounds" );
+		intersection_program = context->createProgramFromPTXFile( path_to_ptx, "intersect" );
+		this_geom -> setBoundingBoxProgram ( bounding_box_program );
+		this_geom -> setIntersectionProgram( intersection_program );
+
+		//set hit programs to material
+		sprintf( path_to_ptx, "%s", "hits.ptx" );
+		closest_hit_program = context->createProgramFromPTXFile( path_to_ptx, "closest_hit" );
+		material = context -> createMaterial();
+		material -> setClosestHitProgram( 0, closest_hit_program );
+
+		//set program variables for this instance
+    	this_geom_min = this_geom["mins"];
+    	this_geom_max = this_geom["maxs"];
+    	this_geom_min -> set3fv( problem_geom.primitives[j].min );
+    	this_geom_min -> set3fv( problem_geom.primitives[j].max );
 
 		for (int k=0;k<problem_geom.primitives[j].n_transforms;k++){
 
+			dx =      problem_geom.primitives[j].transforms[k].dx;
+			dy =      problem_geom.primitives[j].transforms[k].dy;
+			dz =      problem_geom.primitives[j].transforms[k].dz;
+			theta =   problem_geom.primitives[j].transforms[k].theta;
+			phi =     problem_geom.primitives[j].transforms[k].phi;
+			cellnum = problem_geom.primitives[j].transforms[k].cellnum;
+			cellmat = problem_geom.primitives[j].transforms[k].cellmat;
 
+			//create instances
+			ginst = context -> createGeometryInstance();
+			ginst -> setGeometry( this_geom );
+			ginst -> setMaterialCount( 1u );
+			ginst -> setMaterial( 0, material );
+
+			//set cell-specific variables
+			cellnum_var = ginst["cellnum"];
+			cellmat_var = ginst["cellmat"];
+			cellnum_var -> setUint(cellmat);
+			cellmat_var -> setUint(cellnum);
+
+			// make geometry group for this primitive (to attach acceleration to)
+			this_accel = context->createAcceleration("Sbvh","Bvh");
+			this_accel -> markDirty();
+			this_geom_group = context -> createGeometryGroup();
+			this_geom_group -> setChildCount( 1u );
+			this_geom_group -> setAcceleration( this_accel );
+        
+			//put geom instance into geomgroup
+			this_geom_group -> setChild( 0, ginst );
+    
+        	//make transforms as necessary and attach to root node
+        	//printf("cell %d: applying transform %d -  dx=%f dy=%f dz=%f theta=%f phi=%f\n",cellnum,k,dx,dy,dz,theta,phi);
+
+			m[ 0] = cos(theta)*cos(phi);    m[ 1] = -cos(theta)*sin(phi);   m[ 2] = sin(theta);     m[ 3] = dx;
+			m[ 4] = sin(phi);               m[ 5] = cos(phi);               m[ 6] = 0.0f;           m[ 7] = dy;
+			m[ 8] = -sin(theta)*cos(phi);   m[ 9] = sin(theta)*sin(phi);    m[10] = cos(theta);     m[11] = dz;
+			m[12] = 0.0f;                   m[13] = 0.0f;                   m[14] = 0.0f;           m[15] = 1.0f;
+    
+    		uniqueindex = j * problem_geom.primitives[j].n_transforms + k;
+			this_transform = context -> createTransform();
+			this_transform -> setChild(this_geom_group);
+			this_transform -> setMatrix( 0, m, 0 );
+			top_level_group -> setChild( uniqueindex , this_transform );
 
 		}
 
 	}
-	
-
-	//make boxes
-
-
-	//make cylinders
-
-
-	//make hexes
 
 }
 
