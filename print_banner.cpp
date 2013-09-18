@@ -4,7 +4,6 @@ void print_banner(){
 	using namespace std;
 	cout << "\n";
 	cout << "-- Weaving All the Random Particles ---\n";
-	cout << "\n";
 	cout << "___       ________________________ " 	<< "\n";
 	cout << "__ |     / /__    |__  __ \\__  __ \\"	<< "\n";
 	cout << "__ | /| / /__  /| |_  /_/ /_  /_/ /" 	<< "\n";

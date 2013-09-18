@@ -6,6 +6,7 @@
 #include <optixu/optixpp_namespace.h>
 #include "datadef.h"
 #include <cudpp_hash.h>
+#include <Python.h>
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -15,7 +16,6 @@
 /////////////////////////////////////////////////////////////////////////
 
 void print_banner();
-
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -710,8 +710,62 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
 }
-void whistory::load_cross_sections(std::string path_to_xsdir){
+void whistory::load_cross_sections(std::string tope_string){
 
+	PyObject *pName, *pModule, *pDict, *pFunc;
+    PyObject *pArgs, *pValue;
+    int i;
+
+    Py_Initialize();
+    pName = PyString_FromString("unionize");
+    /* Error checking of pName left out */
+
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+
+    if (pModule != NULL) {
+        pFunc = PyObject_GetAttrString(pModule, "get_xs_pointer");
+        /* pFunc is a new reference */
+
+        if (pFunc && PyCallable_Check(pFunc)) {
+            pArgs = PyString_FromString("92235,92238,8016,1001");
+            pValue = PyInt_FromLong(atoi("1"));
+            if (!pValue) {
+                Py_DECREF(pArgs);
+                Py_DECREF(pModule);
+                fprintf(stderr, "Cannot convert argument\n");
+                return;
+            /* pValue reference stolen here: */
+            PyTuple_SetItem(pArgs, i, pValue);
+            }
+            pValue = PyObject_CallObject(pFunc, pArgs);
+            Py_DECREF(pArgs);
+            if (pValue != NULL) {
+                printf("Result of call: %ld\n", PyInt_AsLong(pValue));
+                Py_DECREF(pValue);
+            }
+            else {
+                Py_DECREF(pFunc);
+                Py_DECREF(pModule);
+                PyErr_Print();
+                fprintf(stderr,"Call failed\n");
+                return;
+            }
+        }
+        else {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            fprintf(stderr, "Cannot find function \"%s\"\n","get_xs_pointer");
+        }
+        Py_XDECREF(pFunc);
+        Py_DECREF(pModule);
+    }
+    else {
+        PyErr_Print();
+        fprintf(stderr, "Failed to load \"%s\"\n", "unionize");
+        return;
+    }
+    Py_Finalize();
 
 }
 

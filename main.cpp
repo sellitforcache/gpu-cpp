@@ -63,8 +63,8 @@ int main(){
 	/////////////////////////
 	// LOAD CROSS SECTIONS //
 	/////////////////////////
-	
 
+	hist.load_cross_sections("blah");
 
 }
 

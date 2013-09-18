@@ -1,7 +1,8 @@
 #
 CC = /usr/bin/gcc
 CXX = /usr/bin/g++
-OPTIX=/Developer/OptiX
+CYTHON = /usr/local/bin/cython
+OPTIX = /Developer/OptiX
 NVCC = /usr/local/cuda/bin/nvcc
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64
@@ -12,6 +13,8 @@ OPTIX_LIBS = -loptix
 CUDPP_PATH = /usr/local/cudpp-2.0/
 CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
+PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers/
+PYTHON_LIBS = -lpython2.7
 LIBS =
 
 
@@ -31,7 +34,7 @@ all:  	$(ptx_objects) \
 		gpu \
 
 clean:
-	rm -f *.ptx *.o gpu
+	rm -f *.ptx *.o unionize.c gpu
 
 camera.ptx:
 	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
@@ -55,13 +58,13 @@ mt19937ar.o:
 	$(CXX) $(C_FLAGS) -c -O mt19937ar.cpp
 
 main.o:
-	$(NVCC) $(NVCCC_FLAGS) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) -c -O main.cpp
+	$(NVCC) $(NVCCC_FLAGS) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) -c -O main.cpp
 
 print_banner.o:
 	$(NVCC) $(NVCC_FLAGS) -c -O print_banner.cpp
 
 gpu: $(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(COBJS) -o $@ 
+	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(COBJS) -o $@ 
 
-debug: 	$(ptx_objects) mt19937ar.o
-	$(NVCC) -Xcompiler -rdynamic -lineinfo -O mt19937ar.o $(ARCH) $(NVCCFLAGS) $(LIBS) $(NVCCLIBS) $(CUDPP) -g -G -o mcgpu mcgpu.cu
+debug: 	$(ptx_objects) $(COBJS)
+	$(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(COBJS) -g -G -o $@
