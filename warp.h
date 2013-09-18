@@ -1,5 +1,6 @@
 #include <vector> 
 #include <iostream>
+#include <sstream>
 #include <cmath>
 #include <cuda.h>
 #include <curand.h>
@@ -256,7 +257,7 @@ void wgeometry::update(){
 	}
 }
 void wgeometry::print(){
-	std::cout << "--- GEOMETRY SUMMARY ---"       << "\n";
+	std::cout << "\e[1;32m" << "--- GEOMETRY SUMMARY ---" << "\e[m \n";
 	std::cout << "rectangular prisms = " << n_box << "\n";
 	std::cout << "cylinders          = " << n_cyl << "\n";
 	std::cout << "hexagons           = " << n_hex << "\n";
@@ -282,6 +283,7 @@ unsigned wgeometry::get_transform_count(){
 class optix_stuff{
 	optix::Context 	context;
 	void make_geom(wgeometry);
+	void init_internal(wgeometry);
 public:
 	CUdeviceptr 	positions_ptr; 
 	CUdeviceptr 	      rxn_ptr; 
@@ -295,6 +297,7 @@ public:
 	void trace();
 	void trace(unsigned);
 	void set_trace_type(unsigned);
+	void print();
 };
 optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	//set stack size multiplier
@@ -302,7 +305,7 @@ optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	//set main N
 	N=Nin;
 }
-void optix_stuff::init(wgeometry problem_geom){
+void optix_stuff::init_internal(wgeometry problem_geom){
 
 	using namespace optix;
 
@@ -339,7 +342,6 @@ void optix_stuff::init(wgeometry problem_geom){
 	stack_size = context->getStackSize();
 	stack_size = stack_size_multiplier*stack_size;
 	context->setStackSize( stack_size );
-	printf("OptiX stack size is %d bytes\n",(unsigned) stack_size);
 	
 	// Render particle buffer and attach to variable, get pointer for CUDA
 	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
@@ -406,7 +408,15 @@ void optix_stuff::init(wgeometry problem_geom){
 	context->validate();
     context->compile();
 }
-
+void optix_stuff::init(wgeometry problem_geom){
+	try {
+		init_internal(problem_geom);	
+	} 
+	catch( optix::Exception &e ){
+		std::cout << e.getErrorString().c_str();
+		exit(1);
+	}
+}
 void optix_stuff::set_trace_type(unsigned trace_type){
 	context["trace_type"]->setUint(trace_type);
 }
@@ -532,6 +542,10 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 	}
 
 }
+void optix_stuff::print(){
+	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
+	std::cout << "stack size = " << context->getStackSize() << " bytes\n";
+}
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -543,22 +557,12 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 
 //history struct
 class whistory { 
+	// cuda parameters
 	int 	N;
 	int     RNUM_PER_THREAD;
 	int 	NUM_THREADS;
 	int 	blks;
-	source_point *  d_space;
-    float *			d_xs_data;
-    float *         d_E;
-    float *         d_Q;
-    float *         d_rn_bank;
-    unsigned *      d_cellnum;
-    unsigned *      d_matnum;
-    unsigned *      d_isonum;
-    unsigned *      d_rxn;
-    unsigned *      d_done;
-    unsigned *      d_yield;
-public:
+	// host data
     source_point *  space;
     float *			xs_data;
     float *         E;
@@ -570,12 +574,36 @@ public:
     unsigned *      rxn;
     unsigned *      done;
     unsigned *      yield;
+	// device data
+	source_point *  d_space;
+    float *			d_xs_data;
+    float *         d_E;
+    float *         d_Q;
+    float *         d_rn_bank;
+    unsigned *      d_cellnum;
+    unsigned *      d_matnum;
+    unsigned *      d_isonum;
+    unsigned *      d_rxn;
+    unsigned *      d_done;
+    unsigned *      d_yield;
+    // xs data parameters
+    std::string xs_isotope_string;
+    unsigned 	xs_rows;
+    unsigned 	xs_columns;
+    unsigned    xs_bytes;
+    unsigned 	xs_num_rxns_total;
+    unsigned 	xs_num_angles;
+    unsigned 	xs_num_distE;
+    std::vector<unsigned> 	xs_num_rxns;
+    std::vector<unsigned> 	xs_isotope_ints;
+public:
      whistory(int,optix_stuff);
     ~whistory();
     void init_RNG();
     void init_CUDPP();
     void copy_to_device();
     void load_cross_sections(std::string);
+    void print_xs_data();
 };
 whistory::whistory(int Nin, optix_stuff optix_obj){
 	// CUDA stuff
@@ -647,12 +675,12 @@ void whistory::init_CUDPP(){
 	CUDPPHandle            compactplan;
 	CUDPPResult            res = CUDPP_SUCCESS;
 	
-	printf("\e[1;32m%-6s\e[m \n","Initializing CUDPP...");
+	std::cout << "\e[1;32m" << "Initializing CUDPP..." << "\e[m \n";
 	// global objects
 	res = cudppCreate(&theCudpp);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error initializing CUDPP Library.\n");}
 	
-	printf("\e[0;32m%-6s\e[m \n","  Configuring sort...");
+	std::cout << "configuring sort..." << "\n";
 	// sort stuff
 	compact_config.op = CUDPP_ADD;
 	compact_config.datatype = CUDPP_INT;
@@ -662,7 +690,7 @@ void whistory::init_CUDPP(){
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for compact\n");exit(-1);}
 	
 
-	printf("\e[0;32m%-6s\e[m \n","  Configuring reduction...");
+	std::cout << "configuring reduction..." << "\n";
 	// int reduction stuff
 	redu_int_config.op = CUDPP_ADD;
 	redu_int_config.datatype = CUDPP_INT;
@@ -679,7 +707,7 @@ void whistory::init_CUDPP(){
 	res = cudppPlan(theCudpp, &reduplan_float, redu_float_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
 	
-	printf("\e[0;32m%-6s\e[m \n","  Configuring hashes...");
+	std::cout << "configuring hashes..." << "\n";
 	// hash config stuff
 	//hash_config.type = CUDPP_BASIC_HASH_TABLE;
 	//hash_config.kInputSize = all_geom.all_total;
@@ -702,6 +730,9 @@ void whistory::init_CUDPP(){
 }
 void whistory::copy_to_device(){
 
+	std::cout << "\e[1;32m" << "Copying data to device (number?)...";
+
+	// copy history data
     cudaMemcpy( d_space,		space,		N*sizeof(source_point),	cudaMemcpyHostToDevice );
     cudaMemcpy( d_E,			E,			N*sizeof(float),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
@@ -711,10 +742,29 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    // copy xs_data
+	cudaMemcpy( d_xs_data,		xs_data,	xs_bytes,				cudaMemcpyHostToDevice );
+
+	std::cout << " Done." << "\e[m \n";
 
 }
 void whistory::load_cross_sections(std::string tope_string){
 
+	printf("\e[1;32m%-6s\e[m \n","Loading cross sections and unionizing...");
+
+	// set the string, make ints list
+	xs_isotope_string = tope_string;
+	std::istringstream ss(tope_string);
+	std::string token;
+	unsigned utoken;
+	char tope_cstring[256];
+
+	while(std::getline(ss, token, ',')) {
+		utoken = std::atoi(token.c_str());
+    	xs_isotope_ints.push_back(utoken);
+	}
+
+	// get data from python
 	PyObject *pName, *pModule, *pDict, *pFunc;
     PyObject *pArgs, *pValue, *pString, *pBuffObj;
     Py_buffer pBuff;
@@ -733,7 +783,7 @@ void whistory::load_cross_sections(std::string tope_string){
 
         if (pFunc && PyCallable_Check(pFunc)) {
         	pArgs = PyTuple_New(1);
-            pString = PyString_FromString("92235,92238,8016,1001");
+            pString = PyString_FromString(xs_isotope_string.c_str());
             PyTuple_SetItem(pArgs, 0, pString);
             pBuffObj = PyObject_CallObject(pFunc, pArgs);
             if (PyObject_CheckBuffer(pBuffObj)){
@@ -742,23 +792,6 @@ void whistory::load_cross_sections(std::string tope_string){
             else{
             	printf("Object has no buffer\n");
             }
-            //Py_DECREF(pArgs);
-            //if (pValue != NULL) {
-            //    printf("Result of call: %p\n", pBuff.buf );
-            //    Py_DECREF(pValue);
-            //}
-            //else {
-            //    Py_DECREF(pFunc);
-            //    Py_DECREF(pModule);
-            //    PyErr_Print();
-            //    fprintf(stderr,"Call failed\n");
-            //    return;
-            //}
-        //}
-        //else {
-        //    if (PyErr_Occurred())
-        //        PyErr_Print();
-        //    fprintf(stderr, "Cannot find function \"%s\"\n","get_xs_pointer");
         }
         Py_XDECREF(pFunc);
         Py_DECREF(pModule);
@@ -769,18 +802,29 @@ void whistory::load_cross_sections(std::string tope_string){
         return;
     }
 
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    unsigned nbytes = pBuff.len;
-    printf("length of array is %u bytes\n",nbytes);
-    xs_data = (float*) malloc(nbytes);
-    memcpy( xs_data,   pBuff.buf , nbytes );
-
     //set xs_data dimensions from python buffer
+    xs_rows    			= pBuff.shape[0];
+	xs_columns 			= pBuff.shape[1];
+	xs_bytes   			= pBuff.len;
+	//xs_num_rxns_total = 
+	//xs_num_angles =
+	//xs_num_distE =
+
+    // allocate xs_data pointer, copy python buffer contents to pointer
+    xs_data = (float*) malloc(xs_bytes);
+    memcpy( xs_data,   pBuff.buf , xs_bytes );
+
+
 
     Py_Finalize();
 
 }
-
+void whistory::print_xs_data(){
+	printf("\e[1;32m%-6s\e[m \n","Cross section data info:");
+	std::cout << "xs_data bytes   :" << xs_bytes << "\n";
+	std::cout << "xs_data rows    :" << xs_rows << "\n";
+	std::cout << "xs_data columns :" << xs_columns << "\n";
+}
 
 
 

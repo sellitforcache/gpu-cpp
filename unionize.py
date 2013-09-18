@@ -108,7 +108,7 @@ def get_xs_pointer(this_string):
 	xs._insert_reactions()
 	xs._allocate_array()
 	xs._interpolate()
-	print xs.array.size*4
+	#print xs.array.size*4
 	return xs._get_array_pointer()
 
 

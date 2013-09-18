@@ -50,14 +50,8 @@ int main(){
 	//////////////////////
 	
 	optix_stuff this_optix ( N , 4 );
-
-	try {
-		this_optix.init(geom);	
-	} 
-	catch( optix::Exception &e ){
-		std:cout << e.getErrorString().c_str();
-		exit(1);
-	}
+	this_optix.init(geom);
+	this_optix.print();
 	
 
 	/////////////////////////////////
@@ -67,8 +61,9 @@ int main(){
 	whistory hist ( N , this_optix );
 	hist.init_RNG();
 	hist.init_CUDPP();
+	hist.load_cross_sections("92235,92238,8016,1001,1002");
+	hist.print_xs_data();
 	hist.copy_to_device();
-	hist.load_cross_sections("blah");
 
 	/////////////////////////
 	// LOAD CROSS SECTIONS //
