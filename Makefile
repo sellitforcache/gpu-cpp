@@ -6,7 +6,7 @@ OPTIX = /Developer/OptiX
 NVCC = /usr/local/cuda/bin/nvcc
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64
-NVCC_FLAGS = -m64 
+NVCC_FLAGS = -m64  
 CURAND_LIBS = -lcurand
 OPTIX_FLAGS = -I$(OPTIX)/include -L$(OPTIX)/lib64 
 OPTIX_LIBS = -loptix 
@@ -37,28 +37,28 @@ clean:
 	rm -f *.ptx *.o unionize.c gpu
 
 camera.ptx:
-	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
 
 hits.ptx:
-	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hits.cu
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hits.cu
 
 miss.ptx:
-	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx miss.cu
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx miss.cu
 
 box.ptx:
-	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx box.cu
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx box.cu
 
 cylinder.ptx:
-	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx cylinder.cu
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx cylinder.cu
 
 hex.ptx:
-	$(NVCC) $(ARCH) $(NVCCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hex.cu
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hex.cu
 
 mt19937ar.o:
 	$(CXX) $(C_FLAGS) -c -O mt19937ar.cpp
 
 main.o:
-	$(NVCC) $(NVCCC_FLAGS) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) -c -O main.cpp
+	$(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) -c -O main.cpp
 
 print_banner.o:
 	$(NVCC) $(NVCC_FLAGS) -c -O print_banner.cpp

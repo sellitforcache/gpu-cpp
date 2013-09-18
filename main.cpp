@@ -48,23 +48,29 @@ int main(){
 	//////////////////////
 	// INIT OPTIX STUFF //
 	//////////////////////
-
-	optix_stuff this_optix ( N , geom );
+	try {
+		optix_stuff this_optix ( N , geom );
+	} 
+	catch( optix::Exception &e ){
+		std:cout << e.getErrorString().c_str();
+		exit(1);
+	}
+	
 
 	/////////////////////////////////
 	// INIT CUDA and HISTORY STUFF //    !! MUST BE DONE AFTER OPTIX !!
 	/////////////////////////////////
 
-	whistory hist ( N , this_optix );
-	hist.init_RNG();
-	hist.init_CUDPP();
-	hist.copy_to_device();
+	//whistory hist ( N , this_optix );
+	//hist.init_RNG();
+	//hist.init_CUDPP();
+	//hist.copy_to_device();
 
 	/////////////////////////
 	// LOAD CROSS SECTIONS //
 	/////////////////////////
 
-	hist.load_cross_sections("blah");
+	//hist.load_cross_sections("blah");
 
 }
 

@@ -283,11 +283,11 @@ class optix_stuff{
 	optix::Context 	context;
 	void make_geom(wgeometry);
 public:
-	CUdeviceptr * 	positions_ptr; 
-	CUdeviceptr * 	      rxn_ptr; 
-	CUdeviceptr * 	     done_ptr;
-	CUdeviceptr * 	  cellnum_ptr;
-	CUdeviceptr * 	   matnum_ptr;
+	CUdeviceptr 	positions_ptr; 
+	CUdeviceptr 	      rxn_ptr; 
+	CUdeviceptr 	     done_ptr;
+	CUdeviceptr 	  cellnum_ptr;
+	CUdeviceptr 	   matnum_ptr;
 	int 			stack_size_multiplier;
 	int 			N;
 	optix_stuff(int,wgeometry);
@@ -296,10 +296,12 @@ public:
 	void set_trace_type(int);
 };
 
-optix_stuff::optix_stuff(int Nin,wgeometry problem_geom){
+optix_stuff::optix_stuff(int Nin, wgeometry problem_geom){
 
 	using namespace optix;
 
+	//set stack size multiplier
+	stack_size_multiplier = 4;
 	//set main N
 	N=Nin;
 
@@ -324,8 +326,9 @@ optix_stuff::optix_stuff(int Nin,wgeometry problem_geom){
 	RTsize              stack_size;
 	
 	// Set up context
-  	context->setRayTypeCount( 1 );
-  	context->setEntryPointCount( 1 );
+	context = Context::create();
+  	context->setRayTypeCount( 1u );
+  	context->setEntryPointCount( 1u );
   	context["radiance_ray_type"]->setUint( 0u );
   	context["scene_epsilon"]->setFloat( 1.e-4f );
 	context->setPrintEnabled( 1);
@@ -338,39 +341,41 @@ optix_stuff::optix_stuff(int Nin,wgeometry problem_geom){
 	printf("OptiX stack size is %d bytes\n",(unsigned) stack_size);
 	
 	// Render particle buffer and attach to variable, get pointer for CUDA
-	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
-	positions_buffer -> setElementSize( sizeof(source_point) );
-	positions_buffer -> getDevicePointer(0,positions_ptr);
 	positions_var = context["positions_buffer"];
+	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT);
+	positions_buffer -> setFormat(RT_FORMAT_USER);
+	positions_buffer -> setElementSize( sizeof(source_point) );
+	positions_buffer -> setSize(N);
 	positions_var -> set(positions_buffer);
+	positions_buffer -> getDevicePointer(0,&positions_ptr);  // 0 is optix device
 
 	// Render reaction buffer and attach to variable, get pointer for CUDA
 	rxn_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	rxn_buffer -> setElementSize( sizeof(unsigned) );
-	rxn_buffer -> getDevicePointer(0,rxn_ptr);
 	rxn_var = context["rxn_buffer"];
 	rxn_var -> set(rxn_buffer);
+	rxn_buffer -> getDevicePointer(0,&rxn_ptr);
 
 	// Render done buffer and attach to variable, get pointer for CUDA
 	done_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	done_buffer -> setElementSize( sizeof(unsigned) );
-	done_buffer -> getDevicePointer(0,done_ptr);
 	done_var = context["done_buffer"];
 	done_var -> set(done_buffer);
+	done_buffer -> getDevicePointer(0,&done_ptr);
 
 	// Render cellnum buffer and attach to variable, get pointer for CUDA
 	cellnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	cellnum_buffer -> setElementSize( sizeof(unsigned) );
-	cellnum_buffer -> getDevicePointer(0,cellnum_ptr);
 	cellnum_var = context["cellnum_buffer"];
 	cellnum_var -> set(cellnum_buffer);
+	cellnum_buffer -> getDevicePointer(0,&cellnum_ptr);
 
 	// Render matnum buffer and attach to variable, get pointer for CUDA
 	matnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	matnum_buffer -> setElementSize( sizeof(unsigned) );
-	matnum_buffer -> getDevicePointer(0,matnum_ptr);
 	matnum_var = context["matnum_buffer"];
 	matnum_var -> set(matnum_buffer);
+	matnum_buffer -> getDevicePointer(0,&matnum_ptr);
 
 	// Ray generation program 
 	sprintf( path_to_ptx, "%s", "camera.ptx" );
@@ -437,9 +442,10 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 	Variable  			cellmat_var;
 
 	char 				path_to_ptx[512];
-	int 				cellnum,cellmat,uniqueindex;
+	int 				cellnum,cellmat;
 	float 				dx,dy,dz,theta,phi;
 	float 				m[16];
+	int 				uniqueindex = 0;
 
 	// Make top level group/accel as children of the top level object 
 	this_accel 	= context -> createAcceleration("Sbvh","Bvh");
@@ -474,7 +480,7 @@ void optix_stuff::make_geom(wgeometry problem_geom){
     	this_geom_min = this_geom["mins"];
     	this_geom_max = this_geom["maxs"];
     	this_geom_min -> set3fv( problem_geom.primitives[j].min );
-    	this_geom_min -> set3fv( problem_geom.primitives[j].max );
+    	this_geom_max -> set3fv( problem_geom.primitives[j].max );
 
 		for (int k=0;k<problem_geom.primitives[j].n_transforms;k++){
 
@@ -515,12 +521,12 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			m[ 4] = sin(phi);               m[ 5] = cos(phi);               m[ 6] = 0.0f;           m[ 7] = dy;
 			m[ 8] = -sin(theta)*cos(phi);   m[ 9] = sin(theta)*sin(phi);    m[10] = cos(theta);     m[11] = dz;
 			m[12] = 0.0f;                   m[13] = 0.0f;                   m[14] = 0.0f;           m[15] = 1.0f;
-    
-    		uniqueindex = j * problem_geom.primitives[j].n_transforms + k;
+  
 			this_transform = context -> createTransform();
 			this_transform -> setChild(this_geom_group);
 			this_transform -> setMatrix( 0, m, 0 );
 			top_level_group -> setChild( uniqueindex , this_transform );
+			uniqueindex++;
 
 		}
 
