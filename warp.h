@@ -28,10 +28,10 @@ class primitive
 {	
 	public:
 	 primitive();
-	 primitive(int,int,int,float,float,float,float,float,float,float,float,float);
+	 primitive(int,unsigned,unsigned,float,float,float,float,float,float,float,float,float);
 	~primitive();
 	void add_transform();
-	void add_transform(int,float,float,float,float,float);
+	void add_transform(unsigned,float,float,float,float,float);
 	void print_transform();
 	void print_transform(int);
 	void make_hex_array(int,float,float,int);
@@ -70,7 +70,7 @@ primitive::primitive(){
 	primitive_id=num_primitives;
 	num_primitives++;
 }
-primitive::primitive(int ptype, int cellnum ,int cellmat ,float xmin,float ymin,float zmin,float xmax,float ymax,float zmax,float x,float y,float z){
+primitive::primitive(int ptype, unsigned cellnum ,unsigned cellmat ,float xmin,float ymin,float zmin,float xmax,float ymax,float zmax,float x,float y,float z){
 	//box valued constructor
 	min[0]=xmin;min[1]=ymin;min[2]=zmin;
 	max[0]=xmax;max[1]=ymax;max[2]=zmax;
@@ -112,7 +112,7 @@ void primitive::add_transform(){
 	transforms.push_back(this_transform);
 	n_transforms++;
 }
-void primitive::add_transform(int cellnum , float dx , float dy , float dz , float theta , float phi ){
+void primitive::add_transform(unsigned cellnum , float dx , float dy , float dz , float theta , float phi ){
 	wtransform this_transform;
 	this_transform.cellnum = cellnum;
 	this_transform.cellmat = material;
@@ -206,16 +206,16 @@ void primitive::make_hex_array(int n, float x, float y, int starting_index){
 
 
 class wgeometry {
-	int n_box;
-	int n_cyl;
-	int n_hex;
-	int n_primitives;
-	int n_transforms;
+	unsigned n_box;
+	unsigned n_cyl;
+	unsigned n_hex;
+	unsigned n_primitives;
+	unsigned n_transforms;
 public:
 	 wgeometry();
 	~wgeometry();
-	int get_primitive_count();
-	int get_transform_count();
+	unsigned get_primitive_count();
+	unsigned get_transform_count();
 	void add_primitive();
 	void update();
 	void print();
@@ -263,10 +263,10 @@ void wgeometry::print(){
 	std::cout << "total primitives   = " << n_primitives << "\n";
 	std::cout << "total transforms   = " << n_transforms << "\n";
 }
-int wgeometry::get_primitive_count(){
+unsigned wgeometry::get_primitive_count(){
 	return(n_primitives);
 }
-int wgeometry::get_transform_count(){
+unsigned wgeometry::get_transform_count(){
 	return(n_transforms);
 }
 
@@ -288,22 +288,23 @@ public:
 	CUdeviceptr 	     done_ptr;
 	CUdeviceptr 	  cellnum_ptr;
 	CUdeviceptr 	   matnum_ptr;
-	int 			stack_size_multiplier;
-	int 			N;
-	optix_stuff(int,wgeometry);
+	unsigned 			stack_size_multiplier;
+	unsigned 			N;
+	optix_stuff(unsigned,unsigned);
+	void init(wgeometry);
 	void trace();
-	void trace(int);
-	void set_trace_type(int);
+	void trace(unsigned);
+	void set_trace_type(unsigned);
 };
-
-optix_stuff::optix_stuff(int Nin, wgeometry problem_geom){
-
-	using namespace optix;
-
+optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	//set stack size multiplier
-	stack_size_multiplier = 4;
+	stack_size_multiplier = mult;
 	//set main N
 	N=Nin;
+}
+void optix_stuff::init(wgeometry problem_geom){
+
+	using namespace optix;
 
 	// local variables
 	char                path_to_ptx[512];
@@ -341,41 +342,39 @@ optix_stuff::optix_stuff(int Nin, wgeometry problem_geom){
 	printf("OptiX stack size is %d bytes\n",(unsigned) stack_size);
 	
 	// Render particle buffer and attach to variable, get pointer for CUDA
-	positions_var = context["positions_buffer"];
-	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT);
-	positions_buffer -> setFormat(RT_FORMAT_USER);
+	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	positions_buffer -> setElementSize( sizeof(source_point) );
-	positions_buffer -> setSize(N);
-	positions_var -> set(positions_buffer);
 	positions_buffer -> getDevicePointer(0,&positions_ptr);  // 0 is optix device
+	positions_var = context["positions_buffer"];
+	positions_var -> set(positions_buffer);
 
 	// Render reaction buffer and attach to variable, get pointer for CUDA
 	rxn_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	rxn_buffer -> setElementSize( sizeof(unsigned) );
+	rxn_buffer -> getDevicePointer(0,&rxn_ptr);
 	rxn_var = context["rxn_buffer"];
 	rxn_var -> set(rxn_buffer);
-	rxn_buffer -> getDevicePointer(0,&rxn_ptr);
 
 	// Render done buffer and attach to variable, get pointer for CUDA
 	done_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	done_buffer -> setElementSize( sizeof(unsigned) );
+	done_buffer -> getDevicePointer(0,&done_ptr);
 	done_var = context["done_buffer"];
 	done_var -> set(done_buffer);
-	done_buffer -> getDevicePointer(0,&done_ptr);
 
 	// Render cellnum buffer and attach to variable, get pointer for CUDA
 	cellnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	cellnum_buffer -> setElementSize( sizeof(unsigned) );
+	cellnum_buffer -> getDevicePointer(0,&cellnum_ptr);
 	cellnum_var = context["cellnum_buffer"];
 	cellnum_var -> set(cellnum_buffer);
-	cellnum_buffer -> getDevicePointer(0,&cellnum_ptr);
 
 	// Render matnum buffer and attach to variable, get pointer for CUDA
 	matnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	matnum_buffer -> setElementSize( sizeof(unsigned) );
+	matnum_buffer -> getDevicePointer(0,&matnum_ptr);
 	matnum_var = context["matnum_buffer"];
 	matnum_var -> set(matnum_buffer);
-	matnum_buffer -> getDevicePointer(0,&matnum_ptr);
 
 	// Ray generation program 
 	sprintf( path_to_ptx, "%s", "camera.ptx" );
@@ -408,10 +407,10 @@ optix_stuff::optix_stuff(int Nin, wgeometry problem_geom){
     context->compile();
 }
 
-void optix_stuff::set_trace_type(int trace_type){
+void optix_stuff::set_trace_type(unsigned trace_type){
 	context["trace_type"]->setUint(trace_type);
 }
-void optix_stuff::trace(int trace_type){
+void optix_stuff::trace(unsigned trace_type){
 	context["trace_type"]->setUint(trace_type);
 	context -> launch( 0 , N );
 }
@@ -442,10 +441,10 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 	Variable  			cellmat_var;
 
 	char 				path_to_ptx[512];
-	int 				cellnum,cellmat;
+	unsigned 			cellnum,cellmat;
 	float 				dx,dy,dz,theta,phi;
 	float 				m[16];
-	int 				uniqueindex = 0;
+	unsigned 			uniqueindex = 0;
 
 	// Make top level group/accel as children of the top level object 
 	this_accel 	= context -> createAcceleration("Sbvh","Bvh");
@@ -501,8 +500,8 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			//set cell-specific variables
 			cellnum_var = ginst["cellnum"];
 			cellmat_var = ginst["cellmat"];
-			cellnum_var -> setUint(cellmat);
-			cellmat_var -> setUint(cellnum);
+			cellnum_var -> setUint(cellnum);
+			cellmat_var -> setUint(cellmat);
 
 			// make geometry group for this primitive (to attach acceleration to)
 			this_accel = context->createAcceleration("Sbvh","Bvh");
@@ -628,6 +627,7 @@ whistory::~whistory(){
 	delete yield; 
 }
 void whistory::init_RNG(){
+	printf("\e[1;32m%-6s\e[m \n","Initializing random number bank on device using MTGP32...");
 	curandGenerator_t rand_gen ;
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
@@ -660,7 +660,7 @@ void whistory::init_CUDPP(){
 	compact_config.options = CUDPP_OPTION_FORWARD;
 	res = cudppPlan(theCudpp, &compactplan, compact_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for compact\n");exit(-1);}
-	cudaThreadSynchronize();
+	
 
 	printf("\e[0;32m%-6s\e[m \n","  Configuring reduction...");
 	// int reduction stuff
@@ -670,7 +670,7 @@ void whistory::init_CUDPP(){
 	redu_int_config.options = 0;
 	res = cudppPlan(theCudpp, &reduplan_int, redu_int_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
-	cudaThreadSynchronize();
+	
 	// float reduction stuff
 	redu_float_config.op = CUDPP_ADD;
 	redu_float_config.datatype = CUDPP_FLOAT;
@@ -678,7 +678,6 @@ void whistory::init_CUDPP(){
 	redu_float_config.options = 0;
 	res = cudppPlan(theCudpp, &reduplan_float, redu_float_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
-	cudaThreadSynchronize();
 	
 	printf("\e[0;32m%-6s\e[m \n","  Configuring hashes...");
 	// hash config stuff
@@ -692,7 +691,6 @@ void whistory::init_CUDPP(){
 	//printf("\e[0;32m%-6s\e[m \n","  Inserting values into cellnum/matnum hash table...");
 	//res = cudppHashInsert(mate_hash_table_handle, d_hash_key, d_hash_val_mate, hash_config.kInputSize);
 	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in inserting values into hash table\n");exit(-1);}
-	//cudaThreadSynchronize();
 
 	//// fissile hash stuff
 	//res = cudppHashTable(theCudpp, &fiss_hash_table_handle, &hash_config);
@@ -700,7 +698,6 @@ void whistory::init_CUDPP(){
 	//printf("\e[0;32m%-6s\e[m \n","  Inserting values into cellnum/fissile hash table...");
 	//res = cudppHashInsert(fiss_hash_table_handle, d_hash_key, d_hash_val_fiss, hash_config.kInputSize);
 	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in inserting values into hash table\n");exit(-1);}
-	//cudaThreadSynchronize();
 
 }
 void whistory::copy_to_device(){

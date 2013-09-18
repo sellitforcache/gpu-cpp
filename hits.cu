@@ -8,8 +8,8 @@ rtDeclareVariable(intersection_point, payload, rtPayload, );
 rtDeclareVariable(float, int_dist, rtIntersectionDistance, );
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
-rtDeclareVariable(int,  cellnum, , );
-rtDeclareVariable(int,  outer_cell, , );
+rtDeclareVariable(unsigned,  cellnum, , );
+rtDeclareVariable(unsigned,  outer_cell, , );
 
 RT_PROGRAM void closest_hit()
 {

@@ -6,13 +6,13 @@
 
 
 struct wtransform {
-    int   cellnum;
-    int   cellmat;
-    float dx;
-    float dy;
-    float dz;
-    float theta;
-    float phi;
+    unsigned    cellnum;
+    unsigned    cellmat;
+    float       dx;
+    float       dy;
+    float       dz;
+    float       theta;
+    float       phi;
 };
 
 // source point struct

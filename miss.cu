@@ -4,8 +4,7 @@
 
 rtDeclareVariable(intersection_point, payload, rtPayload, );
 rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
-rtDeclareVariable(int,  trace_type, , );
-//rtBuffer<source_point,1>          positions_buffer;
+rtDeclareVariable(unsigned,  trace_type, , );
 rtBuffer<unsigned,1>          done_buffer;
 rtBuffer<unsigned,1>          rxn_buffer;
 

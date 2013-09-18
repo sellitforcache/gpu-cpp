@@ -11,9 +11,9 @@ rtBuffer<unsigned,1>                cellnum_buffer;
 rtDeclareVariable(rtObject,      top_object, , );
 rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
 rtDeclareVariable(uint, launch_dim,   rtLaunchDim, );
-rtDeclareVariable(int,  outer_cell, , );
-rtDeclareVariable(int,  trace_type, , );
-rtDeclareVariable(int,  boundary_condition, , );
+rtDeclareVariable(unsigned,  outer_cell, , );
+rtDeclareVariable(unsigned,  trace_type, , );
+rtDeclareVariable(unsigned,  boundary_condition, , );
 
 RT_PROGRAM void camera()
 {
