@@ -28,13 +28,13 @@ class cross_section_data:
 
 		for tope in self.isotope_list:
 			tope_number = nucname.mcnp(tope)
-			print 'trying to load '+str(tope_number)
+			#print 'trying to load '+str(tope_number)
 			self.libraries.append(ace.Library('/usr/local/SERPENT/xsdata/endfb7/acedata/'+str(tope_number)+'ENDF7.ace'))
 
 		for lib in self.libraries:
 			lib.read()
 			iname=lib.tables.keys()[0][0:-4]   #strip off temp to get isotope name
-			print iname
+			print "Loading "+iname+self.temp_extension
 			self.tables.append(lib.find_table(iname+self.temp_extension))
 
 		self.num_isotopes=self.libraries.__len__()
@@ -92,9 +92,7 @@ class cross_section_data:
 
 	def _get_array_pointer(self):
 		self.array = numpy.ascontiguousarray(self.array,dtype=numpy.float32)
-		cdef Y = numpy.zeros_like(self.array)
-		Y = self.array
-		return Y
+		return self.array
 
 	def _print_isotopes(self):
 		for tope in self.isotope_list:
@@ -110,6 +108,7 @@ def get_xs_pointer(this_string):
 	xs._insert_reactions()
 	xs._allocate_array()
 	xs._interpolate()
+	print xs.array.size*4
 	return xs._get_array_pointer()
 
 

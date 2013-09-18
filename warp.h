@@ -716,7 +716,8 @@ void whistory::copy_to_device(){
 void whistory::load_cross_sections(std::string tope_string){
 
 	PyObject *pName, *pModule, *pDict, *pFunc;
-    PyObject *pArgs, *pValue;
+    PyObject *pArgs, *pValue, *pString, *pBuffObj;
+    Py_buffer pBuff;
     int i;
 
     Py_Initialize();
@@ -731,34 +732,33 @@ void whistory::load_cross_sections(std::string tope_string){
         /* pFunc is a new reference */
 
         if (pFunc && PyCallable_Check(pFunc)) {
-            pArgs = PyString_FromString("92235,92238,8016,1001");
-            pValue = PyInt_FromLong(atoi("1"));
-            if (!pValue) {
-                Py_DECREF(pArgs);
-                Py_DECREF(pModule);
-                fprintf(stderr, "Cannot convert argument\n");
-                return;
-            /* pValue reference stolen here: */
-            PyTuple_SetItem(pArgs, i, pValue);
+        	pArgs = PyTuple_New(1);
+            pString = PyString_FromString("92235,92238,8016,1001");
+            PyTuple_SetItem(pArgs, 0, pString);
+            pBuffObj = PyObject_CallObject(pFunc, pArgs);
+            if (PyObject_CheckBuffer(pBuffObj)){
+            	PyObject_GetBuffer(pBuffObj, &pBuff,PyBUF_ND);
             }
-            pValue = PyObject_CallObject(pFunc, pArgs);
-            Py_DECREF(pArgs);
-            if (pValue != NULL) {
-                printf("Result of call: %ld\n", PyInt_AsLong(pValue));
-                Py_DECREF(pValue);
+            else{
+            	printf("Object has no buffer\n");
             }
-            else {
-                Py_DECREF(pFunc);
-                Py_DECREF(pModule);
-                PyErr_Print();
-                fprintf(stderr,"Call failed\n");
-                return;
-            }
-        }
-        else {
-            if (PyErr_Occurred())
-                PyErr_Print();
-            fprintf(stderr, "Cannot find function \"%s\"\n","get_xs_pointer");
+            //Py_DECREF(pArgs);
+            //if (pValue != NULL) {
+            //    printf("Result of call: %p\n", pBuff.buf );
+            //    Py_DECREF(pValue);
+            //}
+            //else {
+            //    Py_DECREF(pFunc);
+            //    Py_DECREF(pModule);
+            //    PyErr_Print();
+            //    fprintf(stderr,"Call failed\n");
+            //    return;
+            //}
+        //}
+        //else {
+        //    if (PyErr_Occurred())
+        //        PyErr_Print();
+        //    fprintf(stderr, "Cannot find function \"%s\"\n","get_xs_pointer");
         }
         Py_XDECREF(pFunc);
         Py_DECREF(pModule);
@@ -768,6 +768,15 @@ void whistory::load_cross_sections(std::string tope_string){
         fprintf(stderr, "Failed to load \"%s\"\n", "unionize");
         return;
     }
+
+    // allocate xs_data pointer, copy python buffer contents to pointer
+    unsigned nbytes = pBuff.len;
+    printf("length of array is %u bytes\n",nbytes);
+    xs_data = (float*) malloc(nbytes);
+    memcpy( xs_data,   pBuff.buf , nbytes );
+
+    //set xs_data dimensions from python buffer
+
     Py_Finalize();
 
 }

@@ -34,7 +34,7 @@ all:  	$(ptx_objects) \
 		gpu \
 
 clean:
-	rm -f *.ptx *.o unionize.c gpu
+	rm -f *.ptx *.o unionize.c gpu debug
 
 camera.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu

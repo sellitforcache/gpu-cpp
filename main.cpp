@@ -68,6 +68,7 @@ int main(){
 	hist.init_RNG();
 	hist.init_CUDPP();
 	hist.copy_to_device();
+	hist.load_cross_sections("blah");
 
 	/////////////////////////
 	// LOAD CROSS SECTIONS //
