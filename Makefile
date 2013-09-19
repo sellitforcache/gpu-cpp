@@ -15,11 +15,14 @@ CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
 PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers/
 PYTHON_LIBS = -lpython2.7
+PNG_FLAGS = -L/usr/local/Cellar/libpng/1.5.13/lib 
+PNG_LIBS = -lpng15
 LIBS =
 
 
 COBJS =	mt19937ar.o \
 		print_banner.o \
+		init_geometry_trace_points.o \
 		main.o
 
 ptx_objects = 	camera.ptx \
@@ -64,7 +67,7 @@ print_banner.o:
 	$(NVCC) $(NVCC_FLAGS) -c -O print_banner.cpp
 
 gpu: $(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(COBJS) -o $@ 
+	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 
 
 debug: 	$(ptx_objects) $(COBJS)
-	$(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(COBJS) -g -G -o $@
+	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -g -G -o $@ 

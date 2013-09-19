@@ -43,33 +43,31 @@ int main(){
 	geom.update();
 	geom.print();
 
-
-
 	//////////////////////
-	// INIT OPTIX STUFF //
+	// INIT OptiX STUFF //
 	//////////////////////
 	
 	optix_stuff this_optix ( N , 4 );
 	this_optix.init(geom);
 	this_optix.print();
-	
 
-	/////////////////////////////////
-	// INIT CUDA and HISTORY STUFF //    !! MUST BE DONE AFTER OPTIX !!
-	/////////////////////////////////
+	/////////////////////////////////////////////////////////////////
+	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //    !! MUST BE DONE AFTER OPTIX !!
+	/////////////////////////////////////////////////////////////////
 
 	whistory hist ( N , this_optix );
+	hist.init_host();
 	hist.init_RNG();
 	hist.init_CUDPP();
 	hist.load_cross_sections("92235,92238,8016,1001,1002");
 	hist.print_xs_data();
 	hist.copy_to_device();
+	hist.print_pointers();
+	hist.write_xs_data("xsdata");
 
-	/////////////////////////
-	// LOAD CROSS SECTIONS //
-	/////////////////////////
+	// trace geom
+	//this_optix.trace_geometry(1024,1024);
 
-	//hist.load_cross_sections("blah");
 
 }
 

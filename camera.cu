@@ -22,7 +22,7 @@ RT_PROGRAM void camera()
 
   // declare important stuff
   int                 cnt;
-  float               epsilon=0.0001; 
+  float               epsilon=1e-4; 
   float               dist_to_surf = 0.0;
   float               x,y,z;
   float               samp_dist = positions_buffer[launch_index].samp_dist;
@@ -32,6 +32,8 @@ RT_PROGRAM void camera()
   float3 ray_origin     = make_float3(positions_buffer[launch_index].x,    positions_buffer[launch_index].y,    positions_buffer[launch_index].z);
   optix::Ray ray        = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
 
+  rtPrintf("launch_index=%u\n",launch_index);
+/*
   // init payload
   payload.cont=1;
   payload.do_first_hit=1;
@@ -121,7 +123,7 @@ RT_PROGRAM void camera()
     positions_buffer[launch_index].z = z;
    }
 
-
+*/
 }
 
 RT_PROGRAM void exception()
