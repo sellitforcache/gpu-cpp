@@ -37,7 +37,7 @@ class primitive
 	void add_transform(unsigned,float,float,float,float,float);
 	void print_transform();
 	void print_transform(int);
-	void make_hex_array(int,float,float,int);
+	void make_hex_array(int,float,float,unsigned);
 	float       min[3];
 	float       max[3];
 	float       location[3];
@@ -46,7 +46,6 @@ class primitive
 	int 		primitive_id;
 	int         n_transforms;
 	int         material;
-	int         is_outer_boundary;
 	std::vector<wtransform>   transforms;
 };
 
@@ -59,19 +58,19 @@ primitive::primitive(){
 	location[0]=0;location[1]=0;location[2]=0;
 	type=0;
 	material=0;
-	wtransform this_transform;
-	this_transform.cellnum = 0;
-	this_transform.cellmat = 0;
-	this_transform.dx      = 0;
-	this_transform.dy      = 0;
-	this_transform.dz      = 0;
-	this_transform.theta   = 0;
-	this_transform.phi     = 0;
-	transforms.push_back(this_transform);
-	is_outer_boundary=0;
-	n_transforms=1;
 	primitive_id=num_primitives;
 	num_primitives++;
+	n_transforms=0;
+	//wtransform this_transform;
+	//this_transform.cellnum = primitive_id;
+	//this_transform.cellmat = 0;
+	//this_transform.dx      = 0;
+	//this_transform.dy      = 0;
+	//this_transform.dz      = 0;
+	//this_transform.theta   = 0;
+	//this_transform.phi     = 0;
+	//transforms.push_back(this_transform);
+
 }
 primitive::primitive(int ptype, unsigned cellnum ,unsigned cellmat ,float xmin,float ymin,float zmin,float xmax,float ymax,float zmax,float x,float y,float z){
 	//box valued constructor
@@ -80,6 +79,8 @@ primitive::primitive(int ptype, unsigned cellnum ,unsigned cellmat ,float xmin,f
 	location[0]=x;location[1]=y;location[2]=z;
 	type=ptype;
 	material=cellmat;
+	primitive_id=num_primitives;
+	num_primitives++;
 	wtransform this_transform;
 	this_transform.cellnum = cellnum;
 	this_transform.cellmat = cellmat;
@@ -89,10 +90,7 @@ primitive::primitive(int ptype, unsigned cellnum ,unsigned cellmat ,float xmin,f
 	this_transform.theta   = 0;
 	this_transform.phi     = 0;
 	transforms.push_back(this_transform);
-	is_outer_boundary=0;
 	n_transforms=1;
-	primitive_id=num_primitives;
-	num_primitives++;
 }
 primitive::~primitive(){
 	//box destructor
@@ -105,7 +103,12 @@ primitive::~primitive(){
 }
 void primitive::add_transform(){
 	wtransform this_transform;
-	this_transform.cellnum = 0;
+	if(transforms.empty()){
+		this_transform.cellnum = 0;
+	}
+	else{
+	 	this_transform = transforms.back();
+	}
 	this_transform.cellmat = material;
 	this_transform.dx      = 0;
 	this_transform.dy      = 0;
@@ -162,15 +165,20 @@ void primitive::print_transform(int tnum){
 	std::cout << "   phi      = " << transforms[tnum].phi << "\n";
 }
 
-void primitive::make_hex_array(int n, float x, float y, int starting_index){
+void primitive::make_hex_array(int n, float x, float y, unsigned starting_index){
+
+	wtransform this_transform;
 
 	int k, j, num, cnt;
 	float offsetx, offsety, fnum, lattr, PD_ratio;
 
+	// get strting cell number as the one set for the last
+	//wtransform this_transform = transforms.back();
+	//unsigned starting_index = this_transform.cellnum + 1;
+
 	// add num of transforms to whatever is there
     n_transforms += 3*n*(n-1)+1;
 
-    wtransform this_transform;
 	num=n;
 	cnt=0;
 	PD_ratio=1.164;
@@ -214,6 +222,7 @@ class wgeometry {
 	unsigned n_hex;
 	unsigned n_primitives;
 	unsigned n_transforms;
+	unsigned outer_cell;
 public:
 	 wgeometry();
 	~wgeometry();
@@ -221,7 +230,10 @@ public:
 	unsigned get_transform_count();
 	void add_primitive();
 	void update();
-	void print();
+	void print_summary();
+	void print_all();
+	void set_outer_cell(unsigned);
+	unsigned get_outer_cell();
 	std::vector<primitive>   primitives;
 };
 
@@ -231,6 +243,7 @@ wgeometry::wgeometry(){
 	n_hex        = 0;
 	n_primitives = 0;
 	n_transforms = 0;
+	outer_cell   = 0;
 }
 wgeometry::~wgeometry(){
 	
@@ -246,6 +259,9 @@ void wgeometry::update(){
 	n_hex        = 0;
 	n_transforms = 0;
 	for(int k=0;k<n_primitives;k++){
+		if (primitives[k].n_transforms==0){
+			std::cout << "No transforms for primitive id = " << primitives[k].primitive_id << ", it will not be included in problem geometry" << "\n";
+		}
 		if(primitives[k].type==0){
 				n_box+=primitives[k].n_transforms;
 		}
@@ -258,19 +274,42 @@ void wgeometry::update(){
 		n_transforms+=primitives[k].n_transforms;
 	}
 }
-void wgeometry::print(){
+void wgeometry::print_summary(){
 	std::cout << "\e[1;32m" << "--- GEOMETRY SUMMARY ---" << "\e[m \n";
 	std::cout << "rectangular prisms = " << n_box << "\n";
 	std::cout << "cylinders          = " << n_cyl << "\n";
 	std::cout << "hexagons           = " << n_hex << "\n";
 	std::cout << "total primitives   = " << n_primitives << "\n";
 	std::cout << "total transforms   = " << n_transforms << "\n";
+	std::cout << "outer cell         = " << outer_cell << "\n";
+}
+void wgeometry::print_all(){
+	for(int k=0;k<n_primitives;k++){
+		primitives[k].print_transform();
+	}
+	print_summary();
 }
 unsigned wgeometry::get_primitive_count(){
 	return(n_primitives);
 }
 unsigned wgeometry::get_transform_count(){
 	return(n_transforms);
+}
+void wgeometry::set_outer_cell(unsigned ocell){
+	outer_cell = ocell;
+	unsigned this_cell;
+	for(int j=0;j<n_primitives;j++){
+		for(int k=0;k<primitives[j].n_transforms;k++){
+			this_cell = primitives[j].transforms[k].cellnum;
+			if (this_cell==outer_cell){break;}
+		}
+	}
+	if (this_cell!=outer_cell) {
+		std::cout << "Cell " << ocell << " not found, outer cell not set!!!" << "\n";
+	}
+}
+unsigned wgeometry::get_outer_cell(){
+	return outer_cell;
 }
 
 
@@ -332,6 +371,7 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 	Variable 			boundary_condition_var;
 	Variable 			trace_type_var;
 	RTsize              stack_size;
+	RTsize				printf_size;
 	
 	// Set up context
 	context = Context::create();
@@ -340,6 +380,8 @@ void optix_stuff::init_internal(wgeometry problem_geom){
   	context["radiance_ray_type"]->setUint( 0u );
   	context["scene_epsilon"]->setFloat( 1.e-4f );
 	context->setPrintEnabled( 1);
+	printf_size = context->getPrintBufferSize();
+	context->setPrintBufferSize(printf_size*10);
 	context->setExceptionEnabled( RT_EXCEPTION_ALL, 1);
 
 	// set stack size
@@ -395,9 +437,6 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 	sprintf( path_to_ptx, "%s", "miss.ptx" );
 	miss_program = context->createProgramFromPTXFile( path_to_ptx, "miss" );
 	context->setMissProgram( 0, miss_program ); 
-	
-	//set outer cell number as (basically) global
-	context["outer_cell"]->setUint(0);
 
 	//set boundary condition for outer cell
 	context["boundary_condition"]->setUint(0);
@@ -407,6 +446,9 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 
 	// make all geometry instances
 	make_geom(problem_geom);
+
+	//set outer cell
+	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
 
 	//validate and compile
 	context->validate();
@@ -475,7 +517,7 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 		this_geom -> setPrimitiveCount(1u);
 
 		//set intersection and BB programs
-		if (problem_geom.primitives[j].type == 0)		{sprintf( path_to_ptx, "%s", "box.ptx" );}
+		if      (problem_geom.primitives[j].type == 0)	{sprintf( path_to_ptx, "%s", "box.ptx" );}
 		else if (problem_geom.primitives[j].type == 1)	{sprintf( path_to_ptx, "%s", "cylinder.ptx" );}
 		else if (problem_geom.primitives[j].type == 2)	{sprintf( path_to_ptx, "%s", "hex.ptx" );}
 		bounding_box_program = context->createProgramFromPTXFile( path_to_ptx, "bounds" );
@@ -560,6 +602,7 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 	std::cout << "height = " << height << "\n";
 
 	// init the starting points to be across the z=0 plane and pointing downwards
+	FILE* positionsfile = fopen("positionsfile","w");
 	source_point * positions_local = new source_point[width*height];
 	float dx = (42.0-(-42.0))/width;
 	float dy = (42.0-(-42.0))/height;
@@ -567,19 +610,20 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 	for(int j=0;j<height;j++){
 		for(int k=0;k<width;k++){
 			index = j * width + k;
-			positions_local[index].x = (dx/2 + k*dx) - 42.0;
-			positions_local[index].y = (dy/2 + j*dx) - 42.0; 
+			positions_local[index].x = -42.0 + dx/2 + k*dx;
+			positions_local[index].y = -42.0 + dy/2 + j*dy;
 			positions_local[index].z = 0.0;
 			positions_local[index].xhat = 0.0;
 			positions_local[index].yhat = 0.0;
 			positions_local[index].zhat = -1.0;
 			positions_local[index].samp_dist = 50000.0; 
-			printf("i=%u, (% 10.8E,% 10.8E,% 10.8E)\n",index,positions_local[index].x,positions_local[index].y,positions_local[index].z);
+			//fprintf(positionsfile,"% 10.8E % 10.8E % 10.8E % 10.8E % 10.8E % 10.8E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
 		}
 	}
+	fclose(positionsfile);
 
 	// copy starting positions data to pointer
-	cudaMemcpy((float*)positions_ptr,positions_local,width*height*sizeof(source_point),cudaMemcpyDeviceToHost);
+	cudaMemcpy((void*)positions_ptr,positions_local,width*height*sizeof(source_point),cudaMemcpyHostToDevice);
 	
 	// trace with whereami?
 	context["trace_type"]->setUint(2);
@@ -587,17 +631,20 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 	
 	//copy to local buffer
 	unsigned * image_local = new unsigned[width*height];
-	cudaMemcpy(image_local,(unsigned*)cellnum_ptr,width*height*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	cudaMemcpy(image_local,(void*)cellnum_ptr,width*height*sizeof(unsigned),cudaMemcpyDeviceToHost);
 
 	// make image
 	png::image< png::rgb_pixel > image(height, width);
+	FILE* imagefile = fopen("imagefile","w");
 	unsigned r,g,b;
 	for (size_t y = 0; y < image.get_height(); ++y)
 	{
 	    for (size_t x = 0; x < image.get_width(); ++x)
 	    {
-	        image[y][x] = png::rgb_pixel(image_local[y*height+x], 40, 40);
+	    	fprintf(imagefile,"%u ",image_local[y*width+x]);
+	        image[y][x] = png::rgb_pixel(image_local[y*width+x], 40, 40);
 	    }
+	    fprintf(imagefile,"\n");
 	}
 	image.write("geom.png");
 
@@ -609,7 +656,8 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 }
 void optix_stuff::print(){
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
-	std::cout << "stack size = " << context->getStackSize() << " bytes\n";
+	std::cout << "stack  size = " << context->getStackSize() << " bytes\n";
+	std::cout << "printf size = " << context->getPrintBufferSize() << " bytes\n";
 }
 void optix_stuff::check_errors(){
 
@@ -751,7 +799,7 @@ void whistory::init_RNG(){
 	curandGenerator_t rand_gen ;
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
-	curandGenerateUniform( rand_gen , rn_bank , N * RNUM_PER_THREAD );
+	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
 }
 void whistory::init_CUDPP(){
 

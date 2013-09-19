@@ -22,7 +22,6 @@ LIBS =
 
 COBJS =	mt19937ar.o \
 		print_banner.o \
-		init_geometry_trace_points.o \
 		main.o
 
 ptx_objects = 	camera.ptx \

@@ -25,14 +25,16 @@ RT_PROGRAM void camera()
   float               epsilon=1e-4; 
   float               dist_to_surf = 0.0;
   float               x,y,z;
-  float               samp_dist = positions_buffer[launch_index].samp_dist;
-  intersection_point  payload;
   unsigned            rxn, done, cellnum;
+  float               samp_dist = positions_buffer[launch_index].samp_dist;
+
+  intersection_point  payload;
+  
   float3 ray_direction  = make_float3(positions_buffer[launch_index].xhat, positions_buffer[launch_index].yhat, positions_buffer[launch_index].zhat);
   float3 ray_origin     = make_float3(positions_buffer[launch_index].x,    positions_buffer[launch_index].y,    positions_buffer[launch_index].z);
   optix::Ray ray        = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
 
-  //rtPrintf("launch_index=%u\n",launch_index);
+  //rtPrintf("i=%u, (% 10.8E,% 10.8E,% 10.8E) (% 10.8E,% 10.8E,% 10.8E)\n",launch_index,positions_buffer[launch_index].x,positions_buffer[launch_index].y,positions_buffer[launch_index].z,positions_buffer[launch_index].xhat,positions_buffer[launch_index].yhat,positions_buffer[launch_index].zhat);
 
   // init payload
   payload.cont=1;
@@ -43,6 +45,7 @@ RT_PROGRAM void camera()
 
   // first trace to find closest hit
   rtTrace(top_object, ray, payload);
+
 
    if (trace_type==1){   // transport trace type
       dist_to_surf = payload.surf_dist;
@@ -103,6 +106,7 @@ RT_PROGRAM void camera()
          rtTrace(top_object, ray, payload);      
       }
       cellnum_buffer[launch_index] = payload.hitbuff[0];
+      //rtPrintf("end cell = %u\n",cellnum_buffer[launch_index]);
    }
 
    else if (trace_type==3){// intersection point trace
@@ -122,6 +126,7 @@ RT_PROGRAM void camera()
     positions_buffer[launch_index].y = y;
     positions_buffer[launch_index].z = z;
    }
+
 
 
 }

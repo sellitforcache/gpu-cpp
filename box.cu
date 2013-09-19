@@ -14,9 +14,9 @@ RT_PROGRAM void intersect(int)
   float3 t0 = (mins - ray.origin)/ray.direction;
   float3 t1 = (maxs - ray.origin)/ray.direction;
   float3 near = fminf(t0, t1);
-  float3 far  = fmaxf(t0, t1);
-  float tmin  = fmaxf( near );
-  float tmax  = fminf( far  );
+  float3 far = fmaxf(t0, t1);
+  float tmin = fmaxf( near );
+  float tmax = fminf( far );
 
   if(tmin <= tmax) {
     bool check_second = true;

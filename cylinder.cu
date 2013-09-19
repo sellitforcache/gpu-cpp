@@ -11,80 +11,81 @@ rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 
 RT_PROGRAM void intersect(int)
 {
-  float a =        ( ray.direction.x * ray.direction.x ) + ( ray.direction.y * ray.direction.y );
-  float b = 2.0 * (( ray.direction.x * ray.origin.x    ) + ( ray.direction.y * ray.origin.y    ));
-  float c =        ( ray.origin.x    * ray.origin.x    ) + ( ray.origin.y * ray.origin.y       ) - (maxs.y * maxs.y);
+    float r    = maxs.y;
+    float zmin = mins.x;
+    float zmax = maxs.x;
 
-  float disc = (b*b)-(4*a*c);
-  bool report = false;
+    float3 bbmin = make_float3(-r,-r,zmin);
+    float3 bbmax = make_float3( r, r,zmax);
 
-  if (disc > 0.0f ){
+    // get bounding box tmins and tmaxes
+    float3 bbt0 = (bbmin - ray.origin)/ray.direction;
+    float3 bbt1 = (bbmax - ray.origin)/ray.direction;
+    float3 bbnear = fminf(bbt0, bbt1);
+    float3 bbfar  = fmaxf(bbt0, bbt1);
+    float bbtmin  = fmaxf( bbnear );
+    float bbtmax  = fminf( bbfar );
+    float t1,t2;
 
-    float sdisc = sqrt(disc);
-    float t1 = (-b-sdisc)/(2*a);
-    float t2 = (-b+sdisc)/(2*a);
-    float z1 = ray.origin.z + t1 * ray.direction.z;
-    float z2 = ray.origin.z + t2 * ray.direction.z;
+    float a =        ( ray.direction.x * ray.direction.x ) + ( ray.direction.y * ray.direction.y );
+    float b = 2.0 * (( ray.direction.x * ray.origin.x    ) + ( ray.direction.y * ray.origin.y    ));
+    float c =        ( ray.origin.x    * ray.origin.x    ) + ( ray.origin.y    * ray.origin.y    ) - (r * r);
+
+    float disc = (b*b)-(4*a*c);
+    bool report = false;
     bool check_second = true;
 
-    if ( z1 > maxs.x  && z2 < maxs.x ) {
-      t1=(maxs.x-ray.origin.z)/ray.direction.z;
-      report=true;
-    }
-    if ( z2 > maxs.x  && z1 < maxs.x ) {
-      t2=(maxs.x-ray.origin.z)/ray.direction.z;
-      report=true;
-    }
+    if (disc > 0.0f){  //the line intersects the circle
 
-    if ( z1 < mins.x  && z2 > mins.x ) {
-      t1=(mins.x-ray.origin.z)/ray.direction.z;
-      report=true;
-    }
-    if ( z2 < mins.x  && z1 > mins.x ) {
-      t2=(mins.x-ray.origin.z)/ray.direction.z;
-      report=true;
-    }
+        float sdisc = sqrt(disc);
+        t1 = (-b-sdisc)/(2*a);
+        t2 = (-b+sdisc)/(2*a);
 
-    if ( z1 > maxs.x  && z2 < mins.x ) {
-      t1=(maxs.x-ray.origin.z)/ray.direction.z;
-      t2=(mins.x-ray.origin.z)/ray.direction.z;
-      report=true;
-    }
-    if ( z2 > maxs.x  && z1 < mins.x ) {
-      t2=(maxs.x-ray.origin.z)/ray.direction.z;
-      t1=(mins.x-ray.origin.z)/ray.direction.z;
-      report=true;
-    }
+        // bound the t's to within the bb
+        t1 = fminf (  fmaxf( t1, bbtmin ) , bbtmax );
+        t2 = fminf (  fmaxf( t2, bbtmin ) , bbtmax );
 
-    if (z1 > mins.x && z1 < maxs.x && z2 > mins.x && z2 < maxs.x ){
-      report=true;
+        report = true;
+        
+    }
+    else if ( ray.direction.y+ray.direction.x < 1e-15 ){
+
+        // the ray is completely perpendicular to the x-y plane
+        if ( sqrtf(ray.origin.x*ray.origin.x + ray.origin.y*ray.origin.y) <= r ) {
+            // inside the cap
+            //rtPrintf("completely perpendicular and inside\n");
+            t1 = bbtmin;
+            t2 = bbtmax;
+            report = true;
+        }
+
     }
 
     if (report){
-    if (rtPotentialIntersection(t1) ) {
-      if(rtReportIntersection(0)){
-        check_second=false;
-      }
+        if (rtPotentialIntersection(t1) ) {
+            if(rtReportIntersection(0)){
+                check_second=false;
+            }
+        }
+        if(check_second){
+            if (rtPotentialIntersection(t2) ) {
+                rtReportIntersection(0);
+            }
+        }
     }
-    if(check_second){
-      if (rtPotentialIntersection(t2) ) {
-        rtReportIntersection(0);
-      }
-    }
-    }
-
-  }
-
-
 
 }
 
 RT_PROGRAM void bounds (int, float result[6])
 {
-  result[0] = -maxs.y;
-  result[1] = -maxs.y;
-  result[2] = mins.x;
-  result[3] = maxs.y;
-  result[4] = maxs.y;
-  result[5] = maxs.x;
+    float r    = maxs.y;
+    float zmin = mins.x;
+    float zmax = maxs.x;
+
+    result[0] = -r;
+    result[1] = -r;
+    result[2] = zmin;
+    result[3] = r;
+    result[4] = r;
+    result[5] = zmax;
 }
