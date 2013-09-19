@@ -57,16 +57,24 @@ int main(){
 
 	whistory hist ( N , this_optix );
 	hist.init_host();
-	hist.init_RNG();
-	hist.init_CUDPP();
-	hist.load_cross_sections("92235,92238,8016,1001,1002");
+	//hist.init_RNG();
+	//hist.init_CUDPP();
+	hist.load_cross_sections("92235");
 	hist.print_xs_data();
 	hist.copy_to_device();
 	hist.print_pointers();
 	hist.write_xs_data("xsdata");
 
 	// trace geom
-	//this_optix.trace_geometry(1024,1024);
+	this_optix.check_errors();
+
+	try {
+		this_optix.trace_geometry(1024,1024);	
+	} 
+	catch( optix::Exception &e ){
+		std::cout << e.getErrorString().c_str();
+		exit(1);
+	}
 
 
 }

@@ -301,6 +301,7 @@ public:
 	void set_trace_type(unsigned);
 	void print();
 	void trace_geometry(unsigned,unsigned);
+	void check_errors();
 };
 optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	//set stack size multiplier
@@ -559,20 +560,21 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 	std::cout << "height = " << height << "\n";
 
 	// init the starting points to be across the z=0 plane and pointing downwards
-	source_point * positions_local = (source_point *) malloc(width*height*sizeof(source_point));
+	source_point * positions_local = new source_point[width*height];
 	float dx = (42.0-(-42.0))/width;
 	float dy = (42.0-(-42.0))/height;
 	unsigned index;
 	for(int j=0;j<height;j++){
 		for(int k=0;k<width;k++){
 			index = j * width + k;
-			positions_local[index].x = dx/2 + k*dx;
-			positions_local[index].y = dy/2 + j*dx;;
+			positions_local[index].x = (dx/2 + k*dx) - 42.0;
+			positions_local[index].y = (dy/2 + j*dx) - 42.0; 
 			positions_local[index].z = 0.0;
 			positions_local[index].xhat = 0.0;
 			positions_local[index].yhat = 0.0;
 			positions_local[index].zhat = -1.0;
 			positions_local[index].samp_dist = 50000.0; 
+			printf("i=%u, (% 10.8E,% 10.8E,% 10.8E)\n",index,positions_local[index].x,positions_local[index].y,positions_local[index].z);
 		}
 	}
 
@@ -584,7 +586,7 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 	context->launch(0,width*height);
 	
 	//copy to local buffer
-	unsigned * image_local = (unsigned *) malloc(width*height*sizeof(unsigned));
+	unsigned * image_local = new unsigned[width*height];
 	cudaMemcpy(image_local,(unsigned*)cellnum_ptr,width*height*sizeof(unsigned),cudaMemcpyDeviceToHost);
 
 	// make image
@@ -601,10 +603,16 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 
 	std::cout << "Done.  Written to geom.png" << "\e[m \n";
 
+	delete image_local;
+	delete positions_local;
+
 }
 void optix_stuff::print(){
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
 	std::cout << "stack size = " << context->getStackSize() << " bytes\n";
+}
+void optix_stuff::check_errors(){
+
 }
 
 
