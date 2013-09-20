@@ -18,21 +18,21 @@ int main(){
 	wgeometry geom;
 
 	geom.add_primitive();
-	geom.primitives[0].type=2;
+	geom.primitives[0].type=1;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]=-20.0;
 	geom.primitives[0].min[1]=-20.0;
 	geom.primitives[0].min[2]=-20.0;
 	geom.primitives[0].max[0]= 20.0;
-	geom.primitives[0].max[1]= 0.8;
+	geom.primitives[0].max[1]= 1.0;
 	geom.primitives[0].max[2]= 10.0;
-	geom.primitives[0].make_hex_array(11,0.0,0.0,20);
+	geom.primitives[0].make_hex_array(11,0.0,0.0,0);
 	geom.add_primitive();
 	geom.primitives[1].type=2;
 	geom.primitives[1].material=2;
 	geom.primitives[1].min[0]=-21;
 	geom.primitives[1].max[0]=21;
-	geom.primitives[1].max[1]=31.0;
+	geom.primitives[1].max[1]=22.0;
 	geom.primitives[1].add_transform();
 	geom.primitives[1].transforms[0].cellnum = 500;
 	geom.primitives[1].transforms[0].dx      = 0;
@@ -58,6 +58,7 @@ int main(){
 	geom.primitives[2].transforms[0].phi     = 0;
 	geom.set_outer_cell(999);
 	geom.update();
+	//geom.print_all();
 	geom.print_summary();
 
 	//////////////////////
@@ -79,7 +80,7 @@ int main(){
 	hist.load_cross_sections("92235");
 	hist.print_xs_data();
 	hist.copy_to_device();
-	hist.print_pointers();
+	//hist.print_pointers();
 	hist.write_xs_data("xsdata");
 
 	// trace geom

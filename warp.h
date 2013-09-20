@@ -226,6 +226,8 @@ class wgeometry {
 public:
 	 wgeometry();
 	~wgeometry();
+	unsigned get_minimum_cell();
+	unsigned get_maximum_cell();
 	unsigned get_primitive_count();
 	unsigned get_transform_count();
 	void add_primitive();
@@ -311,6 +313,25 @@ void wgeometry::set_outer_cell(unsigned ocell){
 unsigned wgeometry::get_outer_cell(){
 	return outer_cell;
 }
+unsigned wgeometry::get_minimum_cell(){
+	unsigned mincell=-1;
+	for(int j=0;j<n_primitives;j++){
+		for(int k=0;k<primitives[j].n_transforms;k++){
+			if (primitives[j].transforms[k].cellnum<mincell){mincell=primitives[j].transforms[k].cellnum;}
+		}
+	}
+	return mincell;
+}
+unsigned wgeometry::get_maximum_cell(){
+	unsigned maxcell=0;
+	for(int j=0;j<n_primitives;j++){
+		for(int k=0;k<primitives[j].n_transforms;k++){
+			if (primitives[j].transforms[k].cellnum>maxcell){maxcell=primitives[j].transforms[k].cellnum;}
+		}
+	}
+	return maxcell;
+}
+
 
 
 
@@ -323,6 +344,8 @@ unsigned wgeometry::get_outer_cell(){
 
 class optix_stuff{
 	optix::Context 	context;
+	unsigned mincell;
+	unsigned maxcell;
 	void make_geom(wgeometry);
 	void init_internal(wgeometry);
 public:
@@ -340,7 +363,7 @@ public:
 	void set_trace_type(unsigned);
 	void print();
 	void trace_geometry(unsigned,unsigned);
-	void check_errors();
+	void make_color(float*,unsigned,unsigned,unsigned);
 };
 optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	//set stack size multiplier
@@ -455,6 +478,10 @@ void optix_stuff::init_internal(wgeometry problem_geom){
     context->compile();
 }
 void optix_stuff::init(wgeometry problem_geom){
+	// set min and max cell numbers
+	mincell = problem_geom.get_minimum_cell();
+	maxcell = problem_geom.get_maximum_cell();
+	// try to init optix
 	try {
 		init_internal(problem_geom);	
 	} 
@@ -590,7 +617,7 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 }
 void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 
-	std::cout << "\e[1;32m" << "Plotting Geometry... " << "\n";
+	std::cout << "\e[1;32m" << "Plotting Geometry... " << "\e[m \n";
 
 	using namespace optix;
 
@@ -617,7 +644,6 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 			positions_local[index].yhat = 0.0;
 			positions_local[index].zhat = -1.0;
 			positions_local[index].samp_dist = 50000.0; 
-			//fprintf(positionsfile,"% 10.8E % 10.8E % 10.8E % 10.8E % 10.8E % 10.8E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
 		}
 	}
 	fclose(positionsfile);
@@ -635,22 +661,23 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 
 	// make image
 	png::image< png::rgb_pixel > image(height, width);
-	FILE* imagefile = fopen("imagefile","w");
-	unsigned r,g,b;
+	float * colormap = new float[3];
 	for (size_t y = 0; y < image.get_height(); ++y)
 	{
 	    for (size_t x = 0; x < image.get_width(); ++x)
 	    {
-	    	fprintf(imagefile,"%u ",image_local[y*width+x]);
-	        image[y][x] = png::rgb_pixel(image_local[y*width+x], 40, 40);
+	    	make_color(colormap,image_local[y*width+x],mincell,maxcell);
+	    	//printf("%u %u %6.3f %6.3f %6.3f\n",mincell,maxcell,colormap[0],colormap[1],colormap[2]);
+	        image[y][x] = png::rgb_pixel(colormap[0],colormap[1],colormap[2]);
 	    }
-	    fprintf(imagefile,"\n");
 	}
+
 	image.write("geom.png");
 
-	std::cout << "Done.  Written to geom.png" << "\e[m \n";
+	std::cout << "Done.  Written to geom.png" << "\n";
 
 	delete image_local;
+	delete colormap;
 	delete positions_local;
 
 }
@@ -659,10 +686,19 @@ void optix_stuff::print(){
 	std::cout << "stack  size = " << context->getStackSize() << " bytes\n";
 	std::cout << "printf size = " << context->getPrintBufferSize() << " bytes\n";
 }
-void optix_stuff::check_errors(){
+void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned max){
+	// red linear blue linear green sin colormap
+	float normed_value = (float) (x-min+1)/(max+2-min);
+	color[0] = normed_value;              //red
+	color[1] = sin(normed_value*3.14159); //green
+	color[2] = 1.0-normed_value;          //blue
+
+	//bring up to 256 bits?
+	color[0]=color[0]*256;
+	color[1]=color[1]*256;
+	color[2]=color[2]*256;
 
 }
-
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
