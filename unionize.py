@@ -14,9 +14,11 @@ class cross_section_data:
 		self.num_main_E		  = 0
 		self.reaction_numbers = []
 		self.num_reactions    = 0
-		self.angular_grid     = numpy.array([])
-		self.outgoing_E_grid  = numpy.array([])
-		self.array			  = numpy.array([],dtype=float,order='C')
+		self.Ang_grid         = numpy.array([])
+		self.Ene_grid  	      = numpy.array([])
+		self.MT_array		  = numpy.array([],dtype=numpy.float32,order='C')
+		self.Ang_array		  = numpy.array([],dtype=numpy.float32,order='C')
+		self.Ene_array		  = numpy.array([],dtype=numpy.float32,order='C')
 
 	def _init_from_string(self,this_string):
 		self.isotope_list = this_string.split(',')
@@ -57,12 +59,13 @@ class cross_section_data:
 
 			self.num_reactions=self.reaction_numbers.__len__()
 
-	def _allocate_array(self):
+	def _allocate_arrays(self):
 
 		n_columns  = 1 + self.num_isotopes + ( self.num_isotopes + self.num_reactions)  # egrid + totals + (abs + all other reactions (elastic scatter included) )
 		n_rows     = self.num_main_E
-		self.array = numpy.zeros((n_rows,n_columns),dtype=float,order='C')
-		self.array[:,0]=self.main_E_grid
+		self.MT_array = numpy.zeros((n_rows,n_columns),dtype=float,order='C')
+		self.MT_array[:,0]=self.main_E_grid
+
 
 	def _interpolate(self):
 
@@ -73,12 +76,12 @@ class cross_section_data:
 
 			#do total
 			this_array = numpy.interp(self.main_E_grid,table.energy,table.sigma_t)
-			self.array[:,tope_index]=this_array
+			self.MT_array[:,tope_index]=this_array
 
 			#do abs, start at reaction block
 			start_dex=1+self.num_isotopes+cum_rxn_len #(main E grid + total xs block + any previous reaction blocks)
 			this_array = numpy.interp(self.main_E_grid,table.energy,table.sigma_a)
-			self.array[:,start_dex]=this_array
+			self.MT_array[:,start_dex]=this_array
 
 			for MT in table.reactions: # reactions is a dict
 				start_dex=start_dex+1
@@ -86,13 +89,25 @@ class cross_section_data:
 				rxn = table.reactions[MT]
 				IE  = rxn.IE-1
 				this_array = numpy.interp(self.main_E_grid,table.energy[IE:],rxn.sigma)
-				self.array[:,start_dex]=this_array
+				self.MT_array[:,start_dex]=this_array
 
 			tope_index=tope_index+1
 
-	def _get_array_pointer(self):
-		self.array = numpy.ascontiguousarray(self.array,dtype=numpy.float32)
-		return self.array
+	def _get_MT_array_pointer(self):
+		contig.array = numpy.ascontiguousarray(self.MT_array,dtype=numpy.float32)
+		return contig_array
+
+	def _get_Egrid_pointer(self):
+		E_grid = numpy.ascontiguousarray(self.main_E_grid,dtype=numpy.float32)
+		return E_grid
+
+	def _get_Ang_array_pointer(self):
+		Ang = numpy.ascontiguousarray(self.Ang_array,dtype=numpy.float32)
+		return Ang
+
+	def _get_Ene_array_pointer(self):
+		Ene = numpy.ascontiguousarray(self.Ene_array,dtype=numpy.float32)
+		return Ene
 
 	def _print_isotopes(self):
 		for tope in self.isotope_list:
@@ -106,9 +121,8 @@ def get_xs_pointer(this_string):
 	xs._read_tables()
 	xs._unionize_main_E_grid()
 	xs._insert_reactions()
-	xs._allocate_array()
+	xs._allocate_arrays()
 	xs._interpolate()
-	#print xs.array.size*4
 	return xs._get_array_pointer()
 
 

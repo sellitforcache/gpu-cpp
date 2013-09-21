@@ -357,12 +357,13 @@ public:
 	unsigned 			stack_size_multiplier;
 	unsigned 			N;
 	optix_stuff(unsigned,unsigned);
+	~optix_stuff();
 	void init(wgeometry);
 	void trace();
 	void trace(unsigned);
 	void set_trace_type(unsigned);
 	void print();
-	void trace_geometry(unsigned,unsigned);
+	void trace_geometry(unsigned,unsigned,std::string);
 	void make_color(float*,unsigned,unsigned,unsigned);
 };
 optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
@@ -370,6 +371,15 @@ optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	stack_size_multiplier = mult;
 	//set main N
 	N=Nin;
+}
+optix_stuff::~optix_stuff(){
+	try {
+		context->destroy();	
+	} 
+	catch( optix::Exception &e ){
+		std::cout << e.getErrorString().c_str();
+		exit(1);
+	}
 }
 void optix_stuff::init_internal(wgeometry problem_geom){
 
@@ -615,7 +625,7 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 	}
 
 }
-void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
+void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::string filename){
 
 	std::cout << "\e[1;32m" << "Plotting Geometry... " << "\e[m \n";
 
@@ -672,9 +682,9 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in){
 	    }
 	}
 
-	image.write("geom.png");
+	image.write(filename);
 
-	std::cout << "Done.  Written to geom.png" << "\n";
+	std::cout << "Done.  Written to " << filename << "\n";
 
 	delete image_local;
 	delete colormap;
@@ -775,14 +785,14 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 				 d_done 	= (unsigned*)     optix_obj.done_ptr;
 	cudaMalloc( &d_E 		, N*sizeof(float)    );
 	cudaMalloc( &d_Q 		, N*sizeof(float)    );
-	cudaMalloc( &d_rn_bank  , N*sizeof(float)    );
+	cudaMalloc( &d_rn_bank  , N*RNUM_PER_THREAD*sizeof(float)    );
 	cudaMalloc( &d_isonum   , N*sizeof(unsigned) );
 	cudaMalloc( &d_yield	, N*sizeof(unsigned) );
 	// host data stuff
 	space 		= new source_point [N];
 	E 			= new float [N];
 	Q 			= new float [N];
-	rn_bank  	= new float [N];
+	rn_bank  	= new float [N*RNUM_PER_THREAD];
 	cellnum 	= new unsigned [N];
 	matnum 		= new unsigned [N];
 	rxn 		= new unsigned [N];
@@ -831,11 +841,12 @@ void whistory::init_host(){
 
 }
 void whistory::init_RNG(){
-	printf("\e[1;32m%-6s\e[m \n","Initializing random number bank on device using MTGP32...");
+	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
 	curandGenerator_t rand_gen ;
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
 	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
+	cudaMemcpy(rn_bank , d_rn_bank , N * RNUM_PER_THREAD , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
 void whistory::init_CUDPP(){
 
@@ -990,9 +1001,8 @@ void whistory::load_cross_sections(std::string tope_string){
     xs_data = (float*) malloc(xs_bytes);
     memcpy( xs_data,   pBuff.buf , xs_bytes );
     
-    //allocate device memory!!!!!
+    //callocate device memory now that we know the size!!!!!
     cudaMalloc(&d_xs_data,xs_bytes);
-
 
     Py_Finalize();
 

@@ -9,7 +9,7 @@ int main(){
 	///////////////////
 
 	//get inputs?
-	int N=1e6;
+	int N=1e4;
 
 	//print banner
 	print_banner();
@@ -65,9 +65,21 @@ int main(){
 	// INIT OptiX STUFF //
 	//////////////////////
 	
+	// tracer for histories
 	optix_stuff this_optix ( N , 4 );
 	this_optix.init(geom);
 	this_optix.print();
+
+	// trace geom if requested
+	// make new context that fits the reqested image size, trace, then destroy to free resources
+	unsigned geom_width  = 1024; 
+	unsigned geom_height = 1024;
+	unsigned N_geom = geom_width*geom_height;
+	optix_stuff geom_optix ( N_geom , 4 );
+	geom_optix.init(geom);
+	geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
+	geom_optix.~optix_stuff();
+
 
 	/////////////////////////////////////////////////////////////////
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //    !! MUST BE DONE AFTER OPTIX !!
@@ -75,16 +87,13 @@ int main(){
 
 	whistory hist ( N , this_optix );
 	hist.init_host();
-	//hist.init_RNG();
+	hist.init_RNG();
 	hist.init_CUDPP();
 	hist.load_cross_sections("92235");
 	hist.print_xs_data();
 	hist.copy_to_device();
-	//hist.print_pointers();
+	hist.print_pointers();
 	hist.write_xs_data("xsdata");
-
-	// trace geom
-	this_optix.trace_geometry(1024,1024);
 
 
 }
