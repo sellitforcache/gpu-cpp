@@ -726,7 +726,14 @@ class whistory {
 	int 	blks;
 	// host data
     source_point *  space;
-    float *			xs_data;
+    unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=angular cosine points, 3=outgoing energy points
+    float *   		xs_MT_numbers;
+    float *			xs_data_MT;
+	float *			xs_data_main_E_grid;
+	float *			xs_data_Ang;
+	float *			xs_data_Ang_grid;
+	float *			xs_data_Ene;
+	float *			xs_data_Ene_grid;
     float *         E;
     float *         Q;
     float *         rn_bank;
@@ -738,7 +745,14 @@ class whistory {
     unsigned *      yield;
 	// device data
 	source_point *  d_space;
-    float *			d_xs_data;
+	unsigned *      d_xs_length_numbers;
+	float * 		d_xs_MT_numbers;
+    float *			d_xs_data_MT;
+	float *			d_xs_data_main_E_grid;
+	float *			d_xs_data_Ang;
+	float *			d_xs_data_Ang_grid;
+	float *			d_xs_data_Ene;
+	float *			d_xs_data_Ene_grid;
     float *         d_E;
     float *         d_Q;
     float *         d_rn_bank;
@@ -783,31 +797,47 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
 				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
 				 d_done 	= (unsigned*)     optix_obj.done_ptr;
-	cudaMalloc( &d_E 		, N*sizeof(float)    );
-	cudaMalloc( &d_Q 		, N*sizeof(float)    );
-	cudaMalloc( &d_rn_bank  , N*RNUM_PER_THREAD*sizeof(float)    );
-	cudaMalloc( &d_isonum   , N*sizeof(unsigned) );
-	cudaMalloc( &d_yield	, N*sizeof(unsigned) );
+	cudaMalloc( &d_xs_length_numbers	, 4*sizeof(unsigned) );		 
+	cudaMalloc( &d_E 					, N*sizeof(float)    );
+	cudaMalloc( &d_Q 					, N*sizeof(float)    );
+	cudaMalloc( &d_rn_bank  			, N*RNUM_PER_THREAD*sizeof(float)    );
+	cudaMalloc( &d_isonum   			, N*sizeof(unsigned) );
+	cudaMalloc( &d_yield				, N*sizeof(unsigned) );
 	// host data stuff
-	space 		= new source_point [N];
-	E 			= new float [N];
-	Q 			= new float [N];
-	rn_bank  	= new float [N*RNUM_PER_THREAD];
-	cellnum 	= new unsigned [N];
-	matnum 		= new unsigned [N];
-	rxn 		= new unsigned [N];
-	done 		= new unsigned [N];
-	isonum   	= new unsigned [N];
-	yield	   	= new unsigned [N];
+	xs_length_numbers 	= new unsigned [4];
+	space 				= new source_point [N];
+	E 					= new float [N];
+	Q 					= new float [N];
+	rn_bank  			= new float [N*RNUM_PER_THREAD];
+	cellnum 			= new unsigned [N];
+	matnum 				= new unsigned [N];
+	rxn 				= new unsigned [N];
+	done 				= new unsigned [N];
+	isonum   			= new unsigned [N];
+	yield	   			= new unsigned [N];
 }
 whistory::~whistory(){
-	cudaFree( d_xs_data );
+	cudaFree( d_xs_length_numbers);
+	cudaFree( d_xs_MT_numbers);
+    cudaFree( d_xs_data_MT);
+	cudaFree( d_xs_data_main_E_grid);
+	cudaFree( d_xs_data_Ang);
+	cudaFree( d_xs_data_Ang_grid);
+	cudaFree( d_xs_data_Ene);
+	cudaFree( d_xs_data_Ene_grid );
 	cudaFree( E         );
 	cudaFree( Q         );
 	cudaFree( rn_bank   );
 	cudaFree( isonum    );
 	cudaFree( yield     );
-	delete xs_data;
+	delete xs_length_numbers; 
+    delete xs_MT_numbers;
+    delete xs_data_MT;
+	delete xs_data_main_E_grid;
+	delete xs_data_Ang;
+	delete xs_data_Ang_grid;
+	delete xs_data_Ene;
+	delete xs_data_Ene_grid;
 	delete space;
 	delete E;
 	delete Q;
@@ -930,7 +960,7 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     // copy xs_data
-	cudaMemcpy( d_xs_data,		xs_data,	xs_bytes,				cudaMemcpyHostToDevice );
+	//cudaMemcpy( d_xs_data,		xs_data,	xs_bytes,				cudaMemcpyHostToDevice );
 
 	std::cout << " Done." << "\e[m \n";
 
@@ -953,9 +983,10 @@ void whistory::load_cross_sections(std::string tope_string){
 
 	// get data from python
 	PyObject *pName, *pModule, *pDict, *pFunc;
-    PyObject *pArgs, *pValue, *pString, *pBuffObj;
-    Py_buffer pBuff;
+    PyObject *pArgs, *pValue, *pString, *pBuffObj, *pObjList;
+    Py_buffer pBuff[9];
     int i;
+    char index_string[16];
 
     Py_Initialize();
     pName = PyString_FromString("unionize");
@@ -965,19 +996,22 @@ void whistory::load_cross_sections(std::string tope_string){
     Py_DECREF(pName);
 
     if (pModule != NULL) {
-        pFunc = PyObject_GetAttrString(pModule, "get_xs_pointer");
+        pFunc = PyObject_GetAttrString(pModule, "get_xs_pointers");
         /* pFunc is a new reference */
 
         if (pFunc && PyCallable_Check(pFunc)) {
         	pArgs = PyTuple_New(1);
             pString = PyString_FromString(xs_isotope_string.c_str());
             PyTuple_SetItem(pArgs, 0, pString);
-            pBuffObj = PyObject_CallObject(pFunc, pArgs);
-            if (PyObject_CheckBuffer(pBuffObj)){
-            	PyObject_GetBuffer(pBuffObj, &pBuff,PyBUF_ND);
-            }
-            else{
-            	printf("Object has no buffer\n");
+            pObjList = PyObject_CallObject(pFunc, pArgs);
+            for(int f=0;f<9;f++){  // go through list
+            	pBuffObj = PyList_GetItem(pObjList,f);
+            	if (PyObject_CheckBuffer(pBuffObj)){
+            		PyObject_GetBuffer(pBuffObj, &pBuff[f],PyBUF_ND);
+            	}
+            	else{
+            		printf("Object has no buffer\n");
+            	}
             }
         }
         Py_XDECREF(pFunc);
@@ -988,21 +1022,32 @@ void whistory::load_cross_sections(std::string tope_string){
         fprintf(stderr, "Failed to load \"%s\"\n", "unionize");
         return;
     }
+    /*  list is:
+			xs._get_length_numbers_pointer(), \
+			xs._get_MT_number_totals_pointer(), \
+			xs._get_MT_number_pointer(), \
+			xs._get_main_Egrid_pointer(), \
+			xs._get_MT_array_pointer(), \
+			xs._get_Ang_Egrid_pointer(), \
+			xs._get_Ang_array_pointer(), \
+			xs._get_Ene_Egrid_pointer(), \
+			xs._get_Ene_array_pointer()]
+    */
 
     //set xs_data dimensions from python buffer
-    xs_rows    			= pBuff.shape[0];
-	xs_columns 			= pBuff.shape[1];
-	xs_bytes   			= pBuff.len;
+    xs_rows    			= pBuff[4].shape[0];
+	xs_columns 			= pBuff[4].shape[1];
+	xs_bytes   			= pBuff[4].len;
 	//xs_num_rxns_total = 
 	//xs_num_angles =
 	//xs_num_distE =
 
     // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data = (float*) malloc(xs_bytes);
-    memcpy( xs_data,   pBuff.buf , xs_bytes );
+    xs_data_MT  = (float*) malloc(xs_bytes);
+    memcpy( xs_data_MT,   pBuff[4].buf , xs_bytes );
     
     //callocate device memory now that we know the size!!!!!
-    cudaMalloc(&d_xs_data,xs_bytes);
+    cudaMalloc(&d_xs_data_MT,xs_bytes);
 
     Py_Finalize();
 
@@ -1022,7 +1067,7 @@ void whistory::write_xs_data(std::string filename){
 
 	for (int j=0;j<xs_rows;j++){
 		for(int k=0;k<xs_columns;k++){
-			fprintf(xsfile,"% 10.8E ",xs_data[j*xs_columns+k]);
+			fprintf(xsfile,"% 10.8E ",xs_data_MT[j*xs_columns+k]);
 		}
 		fprintf(xsfile,"\n");
 	}
@@ -1036,7 +1081,7 @@ void whistory::print_pointers(){
 	std::cout << "\e[1;32m" << "Pointer Info:" << "\e[m \n";
 	std::cout << "--- HOST ---" << "\n";
 	std::cout << "  space:   " <<   space   << "\n";
-	std::cout << "  xs_data: " <<   xs_data << "\n";
+	//std::cout << "  xs_data: " <<   xs_data << "\n";
 	std::cout << "  E:       " <<   E       << "\n";
 	std::cout << "  Q:       " <<   Q       << "\n";
 	std::cout << "  rn_bank: " <<   rn_bank << "\n";
@@ -1048,7 +1093,7 @@ void whistory::print_pointers(){
 	std::cout << "  yield:   " <<   yield   << "\n";
 	std::cout << "--- DEVICE ---" << "\n";
 	std::cout << "d_space:   " << d_space   << "\n";
-	std::cout << "d_xs_data: " << d_xs_data << "\n";
+	//std::cout << "d_xs_data: " << d_xs_data << "\n";
 	std::cout << "d_E:       " << d_E       << "\n";
 	std::cout << "d_Q:       " << d_Q       << "\n";
 	std::cout << "d_rn_bank: " << d_rn_bank << "\n";
