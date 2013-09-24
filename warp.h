@@ -797,14 +797,14 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
 				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
 				 d_done 	= (unsigned*)     optix_obj.done_ptr;
-	cudaMalloc( &d_xs_length_numbers	, 4*sizeof(unsigned) );		 
+	cudaMalloc( &d_xs_length_numbers	, 5*sizeof(unsigned) );		 
 	cudaMalloc( &d_E 					, N*sizeof(float)    );
 	cudaMalloc( &d_Q 					, N*sizeof(float)    );
 	cudaMalloc( &d_rn_bank  			, N*RNUM_PER_THREAD*sizeof(float)    );
 	cudaMalloc( &d_isonum   			, N*sizeof(unsigned) );
 	cudaMalloc( &d_yield				, N*sizeof(unsigned) );
 	// host data stuff
-	xs_length_numbers 	= new unsigned [4];
+	xs_length_numbers 	= new unsigned [5];
 	space 				= new source_point [N];
 	E 					= new float [N];
 	Q 					= new float [N];

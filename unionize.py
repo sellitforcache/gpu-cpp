@@ -19,9 +19,9 @@ class cross_section_data:
 		self.reaction_numbers_total = []
 		self.num_reactions    = 0
 		self.MT_E_grid        = numpy.array([],dtype=numpy.float32,order='C')
-		self.Ang_grid         = numpy.array([],dtype=numpy.float32,order='C')
-		self.Ene_grid  	      = numpy.array([],dtype=numpy.float32,order='C')
 		self.matrix_E_grid    = numpy.array([],dtype=numpy.float32,order='C')
+		self.Ang_cos_grid	  = numpy.array([],dtype=numpy.float32,order='C')
+		self.Ene_E_grid     = numpy.array([],dtype=numpy.float32,order='C')
 		self.MT_array		  = numpy.array([],dtype=numpy.float32,order='C')
 		self.Ang_array		  = numpy.array([],dtype=numpy.float32,order='C')
 		self.Ene_array		  = numpy.array([],dtype=numpy.float32,order='C')
@@ -53,20 +53,20 @@ class cross_section_data:
 			self.MT_E_grid=numpy.union1d(self.MT_E_grid,table.energy)
 			for MT in table.reactions: # reactions is a dict
 				rxn = table.reactions[MT]
-				print MT
 				if hasattr(rxn, 'ang_energy_in'):
 					self.matrix_E_grid=numpy.union1d(self.matrix_E_grid,rxn.ang_energy_in)  # add angular energy_in energy points
 					for energy_dex in range(rxn.ang_energy_in.__len__()):
-						self.Ang_grid = numpy.union1d(self.Ang_grid,rxn.ang_cos[energy_dex])
+						self.Ang_cos_grid = numpy.union1d(self.Ang_cos_grid,rxn.ang_cos[energy_dex])
 				if hasattr(rxn, 'energy_dist'):
 					energy_dist=rxn.energy_dist
 					if hasattr(energy_dist, 'energy_in'):
 						self.matrix_E_grid=numpy.union1d(self.matrix_E_grid,rxn.energy_dist.energy_in)  # add energy_in points 
 						for energy_dex in range(rxn.energy_dist.energy_in.__len__()):
-							self.Ene_grid = numpy.union1d(self.Ene_grid,rxn.energy_dist.energy_out[energy_dex])
-		self.num_main_E = self.MT_E_grid.__len__()
-		self.num_ang_cos  = self.Ang_grid.__len__()
-		self.num_ene_E  = self.Ene_grid.__len__()
+							self.Ene_E_grid = numpy.union1d(self.Ene_E_grid,rxn.energy_dist.energy_out[energy_dex])
+
+		self.num_main_E   = self.MT_E_grid.__len__()
+		self.num_ang_cos  = self.Ang_cos_grid.__len__()
+		self.num_ene_E    = self.Ene_E_grid.__len__()
 		self.num_matrix_E = self.matrix_E_grid.__len__()
 
 
@@ -93,101 +93,126 @@ class cross_section_data:
 
 		self.MT_array  = numpy.zeros((n_rows,n_columns),dtype=float,order='C')
 		self.Ang_array = numpy.zeros((self.num_matrix_E,self.num_ang_cos,self.num_reactions),dtype=float,order='C')
-		self.Ene_array = numpy.zeros((self.num_matrix_E,self.num_ene_E,self.num_reactions),dtype=float,order='C')
+		self.Ene_array = numpy.zeros((self.num_matrix_E,self.num_ene_E  ,self.num_reactions),dtype=float,order='C')
 
 
 	def _interpolate(self):
 
-		tope_index  = 1
-		cum_rxn_len = 0
+		tope_index  = 0
+		MT_array_dex  = self.num_isotopes  #(total xs block + any previous reaction blocks)
 
 		for table in self.tables:
 
-			#do total
-			this_array = numpy.interp(self.MT_E_grid,table.energy,table.sigma_t)
+			print "interpolating isotope "+str(tope_index)
+
+			#do this isotopes entry in the total block
+			this_array = numpy.interp( self.MT_E_grid, table.energy, table.sigma_t )
 			self.MT_array[:,tope_index]=this_array
 
-			#do abs, start at reaction block
-			start_dex=1+self.num_isotopes+cum_rxn_len #(main E grid + total xs block + any previous reaction blocks)
-			this_array = numpy.interp(self.MT_E_grid,table.energy,table.sigma_a)
-			self.MT_array[:,start_dex]=this_array
+			#do abs and higher, start at reaction block
+			this_array    = numpy.interp( self.MT_E_grid, table.energy, table.sigma_a ) #total abs vector
+			self.MT_array[:,MT_array_dex] = this_array
+			MT_array_dex = MT_array_dex + 1  #increment MT array index
 
-			for MT in table.reactions: # reactions is a dict
-				print "interpolating MT "+str(MT)
-				start_dex=start_dex+1
-				cum_rxn_len=cum_rxn_len+1
-				rxn = table.reactions[MT]
-				IE  = rxn.IE-1
-				this_array_MT = numpy.interp( self.MT_E_grid, table.energy[IE:],  rxn.sigma)
-				self.MT_array[:,start_dex]=this_array_MT   # insert reaction into MT table
-				if hasattr(rxn, 'energy_dist'):
-					for energy_dex in range(rxn.energy_dist.energy_in.__len__()):
-						this_array_ene= numpy.interp( self.Ene_grid,    rxn.energy_dist.energy_out[energy_dex],  rxn.energy_dist.cdf[energy_dex])  # horizontal interpolation 
-						#set as constant within the energy range, ie only horizontal interpolation, no vertical
-						#find index
-						dex     = numpy.argmax(rxn.energy_dist.energy_in[energy_dex]>=self.MT_E_grid)
-						if dex<start_dex:
-							sys.exit("inital energy distribution is below threshold")
-						if energy_dex == (rxn.energy_dist.energy_in.__len__()-1):
-							nextdex = self.num_main_E-1
-						else:
-							nextdex = numpy.argmax(rxn.energy_dist.energy_in[energy_dex+1]>=self.MT_E_grid)
-						for  this_dex in range(dex,nextdex):
-							self.Ene_array[this_dex,:,start_dex]=this_array_ene
-				#else:
-				#	self.Ene_array[this_dex,:,start_dex]=numpy.zeros((self.num_ene_E,num_matrix_E),dtype=float,order='C')
-				if hasattr(rxn, 'ang_energy_in'):
-					for energy_dex in range(rxn.ang_energy_in.__len__()):
-						this_array_ang= numpy.interp( self.Ang_grid,    rxn.ang_cos[energy_dex],  rxn.ang_cdf[energy_dex])
-						#set as constant within the energy range, ie only horizontal interpolation, no vertical
-						#find index
-						dex     = numpy.argmax(rxn.ang_energy_in[energy_dex]>=self.MT_E_grid)
-						if dex<start_dex:
-							sys.exit("inital angular distribution is below threshold")
-						if energy_dex == (rxn.ang_energy_in.__len__()-1):
-							nextdex = self.num_main_E-1
-						else:
-							nextdex = numpy.argmax(rxn.ang_energy_in[energy_dex+1]>=self.MT_E_grid)
-						for  this_dex in range(dex,nextdex):
-							self.Ang_array[this_dex,:,start_dex]=this_array_ang	
-				#else:  #should be zero anyway
-			    #	self.Ene_array[this_dex,:,start_dex]=numpy.zeros((self.num_ang_cos,num_matrix_E),dtype=float,order='C')
-			tope_index=tope_index+1
+			for MT in table.reactions:
+				print "   interpolating MT "+str(MT)
+				#
+				#	interpolate MT cross sections 
+				#
+				rxn        = table.reactions[MT]
+				IE         = rxn.IE - 1       #convert to python/C indexing 
+				this_array = numpy.interp( self.MT_E_grid, table.energy[IE:], rxn.sigma )  #interpolate MT cross section
+				self.MT_array[:,MT_array_dex] = this_array  # insert into the MT array
+				
+				#
+				#   interpolate scattering matrix angular distributions for this MT
+				#
+				if hasattr(rxn,'ang_energy_in'):
+					dex_list=[]
+					individual_dex=0
+					for this_E in rxn.ang_energy_in :
+						# get matrix E grid index for this cdf, can use == since it HAS TO BE in the vector, that's the point of unionizing
+						dex = numpy.argmax( this_E == self.matrix_E_grid )
+						dex_list.append(dex)
+						this_array = numpy.interp( self.Ang_cos_grid, rxn.ang_cos[individual_dex], rxn.ang_cdf[individual_dex] )
+						self.Ang_array[dex,:,MT_array_dex] = this_array   #insert into array at dex, leave interpolation in between until after all insertions
+						individual_dex=individual_dex+1
+					if dex_list[dex_list.__len__()-1] != self.num_matrix_E:
+						dex_list.append(self.num_matrix_E)  # append the total length to the list if not present
+					for j in range(dex_list.__len__()-1):    #copy upward between indicies
+						for k in range(dex_list[j],dex_list[j+1]):
+							self.Ang_array[k,:,MT_array_dex] = self.Ang_array[j,:,MT_array_dex]
+
+				#
+				#   interpolate scattering matrix energylar distributions for this MT
+				#
+				if hasattr(rxn,'energy_dist'):
+					dex_list=[]
+					individual_dex=0
+					if rxn.energy_dist.law==3:
+						energy_in=[rxn.energy_dist.energy[0]] # set energy as threshold
+					else:
+						energy_in = rxn.energy_dist.energy_in
+					for this_E in energy_in :
+						# get matrix E grid index for this cdf, can use == since it HAS TO BE in the vector, that's the point of unionizing
+						dex = numpy.argmax( this_E >= self.matrix_E_grid )
+						dex_list.append(dex)
+						if rxn.energy_dist.law==3:  #set as a bunch of -3's
+							this_array = numpy.multiply(numpy.ones((1,self.num_ene_E),dtype=numpy.float32,order='C'),(-3.0))
+						else:  #interpolate cdf
+							this_array = numpy.interp( self.Ene_E_grid, rxn.energy_dist.energy_out[individual_dex], rxn.energy_dist.cdf[individual_dex] )
+						self.Ene_array[dex,:,MT_array_dex] = this_array   #insert into array at dex, leave interpolation in between until after all insertions
+						individual_dex=individual_dex+1
+					if dex_list[dex_list.__len__()-1] != self.num_matrix_E:
+						dex_list.append(self.num_matrix_E)  # append the total length to the list if not present
+					for j in range(dex_list.__len__()-1):    #copy upward between indicies
+						for k in range(dex_list[j],dex_list[j+1]):
+							self.Ene_array[k,:,MT_array_dex] = self.Ene_array[j,:,MT_array_dex]
+
+				#  this MT is done, increment counter
+				MT_array_dex = MT_array_dex +1
+
+			#this isotope is done, increment counter
+			tope_index  = tope_index+1
 
 	def _get_MT_number_pointer(self):
-		MT_num_array = numpy.ascontiguousarray(numpy.array(self.reaction_numbers),dtype=numpy.uint32,order='C')
+		MT_num_array = numpy.ascontiguousarray(numpy.array(self.reaction_numbers,order='C'),dtype=numpy.uint32)
 		return MT_num_array
 
 	def _get_MT_array_pointer(self):
-		MT_array = numpy.ascontiguousarray(self.MT_array,dtype=numpy.float32,order='C')
+		MT_array = numpy.ascontiguousarray(self.MT_array,dtype=numpy.float32)
 		return MT_array
 
 	def _get_main_Egrid_pointer(self):
-		E_grid = numpy.ascontiguousarray(self.MT_E_grid,dtype=numpy.float32,order='C')
+		E_grid = numpy.ascontiguousarray(self.MT_E_grid,dtype=numpy.float32)
 		return E_grid
 
 	def _get_Ang_array_pointer(self):
-		Ang = numpy.ascontiguousarray(self.Ang_array,dtype=numpy.float32,order='C')
+		Ang = numpy.ascontiguousarray(self.Ang_array,dtype=numpy.float32)
 		return Ang
 
 	def _get_Ang_Egrid_pointer(self):
-		Ang_grid = numpy.ascontiguousarray(self.Ang_grid,dtype=numpy.float32,order='C')
+		Ang_grid = numpy.ascontiguousarray(self.Ang_cos_grid,dtype=numpy.float32)
 		return Ang_grid
 
 	def _get_Ene_array_pointer(self):
-		Ene = numpy.ascontiguousarray(self.Ene_array,dtype=numpy.float32,order='C')
+		Ene = numpy.ascontiguousarray(self.Ene_array,dtype=numpy.float32)
 		return Ene
 
 	def _get_Ene_Egrid_pointer(self):
-		Ene_grid = numpy.ascontiguousarray(self.Ene_grid,dtype=numpy.float32,order='C')
+		Ene_grid = numpy.ascontiguousarray(self.Ene_E_grid,dtype=numpy.float32)
 		return Ene_grid
 
+	def _get_Matrix_Egrid_pointer(self):
+		matrix_grid = numpy.ascontiguousarray(self.matrix_E_grid,dtype=numpy.float32)
+		return matrix_grid
+
 	def _get_length_numbers_pointer(self):
-		lengths = numpy.ascontiguousarray(numpy.array([self.num_isotopes, self.num_main_E, self.num_ang_cos, self.num_ene_E]),dtype=numpy.uint32,order='C')
+		lengths = numpy.ascontiguousarray( numpy.array([self.num_isotopes, self.num_main_E, self.num_matrix_E, self.num_ang_cos, self.num_ene_E], order='C') ,dtype=numpy.uint32)
 		return lengths
 
 	def _get_MT_number_totals_pointer(self):
-		numbers = numpy.ascontiguousarray(numpy.array(self.reaction_numbers_total),dtype=numpy.uint32,order='C')
+		numbers = numpy.ascontiguousarray(numpy.array(self.reaction_numbers_total,order='C'),dtype=numpy.uint32)
 		return numbers
 
 	def _print_isotopes(self):
@@ -209,6 +234,7 @@ def get_xs_pointers(this_string):
 			xs._get_MT_number_pointer(), \
 			xs._get_main_Egrid_pointer(), \
 			xs._get_MT_array_pointer(), \
+			xs._get_Matrix_Egrid_pointer(), \
 			xs._get_Ang_Egrid_pointer(), \
 			xs._get_Ang_array_pointer(), \
 			xs._get_Ene_Egrid_pointer(), \
