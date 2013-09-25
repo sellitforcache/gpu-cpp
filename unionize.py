@@ -79,21 +79,23 @@ class cross_section_data:
 			for MT in table.reactions: # reactions is a dict
 				self.reaction_numbers.append(MT)
 
-			self.num_reactions=self.reaction_numbers.__len__()
+		self.num_reactions=self.reaction_numbers.__len__()
+
+		print self.num_reactions
 
 	def _allocate_arrays(self):
 
-		print "allocating arrays"
+		#print "allocating arrays"
 
-		n_columns  = self.num_isotopes + ( self.num_isotopes + self.num_reactions)  # totals + (abs + all other reactions (elastic scatter included) )
+		n_columns  = 2*self.num_isotopes + self.num_reactions  # totals + (abs + all other reactions (elastic scatter included) )
 		n_rows     = self.num_main_E
 
-		print n_rows,n_columns
-		print self.num_matrix_E,self.num_ang_cos,self.num_ene_E
+		#print n_rows,n_columns
+		#print self.num_matrix_E,self.num_ang_cos,self.num_ene_E
 
 		self.MT_array  = numpy.zeros((n_rows,n_columns),dtype=float,order='C')
-		self.Ang_array = numpy.zeros((self.num_matrix_E,self.num_ang_cos,self.num_reactions),dtype=float,order='C')
-		self.Ene_array = numpy.zeros((self.num_matrix_E,self.num_ene_E  ,self.num_reactions),dtype=float,order='C')
+		self.Ang_array = numpy.zeros((self.num_matrix_E,self.num_ang_cos,self.num_reactions+self.num_isotopes),dtype=float,order='C')  # need to add num_isotopes to acomodate the total abs xs
+		self.Ene_array = numpy.zeros((self.num_matrix_E,self.num_ene_E  ,self.num_reactions+self.num_isotopes),dtype=float,order='C')
 
 
 	def _interpolate(self):
@@ -103,7 +105,7 @@ class cross_section_data:
 
 		for table in self.tables:
 
-			print "interpolating isotope "+str(tope_index)
+			#print "interpolating isotope "+str(tope_index)
 
 			#do this isotopes entry in the total block
 			this_array = numpy.interp( self.MT_E_grid, table.energy, table.sigma_t )
@@ -115,7 +117,7 @@ class cross_section_data:
 			MT_array_dex = MT_array_dex + 1  #increment MT array index
 
 			for MT in table.reactions:
-				print "   interpolating MT "+str(MT)
+				#print "   interpolating MT "+str(MT)
 				#
 				#	interpolate MT cross sections 
 				#
@@ -157,7 +159,7 @@ class cross_section_data:
 						# get matrix E grid index for this cdf, can use == since it HAS TO BE in the vector, that's the point of unionizing
 						dex = numpy.argmax( this_E >= self.matrix_E_grid )
 						dex_list.append(dex)
-						if rxn.energy_dist.law==3:  #set as a bunch of -3's
+						if rxn.energy_dist.law==3:  #set as a bunch of -3's to signify level scattering
 							this_array = numpy.multiply(numpy.ones((1,self.num_ene_E),dtype=numpy.float32,order='C'),(-3.0))
 						else:  #interpolate cdf
 							this_array = numpy.interp( self.Ene_E_grid, rxn.energy_dist.energy_out[individual_dex], rxn.energy_dist.cdf[individual_dex] )
@@ -171,6 +173,7 @@ class cross_section_data:
 
 				#  this MT is done, increment counter
 				MT_array_dex = MT_array_dex +1
+				#print MT_array_dex
 
 			#this isotope is done, increment counter
 			tope_index  = tope_index+1
@@ -208,7 +211,7 @@ class cross_section_data:
 		return matrix_grid
 
 	def _get_length_numbers_pointer(self):
-		lengths = numpy.ascontiguousarray( numpy.array([self.num_isotopes, self.num_main_E, self.num_matrix_E, self.num_ang_cos, self.num_ene_E], order='C') ,dtype=numpy.uint32)
+		lengths = numpy.ascontiguousarray( numpy.array([self.num_isotopes, self.num_main_E, self.num_reactions, self.num_matrix_E, self.num_ang_cos, self.num_ene_E], order='C') ,dtype=numpy.uint32)
 		return lengths
 
 	def _get_MT_number_totals_pointer(self):
