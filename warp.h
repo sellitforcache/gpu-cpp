@@ -783,11 +783,6 @@ class whistory {
     unsigned *   	xs_MT_numbers;
     float *			xs_data_MT;
 	float *			xs_data_main_E_grid;
-	float * 		xs_data_matrix_grid;
-	float *			xs_data_Ang;
-	float *			xs_data_Ang_grid;
-	float *			xs_data_Ene;
-	float *			xs_data_Ene_grid;
     float *         E;
     float *         Q;
     float *         rn_bank;
@@ -804,11 +799,6 @@ class whistory {
 	unsigned * 		d_xs_MT_numbers;
     float *			d_xs_data_MT;
 	float *			d_xs_data_main_E_grid;
-	float *			d_xs_data_matrix_grid;
-	float *			d_xs_data_Ang;
-	float *			d_xs_data_Ang_grid;
-	float *			d_xs_data_Ene;
-	float *			d_xs_data_Ene_grid;
     float *         d_E;
     float *         d_Q;
     float *         d_rn_bank;
@@ -872,12 +862,6 @@ whistory::~whistory(){
 	cudaFree( d_xs_MT_numbers 		);
 	cudaFree( d_xs_data_MT 			);
 	cudaFree( d_xs_data_main_E_grid );
-	cudaFree( d_xs_data_matrix_grid );
-	cudaFree( d_xs_data_Ang    		);
-	cudaFree( d_xs_data_Ang_grid	);
-	cudaFree( d_xs_data_Ene 		);
-	cudaFree( d_xs_data_Ene_grid 	);
-	cudaFree( d_xs_data_matrix_grid );
 	cudaFree( E         );
 	cudaFree( Q         );
 	cudaFree( rn_bank   );
@@ -888,11 +872,6 @@ whistory::~whistory(){
     delete xs_MT_numbers;
     delete xs_data_MT;
 	delete xs_data_main_E_grid;
-	delete xs_data_matrix_grid;
-	delete xs_data_Ang;
-	delete xs_data_Ang_grid;
-	delete xs_data_Ene;
-	delete xs_data_Ene_grid;
 	delete space;
 	delete E;
 	delete Q;
@@ -1020,11 +999,6 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_xs_MT_numbers,		xs_MT_numbers,			xs_length_numbers[2]											*sizeof(unsigned), cudaMemcpyHostToDevice );
     cudaMemcpy(	d_xs_data_MT,			xs_data_MT,				xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float) , cudaMemcpyHostToDevice );
 	cudaMemcpy(	d_xs_data_main_E_grid,	xs_data_main_E_grid,	xs_length_numbers[1]											*sizeof(float)	 , cudaMemcpyHostToDevice );
-	cudaMemcpy(	d_xs_data_matrix_grid,	xs_data_matrix_grid,	xs_length_numbers[3]											*sizeof(float) 	 , cudaMemcpyHostToDevice );
-	cudaMemcpy(	d_xs_data_Ang,			xs_data_Ang,			xs_length_numbers[4]*xs_length_numbers[3]*xs_length_numbers[2]	*sizeof(float)	 , cudaMemcpyHostToDevice );
-	cudaMemcpy(	d_xs_data_Ang_grid,		xs_data_Ang_grid,		xs_length_numbers[4]											*sizeof(float)	 , cudaMemcpyHostToDevice );
-	cudaMemcpy(	d_xs_data_Ene,			xs_data_Ene,			xs_length_numbers[5]*xs_length_numbers[3]*xs_length_numbers[2]	*sizeof(float)	 , cudaMemcpyHostToDevice );
-	cudaMemcpy(	d_xs_data_Ene_grid,		xs_data_Ene_grid,		xs_length_numbers[5]											*sizeof(float)	 , cudaMemcpyHostToDevice );
 
 	std::cout << " Done." << "\e[m \n";
 
@@ -1048,194 +1022,131 @@ void whistory::load_cross_sections(std::string tope_string){
 	}
 
 	// get data from python
+	/* 	 need to do
+	xs = unionize.cross_section_data()
+	xs._init_from_string(this_string)
+	xs._read_tables()
+	xs._unionize()
+	xs._insert_reactions()
+	xs._allocate_arrays()
+	xs._interpolate() */
+
+	// variables
 	PyObject *pName, *pModule, *pDict, *pFunc;
     PyObject *pArgs, *pValue, *pString, *pBuffObj, *pObjList;
-    Py_buffer pBuff[10];
+    PyObject *call_result;
+    PyObject *call_string,*arg_string;
+    PyObject *xsdat_instance;
+    PyObject *pClass;
+    Py_buffer pBuff;
     int i;
 
     Py_Initialize();
-    pName = PyString_FromString("unionize");
-    /* Error checking of pName left out */
 
+    pName = PyString_FromString("unionize");
     pModule = PyImport_Import(pName);
     Py_DECREF(pName);
 
-    if (pModule != NULL) {
-        pFunc = PyObject_GetAttrString(pModule, "get_xs_pointers");
-        /* pFunc is a new reference */
+    if ( pModule==NULL ){
+        PyErr_Print();
+        fprintf(stderr, "Failed to import \"%s\"\n", "unionize");
+        return;	
+    }
 
-        if (pFunc && PyCallable_Check(pFunc)) {
-        	pArgs = PyTuple_New(1);
-            pString = PyString_FromString(xs_isotope_string.c_str());
-            PyTuple_SetItem(pArgs, 0, pString);
-            pObjList = PyObject_CallObject(pFunc, pArgs);
-            for(int f=0;f<10;f++){  // go through list
-            	pBuffObj = PyList_GetItem(pObjList,f);
-            	if (PyObject_CheckBuffer(pBuffObj)){
-            		PyObject_GetBuffer(pBuffObj, &pBuff[f],PyBUF_ND);
-            	}
-            	else{
-            		printf("Object has no buffer\n");
-            	}
-            }
-        }
-        Py_XDECREF(pFunc);
-        Py_DECREF(pModule);
+    pName = PyString_FromString("cross_section_data");
+    xsdat_instance = PyObject_CallMethodObjArgs(pModule,pName,NULL);
+    PyErr_Print();
+    Py_DECREF(pName);
+
+
+    if (xsdat_instance != NULL) {
+
+		// init the libraries wanted
+		char tope_string_c[256];
+		call_string = PyString_FromString("_init_from_string");
+		arg_string  = PyString_FromString(tope_string.c_str());
+		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, arg_string, NULL);
+		PyErr_Print();
+		Py_DECREF(arg_string);
+		Py_DECREF(call_string);
+		Py_DECREF(call_result);
+	
+		// read the tables
+		call_string = PyString_FromString("_read_tables");
+		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+		PyErr_Print();
+		Py_DECREF(call_string);
+		Py_DECREF(call_result);
+
+		// unionize the main energy grid across all isotopes
+		call_string = PyString_FromString("_unionize");
+		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+		PyErr_Print();
+		Py_DECREF(call_string);
+		Py_DECREF(call_result);
+
+		// make the total MT reaction list from all isotopes
+		call_string = PyString_FromString("_insert_reactions");
+		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+		PyErr_Print();
+		Py_DECREF(call_string);
+		Py_DECREF(call_result);
+
+		// allocate the unionized array
+		call_string = PyString_FromString("_allocate_arrays");
+		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+		PyErr_Print();
+		Py_DECREF(call_string);
+		Py_DECREF(call_result);
+
+		// insert and interpolate the cross sections
+		call_string = PyString_FromString("_interpolate");
+		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+		PyErr_Print();
+		Py_DECREF(call_string);
+		Py_DECREF(call_result);
+
     }
     else {
         PyErr_Print();
-        fprintf(stderr, "Failed to load \"%s\"\n", "unionize");
+        fprintf(stderr, "Failed to instanciate \"%s\"\n", "unionize.cross_section_data");
         return;
     }
-    /*  list is:
-			xs._get_length_numbers_pointer(), \
-			xs._get_MT_number_totals_pointer(), \
-			xs._get_MT_number_pointer(), \
-			xs._get_main_Egrid_pointer(), \
-			xs._get_MT_array_pointer(), \
-			xs._get_Matrix_Egrid_pointer(), \
-			xs._get_Ang_Egrid_pointer(), \
-			xs._get_Ang_array_pointer(), \
-			xs._get_Ene_Egrid_pointer(), \
-			xs._get_Ene_array_pointer()]
-    */
 
-	
+
+    // get the array buffer
+    call_string = PyString_FromString("_get_MT_array_pointer");
+	call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+	Py_DECREF(call_string);
+	if (PyObject_CheckBuffer(call_result)){
+		PyObject_GetBuffer(call_result, &pBuff,PyBUF_ND);
+	}
+	else{
+		PyErr_Print();
+        fprintf(stderr, "Returned object does not support buffer interface\n");
+        return;
+	}
+
     //
-    // 0 - length_numbers_pointer
+    // 0 - unionized cross section array
     //
-	rows    = pBuff[0].shape[0];
-	columns = pBuff[0].shape[1];
-	bytes   = pBuff[0].len;
+	rows    = pBuff.shape[0];
+	columns = pBuff.shape[1];
+	bytes   = pBuff.len;
+	std::cout << rows << " " << columns << " " << bytes << "\n";
     // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_length_numbers  = new unsigned [6];
+    xs_data_MT  = new float [rows*columns];
     //check to make sure bytes = elements
-    assert(bytes/4==6);
-    memcpy( xs_length_numbers,   pBuff[0].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_length_numbers,bytes);
-
-    //
-    // 1 - MT_number_totals_pointer
-    //
-    rows    = pBuff[1].shape[0];
-	columns = pBuff[1].shape[1];
-	bytes   = pBuff[1].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_MT_numbers_total  =  new unsigned [xs_length_numbers[0]];  //num_isotopes
-    assert(bytes/4==xs_length_numbers[0]);
-    memcpy( xs_MT_numbers_total,   pBuff[1].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_MT_numbers_total,bytes);
-
-    //
-    // 2 - MT_number_pointer
-    //
-    rows    = pBuff[2].shape[0];
-	columns = pBuff[2].shape[1];
-	bytes   = pBuff[2].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_MT_numbers  =  new unsigned [xs_length_numbers[2]];  //num_reactions
-    assert(bytes/4==xs_length_numbers[2]);
-    memcpy( xs_MT_numbers,   pBuff[2].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_MT_numbers,bytes);
-
-    //
-    // 3 - main_Egrid_pointer
-    //
-    rows    = pBuff[3].shape[0];
-	columns = pBuff[3].shape[1];
-	bytes   = pBuff[3].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_main_E_grid  =  new float [xs_length_numbers[1]];  //num_main_E
-    assert(bytes/4==xs_length_numbers[1]);
-    memcpy( xs_data_main_E_grid,   pBuff[3].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_data_main_E_grid,bytes);
-
-    //
-    // 4 - MT_array_pointer
-    //
-    rows    = pBuff[4].shape[0];
-	columns = pBuff[4].shape[1];
-	bytes   = pBuff[4].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_MT  =  new float [xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])];  //totals + abs + all MTs
-    assert(bytes/4==(xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])));
-    memcpy( xs_data_MT,   pBuff[4].buf , bytes );
+    assert(bytes==rows*columns*4);
+    memcpy( xs_data_MT,   pBuff.buf , bytes );
     //callocate device memory now that we know the size!
     cudaMalloc(&d_xs_data_MT,bytes);
-
-    //
-    // 5 - Matrix_Egrid_pointer
-    //
-    rows    = pBuff[5].shape[0];
-	columns = pBuff[5].shape[1];
-	bytes   = pBuff[5].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_matrix_grid  =  new float [xs_length_numbers[3]];  //num_matrix_E
-    assert(bytes/4==(xs_length_numbers[3]));
-    memcpy( xs_data_matrix_grid,   pBuff[5].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_data_matrix_grid,bytes);
-
-    //
-    // 6 - Ang_Egrid_pointer
-    //
-    rows    = pBuff[6].shape[0];
-	columns = pBuff[6].shape[1];
-	bytes   = pBuff[6].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_Ang_grid  =  new float [xs_length_numbers[4]];  //num_ang_cos
-    assert(bytes/4==(xs_length_numbers[4]));
-    memcpy( xs_data_Ang_grid,   pBuff[6].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_data_Ang_grid,bytes);
-
-    //
-    // 7 - Ang_array_pointer
-    //
-    rows    = pBuff[7].shape[0];
-	columns = pBuff[7].shape[1];
-	bytes   = pBuff[7].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_Ang =  new float [xs_length_numbers[4]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])];  //num_ang_cos*num_matrix_E*totalMTs
-    assert(bytes/4==(xs_length_numbers[4]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])));
-    memcpy( xs_data_Ang,   pBuff[7].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_data_Ang,bytes);
-
-    //
-    // 8 - Ene_Egrid_pointer
-    //
-    rows    = pBuff[8].shape[0];
-	columns = pBuff[8].shape[1];
-	bytes   = pBuff[8].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    assert(bytes/4==(xs_length_numbers[5]));
-    xs_data_Ene_grid  =  new float [xs_length_numbers[5]];  //num_E_out
-    memcpy( xs_data_Ene_grid,   pBuff[8].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_data_Ene_grid, bytes);
-
-    //
-    // 9 - Ene_array_pointer
-    //
-    rows    = pBuff[9].shape[0];
-	columns = pBuff[9].shape[1];
-	bytes   = pBuff[9].len;
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_Ene =  new float [xs_length_numbers[5]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])];  //num_E_out*num_matrix_E*totalMTs
-    assert(bytes/4==(xs_length_numbers[5]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])));
-    memcpy( xs_data_Ene,   pBuff[9].buf , bytes );
-    //callocate device memory now that we know the size!
-    cudaMalloc(&d_xs_data_Ene, bytes);
 
     Py_Finalize();
 
 }
 void whistory::print_xs_data(){
+	unsigned dsum = 0;
 	printf("\e[1;32m%-6s\e[m \n","Cross section data info:");
 	std::cout << "--- Bytes ---" << "\n";
 	std::cout << "  xs_length_numbers:   " << 6 															*sizeof(unsigned) 		<< "\n";
@@ -1243,12 +1154,6 @@ void whistory::print_xs_data(){
 	std::cout << "  xs_MT_numbers:       " << xs_length_numbers[2]											*sizeof(unsigned) 		<< "\n";
 	std::cout << "  xs_data_MT:          " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";
 	std::cout << "  xs_data_main_E_grid: " << xs_length_numbers[1]											*sizeof(float)	  		<< "\n";
-	std::cout << "  xs_data_matrix_grid: " << xs_length_numbers[3]											*sizeof(float) 	  		<< "\n";
-	std::cout << "  xs_data_Ang:         " << xs_length_numbers[4]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])	*sizeof(float)	  	<< "\n";
-	std::cout << "  xs_data_Ang_grid:    " << xs_length_numbers[4]											*sizeof(float)	  		<< "\n";
-	std::cout << "  xs_data_Ene:         " << xs_length_numbers[5]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])	*sizeof(float)	  	<< "\n";
-	std::cout << "  xs_data_Ene_grid:    " << xs_length_numbers[5]											*sizeof(float)	  		<< "\n";
-	unsigned dsum = (6*sizeof(unsigned))+(xs_length_numbers[0]*sizeof(unsigned))+ (xs_length_numbers[2]*sizeof(unsigned))+ (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float) )+ (xs_length_numbers[1]*sizeof(float))+ (xs_length_numbers[3]*sizeof(float) )+ (xs_length_numbers[4]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])*sizeof(float)	)+ (xs_length_numbers[4]*sizeof(float)	 )+ (xs_length_numbers[5]*xs_length_numbers[3]*(xs_length_numbers[2]+xs_length_numbers[0])	*sizeof(float)	 )+ (xs_length_numbers[5]*sizeof(float)	 );
 	std::cout << "  TOTAL:               " << dsum << "\n";
 	std::cout << "  TOTAL:               " << dsum/1048576 << " MB \n";
 }
@@ -1291,11 +1196,6 @@ void whistory::print_pointers(){
 	std::cout << "  xs_MT_numbers:       " << xs_MT_numbers       << "\n";
 	std::cout << "  xs_data_MT:          " << xs_data_MT          << "\n";
 	std::cout << "  xs_data_main_E_grid: " << xs_data_main_E_grid << "\n";
-	std::cout << "  xs_data_matrix_grid: " << xs_data_matrix_grid << "\n";
-	std::cout << "  xs_data_Ang:         " << xs_data_Ang         << "\n";
-	std::cout << "  xs_data_Ang_grid:    " << xs_data_Ang_grid    << "\n";
-	std::cout << "  xs_data_Ene:         " << xs_data_Ene         << "\n";
-	std::cout << "  xs_data_Ene_grid:    " << xs_data_Ene_grid    << "\n";
 	std::cout << "--- DEVICE ---" << "\n";
 	std::cout << "d_space:               " << d_space   << "\n";
 	std::cout << "d_E:                   " << d_E       << "\n";
@@ -1312,11 +1212,6 @@ void whistory::print_pointers(){
 	std::cout << "d_xs_MT_numbers:       " << d_xs_MT_numbers       << "\n";
 	std::cout << "d_xs_data_MT:          " << d_xs_data_MT          << "\n";
 	std::cout << "d_xs_data_main_E_grid: " << d_xs_data_main_E_grid << "\n";
-	std::cout << "d_xs_data_matrix_grid: " << d_xs_data_matrix_grid << "\n";
-	std::cout << "d_xs_data_Ang:         " << d_xs_data_Ang         << "\n";
-	std::cout << "d_xs_data_Ang_grid:    " << d_xs_data_Ang_grid    << "\n";
-	std::cout << "d_xs_data_Ene:         " << d_xs_data_Ene         << "\n";
-	std::cout << "d_xs_data_Ene_grid:    " << d_xs_data_Ene_grid    << "\n";
 }
 
 

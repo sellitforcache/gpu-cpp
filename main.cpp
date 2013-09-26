@@ -26,7 +26,7 @@ int main(){
 	geom.primitives[0].max[0]= 20.0;
 	geom.primitives[0].max[1]= 1.0;
 	geom.primitives[0].max[2]= 10.0;
-	geom.primitives[0].make_hex_array(15,0.0,0.0,3.14159/2,0);
+	geom.primitives[0].make_hex_array(15,0.0,0.0,3.14159/2,0);  
 	geom.add_primitive();
 	geom.primitives[1].type=2;
 	geom.primitives[1].material=2;
@@ -72,13 +72,13 @@ int main(){
 
 	// trace geom if requested
 	// make new context that fits the reqested image size, trace, then destroy to free resources
-	unsigned geom_width  = 1024; 
-	unsigned geom_height = 1024;
-	unsigned N_geom = geom_width*geom_height;
-	optix_stuff geom_optix ( N_geom , 4 );
-	geom_optix.init(geom);
-	geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
-	geom_optix.~optix_stuff();
+	//unsigned geom_width  = 1024; 
+	//unsigned geom_height = 1024;
+	//unsigned N_geom = geom_width*geom_height;
+	//optix_stuff geom_optix ( N_geom , 4 );
+	//geom_optix.init(geom);
+	//geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
+	//geom_optix.~optix_stuff();
 
 
 	/////////////////////////////////////////////////////////////////
@@ -90,9 +90,9 @@ int main(){
 	hist.init_RNG();
 	hist.init_CUDPP();
 	hist.load_cross_sections("92235");
-	hist.print_xs_data();
-	hist.copy_to_device();
-	hist.print_pointers();
+	//hist.print_xs_data();
+	//hist.copy_to_device();
+	//hist.print_pointers();
 	//hist.write_xs_data("xsdata");
 
 
