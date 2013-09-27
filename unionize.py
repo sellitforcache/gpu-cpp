@@ -121,5 +121,57 @@ class cross_section_data:
 		for tope in self.isotope_list:
 			print tope
 
+	def _get_scattering_data(self,isotope,MTnum,energy):
+		# scatter table returned in this form
+		# returns [nextE, length, mu, cdf]
+
+		table = self.tables[isotope]
+		rxn   = table.reactions[MTnum]
+		scatterE   = rxn.ang_energy_in
+		scatterMu  = rxn.ang_cos 
+		scatterCDF = rxn.ang_cdf
+
+		# return 0 if below the first energy
+		if energy < scatterE[0]:
+			return numpy.array([0])
+
+		# find the proper energy index
+		# "snap to grid" method
+		dex = numpy.argmax( scatterE >= energy )
+
+		# construct vector
+		nextE = scatterE  [dex+1]
+		vlen  = scatterCDF[dex].__len__()
+		cdf   = numpy.ascontiguousarray(scatterCDF[dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays
+		mu    = numpy.ascontiguousarray(scatterMu[dex],dtype=numpy.float32)
+
+		#check to make sure the same length
+		assert vlen == mu.__len__()
+
+		# return
+		return [nextE,vlen,mu,cdf]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
