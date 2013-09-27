@@ -783,6 +783,8 @@ class whistory {
     unsigned *   	xs_MT_numbers;
     float *			xs_data_MT;
 	float *			xs_data_main_E_grid;
+	float **		xs_data_scatter;
+	float **		xs_data_energy;
     float *         E;
     float *         Q;
     float *         rn_bank;
@@ -882,6 +884,8 @@ whistory::~whistory(){
 	delete done;
 	delete isonum;
 	delete yield; 
+	// for loops to deallocate everything in the pointer arrays
+	// HERE
 }
 void whistory::init_host(){
 
@@ -1128,19 +1132,111 @@ void whistory::load_cross_sections(std::string tope_string){
 	}
 
     //
-    // 0 - unionized cross section array
+    // get and copy unionized MT cross section array
     //
 	rows    = pBuff.shape[0];
 	columns = pBuff.shape[1];
 	bytes   = pBuff.len;
 	std::cout << rows << " " << columns << " " << bytes << "\n";
-    // allocate xs_data pointer, copy python buffer contents to pointer
-    xs_data_MT  = new float [rows*columns];
-    //check to make sure bytes = elements
+    // allocate xs_data pointer arrays
+    xs_data_MT       = new float  [rows*columns];
+    xs_data_scatter  = new float* [rows*columns];
+    xs_data_energy   = new float* [rows*columns];
+    // check to make sure bytes *= elements
     assert(bytes==rows*columns*4);
+    // copy python buffer contents to pointer
     memcpy( xs_data_MT,   pBuff.buf , bytes );
-    //callocate device memory now that we know the size!
+    // cudaallocate device memory now that we know the size!
     cudaMalloc(&d_xs_data_MT,bytes);
+    // release python variable to free memory
+    Py_DECREF(call_result);
+
+    //
+    // do scattering stuff
+    //
+    // python variables for arguments
+    PyObject 	*E_obj, *MT_obj, *tope_obj;
+    PyObject 	*cdf_vector_obj, *mu_vector_obj , *vector_length_obj, *nextE_obj; 
+    PyObject 	*obj_list;
+    Py_buffer 	muBuff, cdfBuff;
+    double 		this_energy, nextE;
+    long   		this_MT, this_tope, vector_length;
+    unsigned 	srows, scolumns, sbytes;
+
+    for (int j=0 ; j<columns ; j++){
+    	for (int k=0 ; k<rows ; k++){
+
+    		// get this energy point, MT number, and isotope
+    		this_energy = 
+    		this_MT     = 
+    		this_tope   = 
+
+    		// call cross_section_data instance to get buffer
+    		E_obj       = PyFloat_FromDouble (this_energy);
+    		MT_obj      = PyInt_FromLong     (this_MT);
+    		tope_obj    = PyInt_FromLong     (this_tope);
+    		call_string = PyString_FromString("_get_MT_array_pointer");
+			obj_list    = PyObject_CallMethodObjArgs(xsdat_instance, call_string, tope_obj, MT_obj, E_obj, NULL);
+			
+			// get objects in the returned list
+			nextE_obj  			= PyList_GetItem(obj_list,0);
+			vector_length_obj 	= PyList_GetItem(obj_list,1);
+			mu_vector_obj 		= PyList_GetItem(obj_list,2);
+			cdf_vector_obj 		= PyList_GetItem(obj_list,3);
+
+			// expand list to c variables
+			nextE         = PyFloat_AsDouble(nextE_obj);
+			vector_length = PyInt_AsLong    (vector_length_obj);
+
+			// get data buffer from numpy array
+			if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
+				PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
+				PyObject_GetBuffer(cdf_vector_obj, &cdfBuff, PyBUF_ND);
+			}
+			else{
+				PyErr_Print();
+    		    fprintf(stderr, "Returned object does not support buffer interface\n");
+    		    return;
+			}
+
+			// shape info
+			muRows     =  muBuff.shape[0];
+			muColumns  =  muBuff.shape[1];
+			muBytes    =  muBuff.len;
+			cdfRows    = cdfBuff.shape[0];
+			cdfColumns = cdfBuff.shape[1];
+			cdfBytes   = cdfBuff.len;
+
+			//allocate pointer
+			xs_data_scatter[j*columns + k] = new float [muColumns+cdfColumns+1];
+
+			//copy data from python buffer to pointer in array
+			memcpy();  // to first position
+			memcpy();  // to len bytes after
+			memcpy();  // to len bytes after that
+
+			// replicate this pointer into array until nextE
+			while(){
+
+				k++
+			}
+
+			// free python variables
+			Py_DECREF(call_string);
+			Py_DECREF(E_obj);
+			Py_DECREF(MT_obj): 
+			Py_DECREF(tope_obj);
+			Py_DECREF(cdf_vector_obj); 
+			Py_DECREF(mu_vector_obj);
+			Py_DECREF(vector_length_obj); 
+			Py_DECREF(nextE_obj);
+			Py_DECREF(obj_list);
+		}
+	}
+
+
+
+
 
     Py_Finalize();
 
