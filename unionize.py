@@ -43,8 +43,15 @@ class cross_section_data:
 
 		for table in self.tables:
 			self.MT_E_grid=numpy.union1d(self.MT_E_grid,table.energy)
+			# unionize the scattering energies in as well!  if present of course
+			for MT in table.reactions:
+				rxn = table.reactions[MT]
+				if hasattr(rxn,"ang_energy_in"):
+					self.MT_E_grid=numpy.union1d(self.MT_E_grid,rxn.ang_energy_in)
 
 		self.num_main_E   = self.MT_E_grid.__len__()
+		print self.MT_E_grid.shape
+		print self.MT_E_grid
 
 
 	def _insert_reactions(self):
@@ -97,7 +104,7 @@ class cross_section_data:
 			#this isotope is done, increment counter
 			tope_index  = tope_index+1
 
-	def _get_MT_number_pointer(self):
+	def _get_MT_numbers_pointer(self):
 		MT_num_array = numpy.ascontiguousarray(numpy.array(self.reaction_numbers,order='C'),dtype=numpy.uint32)
 		return MT_num_array
 
@@ -110,10 +117,10 @@ class cross_section_data:
 		return E_grid
 
 	def _get_length_numbers_pointer(self):
-		lengths = numpy.ascontiguousarray( numpy.array([self.num_isotopes, self.num_main_E, self.num_reactions, self.num_matrix_E, self.num_ang_cos, self.num_ene_E], order='C') ,dtype=numpy.uint32)
+		lengths = numpy.ascontiguousarray( numpy.array([self.num_isotopes, self.num_main_E, self.num_reactions], order='C') ,dtype=numpy.uint32)
 		return lengths
 
-	def _get_MT_number_totals_pointer(self):
+	def _get_MT_numbers_total_pointer(self):
 		numbers = numpy.ascontiguousarray(numpy.array(self.reaction_numbers_total,order='C'),dtype=numpy.uint32)
 		return numbers
 
@@ -127,23 +134,41 @@ class cross_section_data:
 
 		table = self.tables[isotope]
 		rxn   = table.reactions[MTnum]
-		scatterE   = rxn.ang_energy_in
-		scatterMu  = rxn.ang_cos 
-		scatterCDF = rxn.ang_cdf
+		if hasattr(rxn,"ang_energy_in"):
+			scatterE   = rxn.ang_energy_in
+			scatterMu  = rxn.ang_cos 
+			scatterCDF = rxn.ang_cdf
+		else:
+			nextE = self.MT_E_grid[self.num_main_E-1]
+			return [nextE,0,numpy.array([0]),numpy.array([0])]
 
-		# return 0 if below the first energy
-		if energy < scatterE[0]:
-			return numpy.array([0])
+
+		# check length
+		assert scatterE.__len__() > 0
 
 		# find the proper energy index
 		# "snap to grid" method
 		dex = numpy.argmax( scatterE >= energy )
 
+		print scatterE
+		print energy
+		print scatterE >= energy
+		print "dex = "+str(dex)
+
+		#get energy of next bin
+		if dex == scatterE.__len__()-1:
+			nextE = scatterE  [dex]
+		else:
+			nextE = scatterE  [dex+1]
+
+		# return 0 if below the first energy
+		if energy < scatterE[0]:
+			return [nextE,0,numpy.array([0]),numpy.array([0])]
+
 		# construct vector
-		nextE = scatterE  [dex+1]
 		vlen  = scatterCDF[dex].__len__()
 		cdf   = numpy.ascontiguousarray(scatterCDF[dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays
-		mu    = numpy.ascontiguousarray(scatterMu[dex],dtype=numpy.float32)
+		mu    = numpy.ascontiguousarray(scatterMu[dex], dtype=numpy.float32)
 
 		#check to make sure the same length
 		assert vlen == mu.__len__()
