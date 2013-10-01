@@ -818,6 +818,8 @@ class whistory {
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
     std::vector<unsigned> 	xs_isotope_ints;
+    unsigned 		total_bytes_scatter;
+    unsigned 		total_bytes_energy ;
 public:
      whistory(int,optix_stuff);
     ~whistory();
@@ -861,6 +863,9 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 	done 				= new unsigned [N];
 	isonum   			= new unsigned [N];
 	yield	   			= new unsigned [N];
+	// init counters to 0
+	total_bytes_scatter = 0;
+	total_bytes_energy  = 0;
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1158,7 +1163,7 @@ void whistory::load_cross_sections(std::string tope_string){
 	MT_rows    = pBuff.shape[0];
 	MT_columns = pBuff.shape[1];
 	bytes   = pBuff.len;
-	std::cout << "unionized MT array " << MT_rows << " " << MT_columns << " " << bytes << "\n";
+	//std::cout << "unionized MT array " << MT_rows << " " << MT_columns << " " << bytes << "\n";
     // allocate xs_data pointer arrays
     xs_data_MT       = new float  [MT_rows*MT_columns];
     // check to make sure bytes *= elements
@@ -1192,7 +1197,7 @@ void whistory::load_cross_sections(std::string tope_string){
 	rows    = pBuff.shape[0];
 	columns = pBuff.shape[1];
 	bytes   = pBuff.len;
-	std::cout << "main e grid " << rows << " " << columns << " " << bytes << "\n";
+	//std::cout << "main e grid " << rows << " " << columns << " " << bytes << "\n";
     // allocate xs_data pointer arrays
     xs_data_main_E_grid  = new float  [rows];
     // check to make sure bytes *= elements
@@ -1226,7 +1231,7 @@ void whistory::load_cross_sections(std::string tope_string){
 	rows    = pBuff.shape[0];
 	columns = pBuff.shape[1];
 	bytes   = pBuff.len;
-	std::cout << "mt nums " << rows << " " << columns << " " << bytes << "\n";
+	//std::cout << "mt nums " << rows << " " << columns << " " << bytes << "\n";
     // allocate xs_data pointer arrays
     xs_MT_numbers      = new unsigned  [rows];
     // check to make sure bytes *= elements
@@ -1259,7 +1264,7 @@ void whistory::load_cross_sections(std::string tope_string){
 	rows    = pBuff.shape[0];
 	columns = pBuff.shape[1];
 	bytes   = pBuff.len;
-	std::cout << "totals " << rows << " " << columns << " " << bytes << "\n";
+	//std::cout << "totals " << rows << " " << columns << " " << bytes << "\n";
     // allocate xs_data pointer arrays
     xs_MT_numbers_total      = new unsigned  [rows];
     // check to make sure bytes *= elements
@@ -1291,7 +1296,7 @@ void whistory::load_cross_sections(std::string tope_string){
 	rows    = pBuff.shape[0];
 	columns = pBuff.shape[1];
 	bytes   = pBuff.len;
-	std::cout << "lengths " << rows << " " << columns << " " << bytes << "\n";
+	//std::cout << "lengths " << rows << " " << columns << " " << bytes << "\n";
     // allocate xs_data pointer arrays
     xs_length_numbers     = new unsigned  [rows];
     // check to make sure bytes *= elements
@@ -1314,6 +1319,8 @@ void whistory::load_cross_sections(std::string tope_string){
     xs_data_energy       = new float* [MT_rows*MT_columns];
     xs_data_scatter_host = new float* [MT_rows*MT_columns];
     xs_data_energy_host  = new float* [MT_rows*MT_columns];
+    cudaMalloc(&d_xs_data_scatter,MT_rows*MT_columns*sizeof(float));
+    cudaMalloc(&d_xs_data_energy, MT_rows*MT_columns*sizeof(float));
     // python variables for arguments
     PyObject 	*E_obj, *MT_obj, *tope_obj;
     PyObject 	*cdf_vector_obj, *mu_vector_obj , *vector_length_obj, *nextE_obj; 
@@ -1327,12 +1334,21 @@ void whistory::load_cross_sections(std::string tope_string){
     unsigned 	 muRows,  muColumns,  muBytes;
     unsigned 	cdfRows, cdfColumns, cdfBytes;
 
-    for (int j=xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs vectors
+    //set total cross sections to NULL
+    for (int j=0 ; j<2*xs_length_numbers[0] ; j++){  //start after the total xs and total abs vectors
+    	for (int k=0 ; k<MT_rows ; k++){
+    		xs_data_scatter     [j*columns + k] = NULL;
+			xs_data_scatter_host[j*columns + k] = NULL;
+		}
+	}
+
+    // do the rest fo the MT numbers
+    for (int j=2*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs and total abs vectors
     	for (int k=0 ; k<MT_rows ; k++){
 
     		// get this energy point, MT number, and isotope
     		this_energy = xs_data_main_E_grid[k];
-    		this_MT     = xs_MT_numbers[j];
+    		this_MT     = xs_MT_numbers[j-2*xs_length_numbers[0]];  //adjust for the first total/abs xs when accessing this array
     		for (int z=0 ; z<xs_length_numbers[0] ; z++){ // see what isotope were in
     			if(j<=xs_MT_numbers_total[z]){
     				this_tope=z;
@@ -1343,8 +1359,8 @@ void whistory::load_cross_sections(std::string tope_string){
     		if (k==0){this_energy=this_energy*1.0000001;}
     		//////
 
-    		std::cout << "this_energy " << this_energy << " this_MT " << this_MT << " this_tope " << this_tope << "\n";
-    		printf("this_energy = %12.10E\n",this_energy);
+    		//std::cout << "j,k = " << j << ", " << k  <<" this_energy " << this_energy << " this_MT " << this_MT << " this_tope " << this_tope << "\n";
+    		//printf("this_energy = %12.10E\n",this_energy);
 
     		// call cross_section_data instance to get buffer
     		E_obj       = PyFloat_FromDouble (this_energy);
@@ -1366,21 +1382,26 @@ void whistory::load_cross_sections(std::string tope_string){
 			vector_length = PyInt_AsLong    (vector_length_obj);
 			PyErr_Print();
 
-			std::cout << " nextE " << nextE << " vector_length " << vector_length << "\n";
+			//std::cout << " nextE " << nextE << " vector_length " << vector_length << "\n";
 
 			if(vector_length==0){
-				xs_data_scatter[j*columns + k] = NULL;
+				//std::cout << "set as NULL \n";
+				xs_data_scatter     [j*columns + k] = NULL;
+				xs_data_scatter_host[j*columns + k] = NULL;
 				// free python variables
-				Py_DECREF(call_string);
-				Py_DECREF(E_obj);
-				Py_DECREF(MT_obj); 
-				Py_DECREF(tope_obj);
-				Py_DECREF(vector_length_obj); 
-				Py_DECREF(nextE_obj);
-				Py_DECREF(obj_list);
+				//std::cout << "freeing python stuff... ";
+				//Py_DECREF(call_string);
+				//Py_DECREF(E_obj);
+				//Py_DECREF(MT_obj); 
+				//Py_DECREF(tope_obj);
+				//Py_DECREF(vector_length_obj); 
+				//Py_DECREF(nextE_obj);
+				//Py_DECREF(obj_list);
+				//std::cout << "done. \n";
 				PyErr_Print();
 			}
 			else{
+				//std::cout << "getting buffer...\n";
 				// get data buffer from numpy array
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
 					PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
@@ -1401,7 +1422,7 @@ void whistory::load_cross_sections(std::string tope_string){
 				cdfColumns = cdfBuff.shape[1];
 				cdfBytes   = cdfBuff.len;
 	
-				std::cout << muRows << " " << muColumns << " " << muBytes << "\n";
+				//std::cout << muRows << " " << muColumns << " " << muBytes << "\n";
 	
 				//make sure every is ok
 				assert(muRows==cdfRows);
@@ -1410,38 +1431,46 @@ void whistory::load_cross_sections(std::string tope_string){
 	
 				//allocate pointer, write into array
 				//for cuda too
+				//std::cout << "muRows, cdfRows = " << muRows << ", " << cdfRows << "\n";
+				//std::cout << "new pointer size = " << muRows+cdfRows+1 << "\n";
 				this_pointer = new float [muRows+cdfRows+1];
 				cudaMalloc(&cuda_pointer,sizeof(float)*muRows+cdfRows+1);
-				std::cout <<"here "<< j*columns + k <<"\n";
+				total_bytes_scatter += 2*cdfBytes+4;  // add to total count
+				//std::cout <<"here "<< j*columns + k <<"\n";
 				xs_data_scatter     [j*columns + k] = this_pointer;
 				xs_data_scatter_host[j*columns + k] = cuda_pointer;
 	
 				//copy data from python buffer to pointer in array
-				std::cout <<this_pointer<<" "<<&this_pointer[1]<<" "<<&this_pointer[1+muRows] << "\n";
+				//std::cout <<this_pointer<<" "<<&this_pointer[1]<<" "<<&this_pointer[1+muRows] << "\n";
 				memcpy(this_pointer, 			&muRows,   		sizeof(unsigned));  // to first position
 				memcpy(&this_pointer[1],		muBuff.buf,  	muRows*sizeof(float));     // to len bytes after
 				memcpy(&this_pointer[1+muRows],	cdfBuff.buf, 	cdfRows*sizeof(float));     // to len bytes after that
+				//std::cout << "done copying\n";
 				
 				// free python variables
-				Py_DECREF(call_string);
-				Py_DECREF(E_obj);
-				Py_DECREF(MT_obj); 
-				Py_DECREF(tope_obj);
-				Py_DECREF(cdf_vector_obj); 
-				Py_DECREF(mu_vector_obj);
-				Py_DECREF(vector_length_obj); 
-				Py_DECREF(nextE_obj);
-				Py_DECREF(obj_list);
+				//Py_DECREF(call_string);
+				//Py_DECREF(E_obj);
+				//Py_DECREF(MT_obj); 
+				//Py_DECREF(tope_obj);
+				//Py_DECREF(cdf_vector_obj); 
+				//Py_DECREF(mu_vector_obj);
+				//Py_DECREF(vector_length_obj); 
+				//Py_DECREF(nextE_obj);
+				//Py_DECREF(obj_list);
 				PyErr_Print();
 			}
 
 			// replicate this pointer into array until nextE
 			// for cuda too
-			std::cout << "replicating...\n";
-			while(xs_data_main_E_grid[k+1]<nextE){
-				xs_data_scatter     [j*columns + k + 1] = this_pointer;
-				xs_data_scatter_host[j*columns + k + 1] = cuda_pointer;
-				k++;
+			//std::cout << "replicating...\n";
+			//std::cout << "k now = " << xs_data_main_E_grid[k] << " nextE = " << nextE << "\n";
+			if (k < (MT_rows-1) ){
+				while(xs_data_main_E_grid[k+1]<nextE){
+					//std::cout << k << " " << MT_rows*MT_columns << " " << xs_data_main_E_grid[k+1] << "\n";
+					xs_data_scatter     [j*columns + k + 1] = this_pointer;
+					xs_data_scatter_host[j*columns + k + 1] = cuda_pointer;
+					k++;
+				}
 			}
 
 		}
@@ -1461,13 +1490,17 @@ void whistory::print_xs_data(){
 	unsigned dsum = 0;
 	printf("\e[1;32m%-6s\e[m \n","Cross section data info:");
 	std::cout << "--- Bytes ---" << "\n";
-	std::cout << "  xs_length_numbers:   " << 6 															*sizeof(unsigned) 		<< "\n";
-	std::cout << "  xs_MT_numbers_total: " << xs_length_numbers[0]											*sizeof(unsigned) 		<< "\n";
-	std::cout << "  xs_MT_numbers:       " << xs_length_numbers[2]											*sizeof(unsigned) 		<< "\n";
-	std::cout << "  xs_data_MT:          " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";
-	std::cout << "  xs_data_main_E_grid: " << xs_length_numbers[1]											*sizeof(float)	  		<< "\n";
-	std::cout << "  TOTAL:               " << dsum << "\n";
-	std::cout << "  TOTAL:               " << dsum/1048576 << " MB \n";
+	std::cout << "  xs_length_numbers:        " << 6 															*sizeof(unsigned) 		<< "\n";  dsum += (6 															*sizeof(unsigned) );
+	std::cout << "  xs_MT_numbers_total:      " << xs_length_numbers[0]											*sizeof(unsigned) 		<< "\n";  dsum += (xs_length_numbers[0]											*sizeof(unsigned) );
+	std::cout << "  xs_MT_numbers:            " << xs_length_numbers[2]											*sizeof(unsigned) 		<< "\n";  dsum += (xs_length_numbers[2]											*sizeof(unsigned) );
+	std::cout << "  xs_data_main_E_grid:      " << xs_length_numbers[1]											*sizeof(float)	  		<< "\n";  dsum += (xs_length_numbers[1]											*sizeof(float)	  );
+	std::cout << "  xs_data_MT:               " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
+	std::cout << "  xs_data_scatter_pointers: " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
+	std::cout << "  xs_data_energy_pointers:  " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
+	std::cout << "  scatter data   :          " << total_bytes_scatter																	<< "\n";  dsum += (total_bytes_scatter);
+	std::cout << "  energy data   :           " << total_bytes_energy																	<< "\n";  dsum += (total_bytes_energy);
+	std::cout << "  TOTAL:                    " << dsum << " bytes \n";
+	std::cout << "  TOTAL:                    " << dsum/1048576 << " MB \n";
 }
 void whistory::write_xs_data(std::string filename){
 

@@ -50,22 +50,23 @@ class cross_section_data:
 					self.MT_E_grid=numpy.union1d(self.MT_E_grid,rxn.ang_energy_in)
 
 		self.num_main_E   = self.MT_E_grid.__len__()
-		print self.MT_E_grid.shape
-		print self.MT_E_grid
+		#print self.MT_E_grid.shape
+		#print self.MT_E_grid
 
 
 	def _insert_reactions(self):
 
 		for table in self.tables:
 
-			self.reaction_numbers.append(1) #append total abs as MT=1 
 			self.reaction_numbers_total.append(table.reactions.__len__())
 			for MT in table.reactions: # reactions is a dict
 				self.reaction_numbers.append(MT)
 
 		self.num_reactions=self.reaction_numbers.__len__()
 
-		print self.num_reactions
+		#print self.num_reactions
+		#print self.reaction_numbers
+		#print self.reaction_numbers_total
 
 	def _allocate_arrays(self):
 
@@ -132,13 +133,18 @@ class cross_section_data:
 		# scatter table returned in this form
 		# returns [nextE, length, mu, cdf]
 
+		#print isotope,MTnum,energy
+
 		table = self.tables[isotope]
 		rxn   = table.reactions[MTnum]
+		#print "here now"
 		if hasattr(rxn,"ang_energy_in"):
 			scatterE   = rxn.ang_energy_in
 			scatterMu  = rxn.ang_cos 
 			scatterCDF = rxn.ang_cdf
+			#print "here kjsdnlfkjalkh"
 		else:
+			#print "no angular tables"
 			nextE = self.MT_E_grid[self.num_main_E-1]
 			return [nextE,0,numpy.array([0]),numpy.array([0])]
 
@@ -150,10 +156,10 @@ class cross_section_data:
 		# "snap to grid" method
 		dex = numpy.argmax( scatterE >= energy )
 
-		print scatterE
-		print energy
-		print scatterE >= energy
-		print "dex = "+str(dex)
+		#print scatterE
+		#print energy
+		#print scatterE >= energy
+		#print "dex = "+str(dex)
 
 		#get energy of next bin
 		if dex == scatterE.__len__()-1:
