@@ -898,21 +898,23 @@ whistory::~whistory(){
 	delete isonum;
 	delete yield; 
 	// for loops to deallocate everything in the pointer arrays
-    for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
-    	for (int k=0 ; k < MT_rows ; k++){
-    		// scatter
-    		//std::cout << "j,k = " << j << ", " << k << " colums,rows = " << MT_columns << ", " << MT_rows << "\n";
-    		float * this_pointer =   xs_data_scatter     [k*MT_columns + j];
-    		float * cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
-    		if(this_pointer!=NULL & k<MT_rows-1){
-    			while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
-    				k++; //push k to the end of the copies so don't try to free it twice
-    			}
-    			//delete this_pointer;
-    			//cudaFree(cuda_pointer);
-    		}
-    	}
-    }
+	for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
+		for (int k=0 ; k < MT_rows ; k++){
+			// scatter
+			//std::cout << "j,k = " << j << ", " << k << " colums,rows = " << MT_columns << ", " << MT_rows << "\n";
+			float * this_pointer =   xs_data_scatter     [k*MT_columns + j];
+			float * cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
+			if(this_pointer!=NULL){
+				while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
+					k++; //push k to the end of the copies so don't try to free it twice
+				}
+				//std::cout << "j,k " << j << ", " << k << " - " ;
+				//std::cout << "freeing " << this_pointer << " " << cuda_pointer << "\n";
+				delete this_pointer;
+				cudaFree(cuda_pointer);
+			}
+		}
+	}
 	//delete pointer arrays themselves
 	delete xs_data_scatter;
 	delete xs_data_energy;
@@ -1017,7 +1019,11 @@ void whistory::init_CUDPP(){
 }
 void whistory::copy_to_device(){
 
-	std::cout << "\e[1;32m" << "Copying data to device (number?)...";
+	float * this_pointer;
+	float * cuda_pointer;
+	unsigned vlen;
+
+	std::cout << "\e[1;32m" << "Copying data to device (number?)..." << "\e[m \n";
 
 	// copy history data
 	std::cout << "History data... ";
@@ -1041,12 +1047,27 @@ void whistory::copy_to_device(){
 	std::cout << "Done.\n";
 	// copy device pointer array to device array
 	std::cout << "Pointer arrays... ";
-
+	cudaMemcpy( d_xs_data_scatter, 	xs_data_scatter_host,	xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float), cudaMemcpyHostToDevice); 	
+	cudaMemcpy( d_xs_data_energy, 	xs_data_energy_host,	xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
 	// copy scattering data to device array pointers
 	std::cout << "Scattering data... ";
-
-	std::cout << " Done." << "\e[m \n";
+	for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
+		for (int k=0 ; k < MT_rows ; k++){
+			// scatter
+			this_pointer =   xs_data_scatter     [k*MT_columns + j];
+			cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
+			if(this_pointer!=NULL & k<MT_rows-1){
+				while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
+					k++; //push k to the end of the copies so don't try to free it twice
+				}
+				memcpy(&vlen, &this_pointer[0],sizeof(float));
+				//std::cout << "vlen = " << vlen << "\n";
+				cudaMemcpy(cuda_pointer,this_pointer,(2*vlen+1)*sizeof(float),cudaMemcpyHostToDevice);
+			}
+		}
+	}
+	std::cout << " Done.\n";
 
 }
 void whistory::load_cross_sections(std::string tope_string){
@@ -1489,6 +1510,9 @@ void whistory::load_cross_sections(std::string tope_string){
 				}
 			}
 
+			this_pointer = NULL;
+			cuda_pointer = NULL;
+
 		}
 	}
 
@@ -1510,8 +1534,8 @@ void whistory::print_xs_data(){
 	std::cout << "  xs_data_MT:               " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
 	std::cout << "  xs_data_scatter_pointers: " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
 	std::cout << "  xs_data_energy_pointers:  " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
-	std::cout << "  scatter data   :          " << total_bytes_scatter																	<< "\n";  dsum += (total_bytes_scatter);
-	std::cout << "  energy data   :           " << total_bytes_energy																	<< "\n";  dsum += (total_bytes_energy);
+	std::cout << "  scatter data:             " << total_bytes_scatter																	<< "\n";  dsum += (total_bytes_scatter);
+	std::cout << "  energy data:              " << total_bytes_energy																	<< "\n";  dsum += (total_bytes_energy);
 	std::cout << "  TOTAL:                    " << dsum << " bytes \n";
 	std::cout << "  TOTAL:                    " << dsum/1048576 << " MB \n";
 }
@@ -1521,12 +1545,11 @@ void whistory::write_xs_data(std::string filename){
 
 	FILE* xsfile = fopen(filename.c_str(),"w");
 
-	unsigned xs_rows    =   xs_length_numbers[1]; // n_main_E
-	unsigned xs_columns = 2*xs_length_numbers[0]+xs_length_numbers[2];  //totals + abs + MTs
+	for (int k=0;k<MT_rows;k++){
 
-	for (int j=0;j<xs_rows;j++){
-		for(int k=0;k<xs_columns;k++){
-			fprintf(xsfile,"% 10.8E ",xs_data_MT[j*xs_columns+k]);
+		fprintf(xsfile,"% 10.8E ",xs_data_main_E_grid[k]);
+		for(int j=0;j<MT_columns;j++){
+			fprintf(xsfile,"% 10.8E ",xs_data_MT[k*MT_columns+j]);
 		}
 		fprintf(xsfile,"\n");
 	}

@@ -91,9 +91,9 @@ int main(){
 	hist.init_CUDPP();
 	hist.load_cross_sections("92235");
 	hist.print_xs_data();
-	//hist.copy_to_device();
+	hist.copy_to_device();
 	//hist.print_pointers();
-	//hist.write_xs_data("xsdata");
+	hist.write_xs_data("xsdata");
 
 
 }
