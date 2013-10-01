@@ -901,8 +901,9 @@ whistory::~whistory(){
     for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
     	for (int k=0 ; k < MT_rows ; k++){
     		// scatter
-    		float * this_pointer =   xs_data_scatter[k*MT_columns + j];
-    		float * cuda_pointer = d_xs_data_scatter[k*MT_columns + j];
+    		//std::cout << "j,k = " << j << ", " << k << " colums,rows = " << MT_columns << ", " << MT_rows << "\n";
+    		float * this_pointer =   xs_data_scatter     [k*MT_columns + j];
+    		float * cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
     		if(this_pointer!=NULL & k<MT_rows-1){
     			while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
     				k++; //push k to the end of the copies so don't try to free it twice
