@@ -820,6 +820,8 @@ class whistory {
     std::vector<unsigned> 	xs_isotope_ints;
     unsigned 		total_bytes_scatter;
     unsigned 		total_bytes_energy ;
+    unsigned 		MT_rows;
+    unsigned 		MT_columns;
 public:
      whistory(int,optix_stuff);
     ~whistory();
@@ -896,7 +898,20 @@ whistory::~whistory(){
 	delete isonum;
 	delete yield; 
 	// for loops to deallocate everything in the pointer arrays
-	// HERE
+    for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
+    	for (int k=0 ; k < MT_rows ; k++){
+    		// scatter
+    		float * this_pointer =   xs_data_scatter[k*MT_columns + j];
+    		float * cuda_pointer = d_xs_data_scatter[k*MT_columns + j];
+    		if(this_pointer!=NULL & k<MT_rows-1){
+    			while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
+    				k++; //push k to the end of the copies so don't try to free it twice
+    			}
+    			//delete this_pointer;
+    			//cudaFree(cuda_pointer);
+    		}
+    	}
+    }
 	//delete pointer arrays themselves
 	delete xs_data_scatter;
 	delete xs_data_energy;
@@ -1044,7 +1059,7 @@ void whistory::load_cross_sections(std::string tope_string){
 	std::istringstream ss(tope_string);
 	std::string token;
 	unsigned utoken;
-	unsigned bytes,rows,columns,MT_rows,MT_columns;
+	unsigned bytes,rows,columns;
 
 	while(std::getline(ss, token, ',')) {
 		utoken = std::atoi(token.c_str());
@@ -1337,8 +1352,8 @@ void whistory::load_cross_sections(std::string tope_string){
     //set total cross sections to NULL
     for (int j=0 ; j<2*xs_length_numbers[0] ; j++){  //start after the total xs and total abs vectors
     	for (int k=0 ; k<MT_rows ; k++){
-    		xs_data_scatter     [j*columns + k] = NULL;
-			xs_data_scatter_host[j*columns + k] = NULL;
+    		xs_data_scatter     [k*MT_columns + j] = NULL;
+			xs_data_scatter_host[k*MT_columns + j] = NULL;
 		}
 	}
 
@@ -1386,8 +1401,8 @@ void whistory::load_cross_sections(std::string tope_string){
 
 			if(vector_length==0){
 				//std::cout << "set as NULL \n";
-				xs_data_scatter     [j*columns + k] = NULL;
-				xs_data_scatter_host[j*columns + k] = NULL;
+				xs_data_scatter     [k*MT_columns + j] = NULL;
+				xs_data_scatter_host[k*MT_columns + j] = NULL;
 				// free python variables
 				//std::cout << "freeing python stuff... ";
 				//Py_DECREF(call_string);
@@ -1436,9 +1451,9 @@ void whistory::load_cross_sections(std::string tope_string){
 				this_pointer = new float [muRows+cdfRows+1];
 				cudaMalloc(&cuda_pointer,sizeof(float)*muRows+cdfRows+1);
 				total_bytes_scatter += 2*cdfBytes+4;  // add to total count
-				//std::cout <<"here "<< j*columns + k <<"\n";
-				xs_data_scatter     [j*columns + k] = this_pointer;
-				xs_data_scatter_host[j*columns + k] = cuda_pointer;
+				//std::cout <<"here "<< k*MT_columns + j <<"\n";
+				xs_data_scatter     [k*MT_columns + j] = this_pointer;
+				xs_data_scatter_host[k*MT_columns + j] = cuda_pointer;
 	
 				//copy data from python buffer to pointer in array
 				//std::cout <<this_pointer<<" "<<&this_pointer[1]<<" "<<&this_pointer[1+muRows] << "\n";
@@ -1467,8 +1482,8 @@ void whistory::load_cross_sections(std::string tope_string){
 			if (k < (MT_rows-1) ){
 				while(xs_data_main_E_grid[k+1]<nextE){
 					//std::cout << k << " " << MT_rows*MT_columns << " " << xs_data_main_E_grid[k+1] << "\n";
-					xs_data_scatter     [j*columns + k + 1] = this_pointer;
-					xs_data_scatter_host[j*columns + k + 1] = cuda_pointer;
+					xs_data_scatter     [(k+1)*MT_columns + j] = this_pointer;
+					xs_data_scatter_host[(k+1)*MT_columns + j] = cuda_pointer;
 					k++;
 				}
 			}
@@ -1477,9 +1492,6 @@ void whistory::load_cross_sections(std::string tope_string){
 	}
 
 
-	//
-	//  allocate device array, write pointers into it
-	//
 
 
 
