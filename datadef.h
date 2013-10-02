@@ -44,3 +44,12 @@ struct intersection_point {
     int     do_first_hit;
     int     hitbuff[10];
 };
+
+// intersection point struct
+struct material_def {
+    unsigned matnum;
+    unsigned num_isotopes;
+    float    density;
+    unsigned * isotopes;
+    float    * fractions;
+};

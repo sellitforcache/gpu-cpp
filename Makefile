@@ -1,7 +1,6 @@
 #
 CC = /usr/bin/gcc
 CXX = /usr/bin/g++
-CYTHON = /usr/local/bin/cython
 OPTIX = /Developer/OptiX
 NVCC = /usr/local/cuda/bin/nvcc
 ARCH = -arch sm_30
@@ -13,9 +12,9 @@ OPTIX_LIBS = -loptix
 CUDPP_PATH = /usr/local/cudpp-2.0/
 CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
-PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers/
+PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers
 PYTHON_LIBS = -lpython2.7
-PNG_FLAGS = -L/usr/local/Cellar/libpng/1.5.13/lib 
+PNG_FLAGS = -L/
 PNG_LIBS = -lpng15
 LIBS =
 

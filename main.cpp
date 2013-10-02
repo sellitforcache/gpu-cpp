@@ -17,6 +17,12 @@ int main(){
 	// set up geometry
 	wgeometry geom;
 
+	unsigned topes[2]={92235,92238};
+	float    fracs[2]={0.10,0.90};
+	float    dens = 10.1;
+	geom.add_material(1,2,dens,topes,fracs);
+	geom.add_material(2,2,dens,topes,fracs);
+	geom.add_material(3,2,dens,topes,fracs);
 	geom.add_primitive();
 	geom.primitives[0].type=2;
 	geom.primitives[0].material=1;
@@ -58,6 +64,7 @@ int main(){
 	geom.primitives[2].transforms[0].phi     = 0;
 	geom.set_outer_cell(999);
 	geom.update();
+	if(geom.check()){std::cout << "geometry failed check!\n"; return 1;}
 	//geom.print_all();
 	geom.print_summary();
 
@@ -72,13 +79,13 @@ int main(){
 
 	// trace geom if requested
 	// make new context that fits the reqested image size, trace, then destroy to free resources
-	//unsigned geom_width  = 1024; 
-	//unsigned geom_height = 1024;
-	//unsigned N_geom = geom_width*geom_height;
-	//optix_stuff geom_optix ( N_geom , 4 );
-	//geom_optix.init(geom);
-	//geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
-	//geom_optix.~optix_stuff();
+	unsigned geom_width  = 1024; 
+	unsigned geom_height = 1024;
+	unsigned N_geom = geom_width*geom_height;
+	optix_stuff geom_optix ( N_geom , 4 );
+	geom_optix.init(geom);
+	geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
+	geom_optix.~optix_stuff();
 
 
 	/////////////////////////////////////////////////////////////////
@@ -89,12 +96,13 @@ int main(){
 	hist.init_host();
 	hist.init_RNG();
 	hist.init_CUDPP();
-	hist.load_cross_sections("92235");
+	hist.load_cross_sections();
 	hist.print_xs_data();
 	hist.copy_to_device();
-	//hist.print_pointers();
 	hist.write_xs_data("xsdata");
+	//hist.print_pointers();
 
+	return 0;
 
 }
 

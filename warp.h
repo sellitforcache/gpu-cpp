@@ -35,7 +35,8 @@ class primitive
 	 primitive(int,unsigned,unsigned,float,float,float,float,float,float,float,float,float);
 	~primitive();
 	void add_transform();
-	void add_transform(unsigned,float,float,float,float,float);
+	void add_transform(unsigned,float,float,float,float,float);  //defaults to primitive material
+	void add_transform(unsigned,unsigned,float,float,float,float,float); //set own material
 	void print_transform();
 	void print_transform(int);
 	void make_hex_array(int,float,float,unsigned);
@@ -124,6 +125,18 @@ void primitive::add_transform(unsigned cellnum , float dx , float dy , float dz 
 	wtransform this_transform;
 	this_transform.cellnum = cellnum;
 	this_transform.cellmat = material;
+	this_transform.dx      = dx;
+	this_transform.dy      = dy;
+	this_transform.dz      = dz;
+	this_transform.theta   = theta;
+	this_transform.phi     = phi;
+	transforms.push_back(this_transform);
+	n_transforms++;
+}
+void primitive::add_transform(unsigned cellnum ,unsigned cellmat, float dx , float dy , float dz , float theta , float phi ){
+	wtransform this_transform;
+	this_transform.cellnum = cellnum;
+	this_transform.cellmat = cellmat;
 	this_transform.dx      = dx;
 	this_transform.dy      = dy;
 	this_transform.dz      = dz;
@@ -275,6 +288,9 @@ class wgeometry {
 	unsigned n_primitives;
 	unsigned n_transforms;
 	unsigned outer_cell;
+	unsigned n_materials;
+	unsigned * material_num_list;
+	unsigned * cell_num_list;
 public:
 	 wgeometry();
 	~wgeometry();
@@ -288,7 +304,10 @@ public:
 	void print_all();
 	void set_outer_cell(unsigned);
 	unsigned get_outer_cell();
-	std::vector<primitive>   primitives;
+	void add_material(unsigned , unsigned , float, unsigned * , float * );
+	int check();
+	std::vector<primitive>   	primitives;
+	std::vector<material_def>	materials;
 };
 
 wgeometry::wgeometry(){
@@ -298,9 +317,16 @@ wgeometry::wgeometry(){
 	n_primitives = 0;
 	n_transforms = 0;
 	outer_cell   = 0;
+	n_materials  = 0;
 }
 wgeometry::~wgeometry(){
-	
+	//material destructor
+	//for(int k=0;k<n_materials;k++){
+	//	delete materials[k].fractions;
+	//	delete materials[k].isotopes;
+	//}
+	//delete cell_num_list;
+	//delete material_num_list;
 }
 void wgeometry::add_primitive(){
 	primitive this_primitive;
@@ -327,6 +353,9 @@ void wgeometry::update(){
 		}
 		n_transforms+=primitives[k].n_transforms;
 	}
+
+	cell_num_list = new unsigned [n_transforms];
+	material_num_list = new unsigned [n_transforms]; // allocate enough for every cell to have its own material
 }
 void wgeometry::print_summary(){
 	std::cout << "\e[1;32m" << "--- GEOMETRY SUMMARY ---" << "\e[m \n";
@@ -336,6 +365,7 @@ void wgeometry::print_summary(){
 	std::cout << "total primitives   = " << n_primitives << "\n";
 	std::cout << "total transforms   = " << n_transforms << "\n";
 	std::cout << "outer cell         = " << outer_cell << "\n";
+	std::cout << "materials          = " << n_materials << "\n";
 }
 void wgeometry::print_all(){
 	for(int k=0;k<n_primitives;k++){
@@ -382,6 +412,81 @@ unsigned wgeometry::get_maximum_cell(){
 		}
 	}
 	return maxcell;
+}
+void wgeometry::add_material(unsigned matnum , unsigned num_topes, float density, unsigned * isotopes, float * fractions){
+	
+	material_def this_material_def;
+
+	this_material_def.fractions = new float    [num_topes];
+	this_material_def.isotopes  = new unsigned [num_topes];
+	
+	this_material_def.num_isotopes = num_topes;
+	this_material_def.matnum       = matnum;
+	this_material_def.density      = density;
+	memcpy(this_material_def.fractions,  fractions,   num_topes*sizeof(float));
+	memcpy(this_material_def.isotopes,   isotopes,    num_topes*sizeof(unsigned));
+	
+	materials.push_back(this_material_def);
+
+	n_materials++;
+}
+int wgeometry::check(){
+
+	std::cout << "\e[1;32m" << "Checking cell numbers and materials..." << "\e[m \n";
+
+	unsigned cellnum,matnum;
+	unsigned cell_list_index = 0;
+	unsigned mat_list_index  = 0;
+	unsigned z,notfound;
+	// check that all cells have their own ID
+	for (int k=0;k<n_primitives;k++){
+		for (int j=0;j<primitives[k].n_transforms;j++){	
+			cellnum = primitives[k].transforms[j].cellnum;
+			matnum  = primitives[k].transforms[j].cellmat;
+			// scan the cell list 
+			for (z = 0 ; z<cell_list_index; z++){
+				if (cell_num_list[z]==cellnum){
+					std::cout << "cell number " << cellnum << " has duplicate entries!\n";
+					return 1;
+				}
+			}
+			cell_num_list[z]=cellnum; //append this cell number
+			cell_list_index++;
+
+			// scan the material list
+			notfound=1;
+			for (z = 0 ; z<mat_list_index ; z++){
+				if (material_num_list[z]==matnum){
+					notfound=0;
+					break;   //break on this index if found
+				}
+			}
+			if(notfound){
+				material_num_list[mat_list_index]=matnum;  // append this material and increment index counter
+				mat_list_index++;
+			}
+		}
+	}
+
+	// check that there are materials for each number specified in the geom
+
+	for(int k=0;k<mat_list_index;k++){
+		notfound=1;
+		for(int j=0;j<n_materials;j++){
+			if(material_num_list[k]==materials[j].matnum){
+				notfound=0;
+				break;
+			}
+		}
+		if(notfound){
+			std::cout << "material " << material_num_list[k] << " not defined!\n";
+			return 1;
+		}
+	}
+
+	std::cout << "They check out.\n";
+	return 0;
+
 }
 
 
@@ -829,7 +934,7 @@ public:
     void init_CUDPP();
     void init_host();
     void copy_to_device();
-    void load_cross_sections(std::string);
+    void load_cross_sections();
     void print_xs_data();
     void print_pointers();
     void write_xs_data(std::string);
@@ -1070,9 +1175,12 @@ void whistory::copy_to_device(){
 	std::cout << " Done.\n";
 
 }
-void whistory::load_cross_sections(std::string tope_string){
+void whistory::load_cross_sections(){
+	
+	std::string tope_string;
 
-
+	//make tope string from material tables
+	tope_string = "92235";
 
 	printf("\e[1;32m%-6s\e[m \n","Loading cross sections and unionizing...");
 
