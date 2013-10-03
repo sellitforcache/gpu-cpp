@@ -79,13 +79,13 @@ int main(){
 
 	// trace geom if requested
 	// make new context that fits the reqested image size, trace, then destroy to free resources
-	unsigned geom_width  = 1024; 
-	unsigned geom_height = 1024;
-	unsigned N_geom = geom_width*geom_height;
-	optix_stuff geom_optix ( N_geom , 4 );
-	geom_optix.init(geom);
-	geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
-	geom_optix.~optix_stuff();
+	//unsigned geom_width  = 1024; 
+	//unsigned geom_height = 1024;
+	//unsigned N_geom = geom_width*geom_height;
+	//optix_stuff geom_optix ( N_geom , 4 );
+	//geom_optix.init(geom);
+	//geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
+	//geom_optix.~optix_stuff();
 
 
 	/////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ int main(){
 	// converge fission source? //
 	//////////////////////////////
 
-	hist.converge();
+	hist.sample_fissile_points();
 
 
 

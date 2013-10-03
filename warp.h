@@ -19,9 +19,11 @@
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
+// host calls
 void print_banner();
+// device calls
 void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
-void copy_points(unsigned , unsigned , unsigned , unsigned  , unsigned  , unsigned *  , source_point *  , source_point * );
+void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * );
 
 
 
@@ -924,6 +926,22 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 
 //history struct
 class whistory { 
+	// optix object pointer
+	optix_stuff * optix_obj;
+	// CUDPP
+	CUDPPHandle            theCudpp;
+	CUDPPHashTableConfig   hash_config;
+	CUDPPConfiguration     compact_config;
+	CUDPPConfiguration     redu_int_config;
+	CUDPPConfiguration     redu_float_config;
+	CUDPPHandle            mate_hash_table_handle;
+	CUDPPHandle            fiss_hash_table_handle;
+	CUDPPHandle            reduplan_int;
+	CUDPPHandle            reduplan_float;
+	CUDPPHandle            compactplan;
+	CUDPPResult            res;
+	// CURAND
+	curandGenerator_t rand_gen;
 	// cuda parameters
 	unsigned 	N;
 	unsigned    RNUM_PER_THREAD;
@@ -989,9 +1007,10 @@ public:
     void print_pointers();
     void converge();
     void sample_fissile_points();
+    void trace(unsigned);
     void write_xs_data(std::string);
 };
-whistory::whistory(int Nin, optix_stuff optix_obj){
+whistory::whistory(int Nin, optix_stuff optix_obj_in){
 	// CUDA stuff
 	N=Nin;
 	NUM_THREADS = 256;
@@ -1000,11 +1019,11 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
 	// device data stuff
 	N = Nin;
-				 d_space 	= (source_point*) optix_obj.positions_ptr;
-				 d_cellnum 	= (unsigned*)     optix_obj.cellnum_ptr;
-				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
-				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
-				 d_done 	= (unsigned*)     optix_obj.done_ptr;
+				 d_space 	= (source_point*) optix_obj_in.positions_ptr;
+				 d_cellnum 	= (unsigned*)     optix_obj_in.cellnum_ptr;
+				 d_matnum 	= (unsigned*)     optix_obj_in.matnum_ptr;
+				 d_rxn 		= (unsigned*)     optix_obj_in.rxn_ptr;
+				 d_done 	= (unsigned*)     optix_obj_in.done_ptr;
 	cudaMalloc( &d_xs_length_numbers	, 6*sizeof(unsigned) );		 
 	cudaMalloc( &d_E 					, N*sizeof(float)    );
 	cudaMalloc( &d_Q 					, N*sizeof(float)    );
@@ -1027,7 +1046,9 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 	total_bytes_scatter = 0;
 	total_bytes_energy  = 0;
 	//copy any info needed
-	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
+	memcpy(outer_cell_dims,optix_obj_in.outer_cell_dims,6*sizeof(float));
+	// copy optix object
+	optix_obj = &optix_obj_in;
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1104,25 +1125,12 @@ void whistory::init_host(){
 }
 void whistory::init_RNG(){
 	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
-	curandGenerator_t rand_gen ;
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
 	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , N * RNUM_PER_THREAD , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
 void whistory::init_CUDPP(){
-
-	CUDPPHandle            theCudpp;
-	CUDPPHashTableConfig   hash_config;
-	CUDPPConfiguration     compact_config;
-	CUDPPConfiguration     redu_int_config;
-	CUDPPConfiguration     redu_float_config;
-	CUDPPHandle            mate_hash_table_handle;
-	CUDPPHandle            fiss_hash_table_handle;
-	CUDPPHandle            reduplan_int;
-	CUDPPHandle            reduplan_float;
-	CUDPPHandle            compactplan;
-	CUDPPResult            res = CUDPP_SUCCESS;
 	
 	std::cout << "\e[1;32m" << "Initializing CUDPP..." << "\e[m \n";
 	// global objects
@@ -1156,7 +1164,7 @@ void whistory::init_CUDPP(){
 	res = cudppPlan(theCudpp, &reduplan_float, redu_float_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
 	
-	std::cout << "configuring hashes..." << "\n";
+	//std::cout << "configuring hashes..." << "\n";
 	// hash config stuff
 	//hash_config.type = CUDPP_BASIC_HASH_TABLE;
 	//hash_config.kInputSize = all_geom.all_total;
@@ -1679,10 +1687,6 @@ void whistory::load_cross_sections(){
 		}
 	}
 
-
-
-
-
     Py_Finalize();
 
 }
@@ -1757,39 +1761,61 @@ void whistory::print_pointers(){
 	std::cout << "d_xs_data_MT:          " << d_xs_data_MT          << "\n";
 	std::cout << "d_xs_data_main_E_grid: " << d_xs_data_main_E_grid << "\n";
 }
+void whistory::trace(unsigned type){
+
+	optix_obj[0].set_trace_type(type);
+	optix_obj[0].trace();
+
+}
 void whistory::sample_fissile_points(){
 
-//	cnt=0;
-//	while (current_fission_index<N){
-//		
-//		// advance RN bank
-//		curandGenerateUniform( rand_gen , d_hist.rn_bank , N*RNUM_PER_THREAD );
-//		
-//		// set uniformly random positions on GPU
-//		set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
-//		
-//		//run OptiX to get cell number, set as a hash run for fissile
-//		rtContextLaunch1D(context, 0, N );
-//		
-//		// compact
-//		res = cudppCompact(compactplan, d_mask_result, d_mask_N , d_remap , d_fiss_list , N);
-//		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
-//		
-//		//copy in new values, keep track of index
-//		copy_fission_points <<< blks , NUM_THREADS >>> ( N, d_mask_N , d_mask_result , d_current_fission_index , d_hist.rn_bank , d_hist.cellnum , d_hist.space , d_fissile_cellnum , d_fissile_points  ); 
-//		cudaThreadSynchronize();
-//		
-//		// copy back and see if we're done
-//		cudaMemcpy(&cnt,d_mask_N,sizeof(unsigned),cudaMemcpyDeviceToHost);
-//		current_fission_index+=cnt;
-//		cudaMemcpy(d_current_fission_index,&current_fission_index,sizeof(unsigned),cudaMemcpyHostToDevice);
-//		
-//		// print how far along we are
-//		percent_done = 100.0f * ((float) current_fission_index) / ((float) N);
-//		sprintf(printstr,"%s%5.2f%s",  "  Percent done:   ",percent_done,"%");
-//		printf("\e[0;32m%-6s\e[m \r",printstr);
-//		fflush(stdout);
-//	}
+	std::cout << "\e[1;32m" << "Sampling initial fissile starting points uniformly... " << "\e[m \n";
+
+	//allocate intermediate vectors
+	unsigned remap[N];
+	for(int k =0;k<N;k++){remap[k]=k;}
+	unsigned * d_valid_result;
+	unsigned * d_valid_N;
+	unsigned * d_remap;
+	source_point * d_fissile_points;
+	cudaMalloc(&d_valid_result,   N*sizeof(unsigned));
+	cudaMalloc(&d_valid_N,        1*sizeof(unsigned));
+	cudaMalloc(&d_remap,          N*sizeof(unsigned));
+	cudaMalloc(&d_fissile_points, N*sizeof(source_point));
+	cudaMemcpy(d_remap, remap,    N*sizeof(unsigned),cudaMemcpyHostToDevice);
+
+	// iterate
+	unsigned current_index = 0;
+	unsigned valid_N = 0;
+	while (current_index < N){
+		
+		// advance RN bank
+		curandGenerateUniform( rand_gen , d_rn_bank , N*RNUM_PER_THREAD );
+		
+		// set uniformly random positions on GPU
+		set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
+		
+		//run OptiX to get cell number, set as a hash run for fissile, writes 1/0 to matnum, trace_type=4
+		trace(4);
+		
+		// compact
+		res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_matnum , N);
+		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
+		
+		std::cout << "done compacting\n";
+
+		//copy in new values, keep track of index, DOES NOT COPY DIRECTION, only position
+		copy_points(blks, NUM_THREADS, N, d_valid_N, current_index, d_valid_result, d_fissile_points, d_space); 
+		
+		// copy back and add
+		cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
+		current_index += valid_N;
+		
+		// print how far along we are
+		std::cout << (float)current_index/(float)N <<"\% done\n"; 
+	}
+
+	std::cout << "Done.\n";
 
 }
 void whistory::converge(){
