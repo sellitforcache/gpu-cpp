@@ -310,7 +310,7 @@ public:
 	unsigned get_outer_cell();
 	void add_material(unsigned , unsigned , float, unsigned * , float * );
 	int check();
-	void get_outer_cell_dims(float*);
+	unsigned get_outer_cell_dims(float*);
 	std::vector<primitive>   	primitives;
 	std::vector<material_def>	materials;
 };
@@ -442,7 +442,7 @@ int wgeometry::check(){
 	unsigned cellnum,matnum;
 	unsigned cell_list_index = 0;
 	unsigned mat_list_index  = 0;
-	unsigned z,notfound;
+	unsigned z,notfound,found_cell;
 	// check that all cells have their own ID
 	for (int k=0;k<n_primitives;k++){
 		for (int j=0;j<primitives[k].n_transforms;j++){	
@@ -489,14 +489,48 @@ int wgeometry::check(){
 		}
 	}
 
+	// check to make sure the outer cell exists
+	notfound = 1;
+	for (int k=0;k<n_primitives;k++){
+		for (int j=0;j<primitives[k].n_transforms;j++){	
+			if(primitives[k].transforms[j].cellnum==outer_cell & notfound){
+				notfound=0;
+			}
+		}
+	}
+	if(notfound){
+		std::cout << "Cell " << outer_cell << " not found, cannot set it as the outer cell!\n";
+		return 1;
+	}
+
 	std::cout << "They check out.\n";
 	return 0;
 
 }
-void wgeometry::get_outer_cell_dims(float * input_array){
+unsigned wgeometry::get_outer_cell_dims(float * input_array){
 
+	float this_min[3];
+	float this_max[3];
 
-
+	for (int k=0;k<n_primitives;k++){
+		for (int j=0;j<primitives[k].n_transforms;j++){	
+			if(primitives[k].transforms[j].cellnum==outer_cell){
+				// apply transform to base primitive, just translation now, maybe add rotation later?  no this is a maximum extent projection onto the axes, should always be a box.
+				memcpy(this_min , primitives[k].min , 3*sizeof(float));
+				memcpy(this_max , primitives[k].max , 3*sizeof(float));
+				this_min[0] += primitives[k].transforms[j].dx;
+				this_min[1] += primitives[k].transforms[j].dy;
+				this_min[2] += primitives[k].transforms[j].dz;
+				this_max[0] += primitives[k].transforms[j].dx;
+				this_max[1] += primitives[k].transforms[j].dy;
+				this_max[2] += primitives[k].transforms[j].dz;
+				// copy and return type
+				memcpy(&input_array[0] , this_min , 3*sizeof(float));
+				memcpy(&input_array[3] , this_max , 3*sizeof(float));
+				return primitives[k].type;
+			}
+		}
+	}
 
 }
 
@@ -525,6 +559,7 @@ public:
 	unsigned 			stack_size_multiplier;
 	unsigned 			N;
 	float 				outer_cell_dims[6];
+	unsigned 			outer_cell_type;
 	optix_stuff(unsigned,unsigned);
 	~optix_stuff();
 	void init(wgeometry);
@@ -651,7 +686,7 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 
 	//set outer cell adn get its dimensions
 	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
-	problem_geom.get_outer_cell_dims(outer_cell_dims);
+	outer_cell_type = problem_geom.get_outer_cell_dims(outer_cell_dims);
 
 	//validate and compile
 	context->validate();
@@ -953,13 +988,15 @@ public:
     void print_xs_data();
     void print_pointers();
     void converge();
+    void sample_fissile_points();
     void write_xs_data(std::string);
 };
 whistory::whistory(int Nin, optix_stuff optix_obj){
 	// CUDA stuff
+	N=Nin;
 	NUM_THREADS = 256;
 	RNUM_PER_THREAD = 15;
-	blks = ( N + NUM_THREADS-1 ) / NUM_THREADS;
+	blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
 	// device data stuff
 	N = Nin;
@@ -1722,37 +1759,37 @@ void whistory::print_pointers(){
 }
 void whistory::sample_fissile_points(){
 
-	cnt=0;
-	while (current_fission_index<N){
-		
-		// advance RN bank
-		curandGenerateUniform( rand_gen , d_hist.rn_bank , N*RNUM_PER_THREAD );
-		
-		// set uniformly random positions on GPU
-		set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
-		
-		//run OptiX to get cell number, set as a hash run for fissile
-		rtContextLaunch1D(context, 0, N );
-		
-		// compact
-		res = cudppCompact(compactplan, d_mask_result, d_mask_N , d_remap , d_fiss_list , N);
-		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
-		
-		//copy in new values, keep track of index
-		copy_fission_points <<< blks , NUM_THREADS >>> ( N, d_mask_N , d_mask_result , d_current_fission_index , d_hist.rn_bank , d_hist.cellnum , d_hist.space , d_fissile_cellnum , d_fissile_points  ); 
-		cudaThreadSynchronize();
-		
-		// copy back and see if we're done
-		cudaMemcpy(&cnt,d_mask_N,sizeof(unsigned),cudaMemcpyDeviceToHost);
-		current_fission_index+=cnt;
-		cudaMemcpy(d_current_fission_index,&current_fission_index,sizeof(unsigned),cudaMemcpyHostToDevice);
-		
-		// print how far along we are
-		percent_done = 100.0f * ((float) current_fission_index) / ((float) N);
-		sprintf(printstr,"%s%5.2f%s",  "  Percent done:   ",percent_done,"%");
-		printf("\e[0;32m%-6s\e[m \r",printstr);
-		fflush(stdout);
-	}
+//	cnt=0;
+//	while (current_fission_index<N){
+//		
+//		// advance RN bank
+//		curandGenerateUniform( rand_gen , d_hist.rn_bank , N*RNUM_PER_THREAD );
+//		
+//		// set uniformly random positions on GPU
+//		set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
+//		
+//		//run OptiX to get cell number, set as a hash run for fissile
+//		rtContextLaunch1D(context, 0, N );
+//		
+//		// compact
+//		res = cudppCompact(compactplan, d_mask_result, d_mask_N , d_remap , d_fiss_list , N);
+//		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
+//		
+//		//copy in new values, keep track of index
+//		copy_fission_points <<< blks , NUM_THREADS >>> ( N, d_mask_N , d_mask_result , d_current_fission_index , d_hist.rn_bank , d_hist.cellnum , d_hist.space , d_fissile_cellnum , d_fissile_points  ); 
+//		cudaThreadSynchronize();
+//		
+//		// copy back and see if we're done
+//		cudaMemcpy(&cnt,d_mask_N,sizeof(unsigned),cudaMemcpyDeviceToHost);
+//		current_fission_index+=cnt;
+//		cudaMemcpy(d_current_fission_index,&current_fission_index,sizeof(unsigned),cudaMemcpyHostToDevice);
+//		
+//		// print how far along we are
+//		percent_done = 100.0f * ((float) current_fission_index) / ((float) N);
+//		sprintf(printstr,"%s%5.2f%s",  "  Percent done:   ",percent_done,"%");
+//		printf("\e[0;32m%-6s\e[m \r",printstr);
+//		fflush(stdout);
+//	}
 
 }
 void whistory::converge(){

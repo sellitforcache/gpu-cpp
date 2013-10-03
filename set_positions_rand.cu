@@ -24,13 +24,15 @@ __global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD,
     positions_ptr[tid].yhat      =  sqrtf(1-mu*mu) * sinf( theta );
     positions_ptr[tid].zhat      =        mu;
 
-    //printf("tid=%d, rn1=%10.8E, rn2=%10.8E, x=%6.3f, y=%6.3f, z=%6.3f, xhat=%6.3f, yhat=%6.3f, zhat=%6.3f \n",tid,rn1,rn2,positions_ptr[tid].x,positions_ptr[tid].y,positions_ptr[tid].z,positions_ptr[tid].xhat,positions_ptr[tid].yhat,positions_ptr[tid].zhat);
+    printf("tid=%d, rn1=%10.8E, rn2=%10.8E, x=%6.3f, y=%6.3f, z=%6.3f, xhat=%6.3f, yhat=%6.3f, zhat=%6.3f \n",tid,rn1,rn2,positions_ptr[tid].x,positions_ptr[tid].y,positions_ptr[tid].z,positions_ptr[tid].xhat,positions_ptr[tid].yhat,positions_ptr[tid].zhat);
 
 }
 
 void set_positions_rand(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, source_point * d_space , float * d_rn_bank, float * outer_cell_dims){
 
+    printf("%u %u %u %u %p %p\n",blks,NUM_THREADS,N,RNUM_PER_THREAD,d_space,d_rn_bank);
+    printf("% 10.8f % 10.8f % 10.8f % 10.8f % 10.8f % 10.8f \n",outer_cell_dims[0], outer_cell_dims[1], outer_cell_dims[2], outer_cell_dims[3], outer_cell_dims[4], outer_cell_dims[5]);
     set_positions_rand_kernel <<<  blks, NUM_THREADS >>> ( N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims[0], outer_cell_dims[1], outer_cell_dims[2], outer_cell_dims[3], outer_cell_dims[4], outer_cell_dims[5]);
     cudaThreadSynchronize();
-    
+
 }
