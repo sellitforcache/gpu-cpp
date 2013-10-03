@@ -22,6 +22,7 @@ LIBS =
 COBJS =	mt19937ar.o \
 		print_banner.o \
 		set_positions_rand.o \
+		copy_points.o \
 		main.o
 
 ptx_objects = 	camera.ptx \
@@ -67,6 +68,9 @@ print_banner.o:
 
 set_positions_rand.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c set_positions_rand.cu
+
+copy_points.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c copy_points.cu
 
 gpu: $(ptx_objects) $(COBJS)
 	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 

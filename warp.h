@@ -20,7 +20,9 @@
 /////////////////////////////////////////////////////////////////////////
 
 void print_banner();
-__global__ void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
+void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
+void copy_points(unsigned , unsigned , unsigned , unsigned  , unsigned  , unsigned *  , source_point *  , source_point * );
+
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -1718,11 +1720,47 @@ void whistory::print_pointers(){
 	std::cout << "d_xs_data_MT:          " << d_xs_data_MT          << "\n";
 	std::cout << "d_xs_data_main_E_grid: " << d_xs_data_main_E_grid << "\n";
 }
+void whistory::sample_fissile_points(){
+
+	cnt=0;
+	while (current_fission_index<N){
+		
+		// advance RN bank
+		curandGenerateUniform( rand_gen , d_hist.rn_bank , N*RNUM_PER_THREAD );
+		
+		// set uniformly random positions on GPU
+		set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
+		
+		//run OptiX to get cell number, set as a hash run for fissile
+		rtContextLaunch1D(context, 0, N );
+		
+		// compact
+		res = cudppCompact(compactplan, d_mask_result, d_mask_N , d_remap , d_fiss_list , N);
+		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
+		
+		//copy in new values, keep track of index
+		copy_fission_points <<< blks , NUM_THREADS >>> ( N, d_mask_N , d_mask_result , d_current_fission_index , d_hist.rn_bank , d_hist.cellnum , d_hist.space , d_fissile_cellnum , d_fissile_points  ); 
+		cudaThreadSynchronize();
+		
+		// copy back and see if we're done
+		cudaMemcpy(&cnt,d_mask_N,sizeof(unsigned),cudaMemcpyDeviceToHost);
+		current_fission_index+=cnt;
+		cudaMemcpy(d_current_fission_index,&current_fission_index,sizeof(unsigned),cudaMemcpyHostToDevice);
+		
+		// print how far along we are
+		percent_done = 100.0f * ((float) current_fission_index) / ((float) N);
+		sprintf(printstr,"%s%5.2f%s",  "  Percent done:   ",percent_done,"%");
+		printf("\e[0;32m%-6s\e[m \r",printstr);
+		fflush(stdout);
+	}
+
+}
 void whistory::converge(){
 
 	set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
 
 }
+
 
 
 
