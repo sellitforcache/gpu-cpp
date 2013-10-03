@@ -102,6 +102,17 @@ int main(){
 	hist.write_xs_data("xsdata");
 	//hist.print_pointers();
 
+
+	//////////////////////////////
+	// converge fission source? //
+	//////////////////////////////
+
+	hist.converge();
+
+
+
+
+
 	return 0;
 
 }

@@ -20,6 +20,8 @@
 /////////////////////////////////////////////////////////////////////////
 
 void print_banner();
+__global__ void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
+
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -306,6 +308,7 @@ public:
 	unsigned get_outer_cell();
 	void add_material(unsigned , unsigned , float, unsigned * , float * );
 	int check();
+	void get_outer_cell_dims(float*);
 	std::vector<primitive>   	primitives;
 	std::vector<material_def>	materials;
 };
@@ -488,6 +491,12 @@ int wgeometry::check(){
 	return 0;
 
 }
+void wgeometry::get_outer_cell_dims(float * input_array){
+
+
+
+
+}
 
 
 
@@ -513,6 +522,7 @@ public:
 	CUdeviceptr 	   matnum_ptr;
 	unsigned 			stack_size_multiplier;
 	unsigned 			N;
+	float 				outer_cell_dims[6];
 	optix_stuff(unsigned,unsigned);
 	~optix_stuff();
 	void init(wgeometry);
@@ -637,8 +647,9 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 	// make all geometry instances
 	make_geom(problem_geom);
 
-	//set outer cell
+	//set outer cell adn get its dimensions
 	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
+	problem_geom.get_outer_cell_dims(outer_cell_dims);
 
 	//validate and compile
 	context->validate();
@@ -877,10 +888,10 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 //history struct
 class whistory { 
 	// cuda parameters
-	int 	N;
-	int     RNUM_PER_THREAD;
-	int 	NUM_THREADS;
-	int 	blks;
+	unsigned 	N;
+	unsigned    RNUM_PER_THREAD;
+	unsigned 	NUM_THREADS;
+	unsigned 	blks;
 	// host data
     source_point *  space;
     unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points 
@@ -927,6 +938,8 @@ class whistory {
     unsigned 		total_bytes_energy ;
     unsigned 		MT_rows;
     unsigned 		MT_columns;
+    //geom parameters
+    float 			outer_cell_dims [6];
 public:
      whistory(int,optix_stuff);
     ~whistory();
@@ -937,6 +950,7 @@ public:
     void load_cross_sections();
     void print_xs_data();
     void print_pointers();
+    void converge();
     void write_xs_data(std::string);
 };
 whistory::whistory(int Nin, optix_stuff optix_obj){
@@ -973,6 +987,8 @@ whistory::whistory(int Nin, optix_stuff optix_obj){
 	// init counters to 0
 	total_bytes_scatter = 0;
 	total_bytes_energy  = 0;
+	//copy any info needed
+	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1701,6 +1717,11 @@ void whistory::print_pointers(){
 	std::cout << "d_xs_MT_numbers:       " << d_xs_MT_numbers       << "\n";
 	std::cout << "d_xs_data_MT:          " << d_xs_data_MT          << "\n";
 	std::cout << "d_xs_data_main_E_grid: " << d_xs_data_main_E_grid << "\n";
+}
+void whistory::converge(){
+
+	set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
+
 }
 
 
