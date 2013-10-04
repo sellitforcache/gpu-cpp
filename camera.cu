@@ -8,6 +8,7 @@ rtBuffer<source_point,1>            positions_buffer;
 rtBuffer<unsigned,1>                rxn_buffer;
 rtBuffer<unsigned,1>                done_buffer;
 rtBuffer<unsigned,1>                cellnum_buffer;
+rtBuffer<unsigned,1>                matnum_buffer;
 rtDeclareVariable(rtObject,      top_object, , );
 rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
 rtDeclareVariable(uint, launch_dim,   rtLaunchDim, );
@@ -94,7 +95,8 @@ RT_PROGRAM void camera()
    positions_buffer[launch_index].y = y;
    positions_buffer[launch_index].z = z;
    }
-   else if(trace_type==2){   // fission source trace
+
+   else if(trace_type==2 | trace_type ==4){   // where am I? trace
       // check if bc
       if (payload.cell_first==outer_cell){
             payload.cont=0; 
@@ -106,7 +108,13 @@ RT_PROGRAM void camera()
          rtTrace(top_object, ray, payload);      
       }
       cellnum_buffer[launch_index] = payload.hitbuff[0];
-      //rtPrintf("end cell = %u\n",cellnum_buffer[launch_index]);
+      // if number 4 requested, then write fissile flag to matnum instead of matnum
+      if (trace_type==2){
+        matnum_buffer[launch_index] = payload.matnum;
+      }
+      else if (trace_type==4){
+        matnum_buffer[launch_index] = payload.is_fissile;
+      }
    }
 
    else if (trace_type==3){// intersection point trace

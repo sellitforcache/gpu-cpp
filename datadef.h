@@ -35,19 +35,22 @@ struct f3{
 
 // intersection point struct
 struct intersection_point {
-    float   x;
-    float   y;
-    float   z;
-    float   surf_dist;
-    int     cell_first;
-    int     cont;
-    int     do_first_hit;
-    int     hitbuff[10];
+    float       x;
+    float       y;
+    float       z;
+    float       surf_dist;
+    int         cell_first;
+    int         cont;
+    int         do_first_hit;
+    unsigned    is_fissile;
+    unsigned    matnum;
+    int         hitbuff[10];
 };
 
 // intersection point struct
 struct material_def {
     unsigned matnum;
+    unsigned is_fissile;
     unsigned num_isotopes;
     float    density;
     unsigned * isotopes;

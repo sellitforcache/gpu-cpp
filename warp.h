@@ -310,7 +310,7 @@ public:
 	void print_all();
 	void set_outer_cell(unsigned);
 	unsigned get_outer_cell();
-	void add_material(unsigned , unsigned , float, unsigned * , float * );
+	void add_material(unsigned , unsigned, unsigned , float, unsigned * , float * );
 	int check();
 	unsigned get_outer_cell_dims(float*);
 	std::vector<primitive>   	primitives;
@@ -420,16 +420,17 @@ unsigned wgeometry::get_maximum_cell(){
 	}
 	return maxcell;
 }
-void wgeometry::add_material(unsigned matnum , unsigned num_topes, float density, unsigned * isotopes, float * fractions){
+void wgeometry::add_material(unsigned matnum , unsigned is_fissile, unsigned num_topes, float density, unsigned * isotopes, float * fractions){
 	
 	material_def this_material_def;
 
 	this_material_def.fractions = new float    [num_topes];
 	this_material_def.isotopes  = new unsigned [num_topes];
 	
-	this_material_def.num_isotopes = num_topes;
-	this_material_def.matnum       = matnum;
-	this_material_def.density      = density;
+	this_material_def.num_isotopes  = num_topes;
+	this_material_def.matnum        = matnum;
+	this_material_def.density       = density;
+	this_material_def.is_fissile    = is_fissile;
 	memcpy(this_material_def.fractions,  fractions,   num_topes*sizeof(float));
 	memcpy(this_material_def.isotopes,   isotopes,    num_topes*sizeof(unsigned));
 	
@@ -563,6 +564,7 @@ public:
 	float 				outer_cell_dims[6];
 	unsigned 			outer_cell_type;
 	optix_stuff(unsigned,unsigned);
+	optix_stuff();
 	~optix_stuff();
 	void init(wgeometry);
 	void trace();
@@ -572,6 +574,7 @@ public:
 	void trace_geometry(unsigned,unsigned,std::string);
 	void make_color(float*,unsigned,unsigned,unsigned);
 };
+optix_stuff::optix_stuff(){}
 optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
 	//set stack size multiplier
 	stack_size_multiplier = mult;
@@ -739,12 +742,14 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 	Acceleration  		acceleration;
 	Variable  			cellnum_var;
 	Variable  			cellmat_var;
+	Variable 			cellfissile_var;
 
 	char 				path_to_ptx[512];
 	unsigned 			cellnum,cellmat;
 	float 				dx,dy,dz,theta,phi;
 	float 				m[16];
 	unsigned 			uniqueindex = 0;
+	unsigned 			is_fissile = 0;
 
 	// Make top level group/accel as children of the top level object 
 	this_accel 	= context -> createAcceleration("Sbvh","Bvh");
@@ -783,13 +788,14 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 
 		for (int k=0;k<problem_geom.primitives[j].n_transforms;k++){
 
-			dx =      problem_geom.primitives[j].transforms[k].dx;
-			dy =      problem_geom.primitives[j].transforms[k].dy;
-			dz =      problem_geom.primitives[j].transforms[k].dz;
-			theta =   problem_geom.primitives[j].transforms[k].theta;
-			phi =     problem_geom.primitives[j].transforms[k].phi;
-			cellnum = problem_geom.primitives[j].transforms[k].cellnum;
-			cellmat = problem_geom.primitives[j].transforms[k].cellmat;
+			dx =          problem_geom.primitives[j].transforms[k].dx;
+			dy =          problem_geom.primitives[j].transforms[k].dy;
+			dz =          problem_geom.primitives[j].transforms[k].dz;
+			theta =       problem_geom.primitives[j].transforms[k].theta;
+			phi =         problem_geom.primitives[j].transforms[k].phi;
+			cellnum =     problem_geom.primitives[j].transforms[k].cellnum;
+			cellmat =     problem_geom.primitives[j].transforms[k].cellmat;
+			is_fissile =  problem_geom.materials[cellmat].is_fissile;
 
 			//create instances
 			ginst = context -> createGeometryInstance();
@@ -798,10 +804,12 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			ginst -> setMaterial( 0, material );
 
 			//set cell-specific variables
-			cellnum_var = ginst["cellnum"];
-			cellmat_var = ginst["cellmat"];
-			cellnum_var -> setUint(cellnum);
-			cellmat_var -> setUint(cellmat);
+			cellnum_var 	= ginst["cellnum"];
+			cellmat_var 	= ginst["cellmat"];
+			cellfissile_var = ginst["cellfissile"];
+			cellnum_var 	-> setUint(cellnum);
+			cellmat_var 	-> setUint(cellmat);
+			cellfissile_var -> setUint(is_fissile);
 
 			// make geometry group for this primitive (to attach acceleration to)
 			this_accel = context->createAcceleration("Sbvh","Bvh");
@@ -927,7 +935,7 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 //history struct
 class whistory { 
 	// optix object pointer
-	optix_stuff * optix_obj;
+	optix_stuff 		   optix_obj;
 	// CUDPP
 	CUDPPHandle            theCudpp;
 	CUDPPHashTableConfig   hash_config;
@@ -996,7 +1004,7 @@ class whistory {
     //geom parameters
     float 			outer_cell_dims [6];
 public:
-     whistory(int,optix_stuff);
+     whistory(int,wgeometry);
     ~whistory();
     void init_RNG();
     void init_CUDPP();
@@ -1010,7 +1018,12 @@ public:
     void trace(unsigned);
     void write_xs_data(std::string);
 };
-whistory::whistory(int Nin, optix_stuff optix_obj_in){
+whistory::whistory(int Nin, wgeometry problem_geom){
+	// init optix stuff first
+	optix_obj.N=Nin;
+	optix_obj.stack_size_multiplier=4;
+	optix_obj.init(problem_geom);
+	optix_obj.print();
 	// CUDA stuff
 	N=Nin;
 	NUM_THREADS = 256;
@@ -1019,11 +1032,11 @@ whistory::whistory(int Nin, optix_stuff optix_obj_in){
 	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
 	// device data stuff
 	N = Nin;
-				 d_space 	= (source_point*) optix_obj_in.positions_ptr;
-				 d_cellnum 	= (unsigned*)     optix_obj_in.cellnum_ptr;
-				 d_matnum 	= (unsigned*)     optix_obj_in.matnum_ptr;
-				 d_rxn 		= (unsigned*)     optix_obj_in.rxn_ptr;
-				 d_done 	= (unsigned*)     optix_obj_in.done_ptr;
+				 d_space 	= (source_point*) optix_obj.positions_ptr;
+				 d_cellnum 	= (unsigned*)     optix_obj.cellnum_ptr;
+				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
+				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
+				 d_done 	= (unsigned*)     optix_obj.done_ptr;
 	cudaMalloc( &d_xs_length_numbers	, 6*sizeof(unsigned) );		 
 	cudaMalloc( &d_E 					, N*sizeof(float)    );
 	cudaMalloc( &d_Q 					, N*sizeof(float)    );
@@ -1046,9 +1059,7 @@ whistory::whistory(int Nin, optix_stuff optix_obj_in){
 	total_bytes_scatter = 0;
 	total_bytes_energy  = 0;
 	//copy any info needed
-	memcpy(outer_cell_dims,optix_obj_in.outer_cell_dims,6*sizeof(float));
-	// copy optix object
-	optix_obj = &optix_obj_in;
+	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1763,8 +1774,7 @@ void whistory::print_pointers(){
 }
 void whistory::trace(unsigned type){
 
-	optix_obj[0].set_trace_type(type);
-	optix_obj[0].trace();
+	optix_obj.trace(type);
 
 }
 void whistory::sample_fissile_points(){

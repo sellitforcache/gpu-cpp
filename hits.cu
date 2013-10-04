@@ -9,6 +9,8 @@ rtDeclareVariable(float, int_dist, rtIntersectionDistance, );
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
 rtDeclareVariable(unsigned,  cellnum, , );
+rtDeclareVariable(unsigned,  cellmat, , );
+rtDeclareVariable(unsigned,  cellfissile, , );
 rtDeclareVariable(unsigned,  outer_cell, , );
 
 RT_PROGRAM void closest_hit()
@@ -47,6 +49,11 @@ RT_PROGRAM void closest_hit()
 				payload.hitbuff[k]=cellnum; 
 			}
 			k++;
+		}
+		// update that matnum unless outer cell
+		if(payload.cont){
+			payload.matnum = cellmat;
+			payload.is_fissile = cellfissile;
 		}
 	}
 	else{  //something is weird

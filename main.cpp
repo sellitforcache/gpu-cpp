@@ -20,9 +20,9 @@ int main(){
 	unsigned topes[2]={92235,92238};
 	float    fracs[2]={0.10,0.90};
 	float    dens = 10.1;
-	geom.add_material(1,2,dens,topes,fracs);
-	geom.add_material(2,2,dens,topes,fracs);
-	geom.add_material(3,2,dens,topes,fracs);
+	geom.add_material(1,1,2,dens,topes,fracs);
+	geom.add_material(2,0,2,dens,topes,fracs);
+	geom.add_material(3,0,2,dens,topes,fracs);
 	geom.add_primitive();
 	geom.primitives[0].type=2;
 	geom.primitives[0].material=1;
@@ -68,14 +68,9 @@ int main(){
 	//geom.print_all();
 	geom.print_summary();
 
-	//////////////////////
-	// INIT OptiX STUFF //
-	//////////////////////
-	
-	// tracer for histories
-	optix_stuff this_optix ( N , 4 );
-	this_optix.init(geom);
-	this_optix.print();
+	///////////////////////////////////
+	// INIT OptiX STUFF for plotting //
+	///////////////////////////////////
 
 	// trace geom if requested
 	// make new context that fits the reqested image size, trace, then destroy to free resources
@@ -89,10 +84,10 @@ int main(){
 
 
 	/////////////////////////////////////////////////////////////////
-	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //    !! MUST BE DONE AFTER OPTIX !!
+	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
-	whistory hist ( N , this_optix );
+	whistory hist ( N , geom );
 	hist.init_host();
 	hist.init_RNG();
 	hist.init_CUDPP();
