@@ -113,7 +113,7 @@ class cross_section_data:
 		return MT_num_array
 
 	def _get_awr_pointer(self):
-		awr_array = numpy.ascontiguousarray(numpy.array(self.awr,order='C'),dtype=numpy.uint32)
+		awr_array = numpy.ascontiguousarray(numpy.array(self.awr,order='C'),dtype=numpy.float32)
 		return awr_array
 
 	def _get_MT_array_pointer(self):

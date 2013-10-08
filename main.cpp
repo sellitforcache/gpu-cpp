@@ -99,6 +99,7 @@ int main(){
 	hist.copy_to_device();
 	hist.write_xs_data("xsdata");
 	//hist.print_pointers();
+	hist.print_materials_table();
 
 
 	//////////////////////////////

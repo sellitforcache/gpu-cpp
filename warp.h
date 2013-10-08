@@ -323,6 +323,7 @@ public:
 	unsigned get_material_count();
 	void make_material_table();
 	void get_material_table(unsigned*,unsigned*,unsigned**,unsigned**,float**);
+	void print_materials_table();
 	std::vector<primitive>   	primitives;
 	std::vector<material_def>	materials;
 	std::vector<unsigned>		isotopes;
@@ -428,7 +429,7 @@ void wgeometry::print_summary(){
 	std::cout << "total primitives   = " << n_primitives << "\n";
 	std::cout << "total transforms   = " << n_transforms << "\n";
 	std::cout << "outer cell         = " << outer_cell << "\n";
-	std::cout << "\e[1;32m" << "--- MATERIAL SUMMARY ---" << "\e[m \n";
+	std::cout << "\e[1;32m" << "--- INPUT MATERIAL SUMMARY ---" << "\e[m \n";
 	std::cout << "materials          = " << n_materials << "\n";
 	std::cout << "isotopes           = " << n_isotopes << "\n";
 	std::cout << "isotope list:    " << isotope_list << "\n";
@@ -658,6 +659,9 @@ void wgeometry::make_material_table(){
 
 	for(int j=0;j<n_materials;j++){
 
+		m_avg = 0.0;
+		frac  = 0.0;
+
 		//normalize the fractions for this material and calculate average mass
 		for(int k=0;k<n_isotopes;k++){
 			frac += concentrations_matrix[j*n_isotopes+k];
@@ -665,6 +669,7 @@ void wgeometry::make_material_table(){
 		for(int k=0;k<n_isotopes;k++){
 			concentrations_matrix[j*n_isotopes+k] = concentrations_matrix[j*n_isotopes+k]/frac;
 			m_avg += concentrations_matrix[j*n_isotopes+k] * awr_list[k] * m_n;
+			std::cout << "awr["<<k<<"] = "<<awr_list[k]<<"\n";
 		}
 
 		//get density
@@ -691,6 +696,40 @@ void wgeometry::get_material_table(unsigned* n_mat_in, unsigned * n_tope_in, uns
 	memcpy(*material_list_in,  material_list_array,    n_materials*sizeof(unsigned)         );
 	memcpy(*isotope_list_in,   isotope_list_array,     n_isotopes *sizeof(unsigned)         );
 	memcpy(*conc_mat_in,       concentrations_matrix,  n_materials*n_isotopes*sizeof(float) );
+}
+void wgeometry::print_materials_table(){
+
+	std::cout << "\e[1;32m" << "--- MATERIALS SUMMARY ---" << "\e[m \n";
+
+	for(int j=0;j<n_materials;j++){
+
+		std::cout <<  "material index " << j << " = material " << material_list_array[j] << "\n";
+		std::cout <<  " (isotope index, ZZZAAA) \n";
+		std::cout <<  " (number density #/bn-cm) \n";
+		
+		for(int k=0;k<n_isotopes;k++){
+
+			if (k==n_isotopes-1){
+				std::cout << "( "<< k << " , "<< isotope_list_array[k] << " ) \n";
+			}
+			else{
+				std::cout << "  ( "<< k << " , "<< isotope_list_array[k] << " )     ";
+			}
+		}
+
+		for(int k=0;k<n_isotopes;k++){
+
+			if (k==n_isotopes-1){
+				std::cout << "( " <<concentrations_matrix[j*n_isotopes+k] << " )\n";
+			}
+			else{
+				std::cout << "  ( " <<concentrations_matrix[j*n_isotopes+k] << " )     ";
+			}
+		}
+
+		
+	}
+
 }
 
 
@@ -1195,6 +1234,7 @@ public:
     void load_cross_sections();
     void print_xs_data();
     void print_pointers();
+    void print_materials_table();
     void converge(unsigned);
     void sample_fissile_points();
     void trace(unsigned);
@@ -1751,6 +1791,7 @@ void whistory::load_cross_sections(){
 
 
 
+
     ////////////////////////////////////
     // do scattering stuff
     ////////////////////////////////////
@@ -2003,6 +2044,11 @@ void whistory::print_pointers(){
 void whistory::trace(unsigned type){
 
 	optix_obj.trace(type);
+
+}
+void whistory::print_materials_table(){
+
+	problem_geom.print_materials_table();
 
 }
 void whistory::sample_fissile_points(){
