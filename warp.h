@@ -24,8 +24,9 @@ void print_banner();
 // device calls
 void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
 void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * );
-void macroscopic();
+void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* );
 void microscopic();
+void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * );
 void elastic_scatter();
 void inelastic_scatter();
 void fission();
@@ -1166,6 +1167,7 @@ class whistory {
 	// host data
 	unsigned 		n_materials;
 	unsigned 		n_isotopes;
+	unsigned 		n_tally;
     source_point *  space;
     unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points 
     unsigned *      xs_MT_numbers_total;
@@ -1180,6 +1182,8 @@ class whistory {
     float *         Q;
     float *         rn_bank;
     float * 		awr_list;
+    float * 		tally_score;
+    unsigned * 		tally_count;
     unsigned * 		index;
     unsigned *      cellnum;
     unsigned *      matnum;
@@ -1199,19 +1203,21 @@ class whistory {
 	float *			d_xs_data_main_E_grid;
 	float **		d_xs_data_scatter;
 	float ** 		d_xs_data_energy;
-    float *         d_E;
-    float *         d_Q;
-    float *         d_rn_bank;
-    float * 		d_awr_list;
-    unsigned * 		d_index;
-    unsigned *      d_cellnum;
-    unsigned *      d_matnum;
-    unsigned *      d_isonum;
-    unsigned *      d_rxn;
-    unsigned *      d_done;
-    unsigned *      d_yield;
-    unsigned * 		d_material_list;
-    unsigned * 		d_isotope_list;
+	float *         d_E;
+	float *         d_Q;
+	float *         d_rn_bank;
+	float * 		d_awr_list;
+	float * 		d_tally_score;
+	unsigned * 		d_tally_count;
+	unsigned * 		d_index;
+	unsigned *      d_cellnum;
+	unsigned *      d_matnum;
+	unsigned *      d_isonum;
+	unsigned *      d_rxn;
+	unsigned *      d_done;
+	unsigned *      d_yield;
+	unsigned * 		d_material_list;
+	unsigned * 		d_isotope_list;
     float *  		d_number_density_matrix;
     // xs data parameters
     std::string xs_isotope_string;
@@ -1228,6 +1234,7 @@ public:
      whistory(int,wgeometry);
     ~whistory();
     void init_RNG();
+    void update_RNG();
     void init_CUDPP();
     void init_host();
     void copy_to_device();
@@ -1268,12 +1275,16 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc( &d_isonum   			, N*sizeof(unsigned) );
 	cudaMalloc( &d_yield				, N*sizeof(unsigned) );
 	cudaMalloc( &d_index				, N*sizeof(unsigned) );
+	cudaMalloc( &d_tally_score  		, n_tally*sizeof(float));
+	cudaMalloc( &d_tally_count  		, n_tally*sizeof(unsigned));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point [N];
 	E 					= new float [N];
 	Q 					= new float [N];
 	rn_bank  			= new float [N*RNUM_PER_THREAD];
+	tally_score 		= new float [n_tally];
+	tally_count 		= new unsigned [n_tally];
 	index     			= new unsigned [N];
 	cellnum 			= new unsigned [N];
 	matnum 				= new unsigned [N];
@@ -1296,6 +1307,8 @@ whistory::~whistory(){
 	cudaFree( d_xs_data_main_E_grid );
 	cudaFree( d_xs_data_scatter     );
 	cudaFree( d_xs_data_energy      );
+	cudaFree( d_tally_score 		);
+    cudaFree( d_tally_count 		);
 	cudaFree( d_index   );
 	cudaFree( E         );
 	cudaFree( Q         );
@@ -1320,6 +1333,8 @@ whistory::~whistory(){
 	delete done;
 	delete isonum;
 	delete yield; 
+	delete tally_count;
+	delete tally_score;
 	// for loops to deallocate everything in the pointer arrays
 	for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
 		for (int k=0 ; k < MT_rows ; k++){
@@ -1371,6 +1386,11 @@ void whistory::init_RNG(){
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
 	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , N * RNUM_PER_THREAD , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
+}
+void whistory::update_RNG(){
+
+	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
+
 }
 void whistory::init_CUDPP(){
 	
@@ -2143,17 +2163,24 @@ void whistory::converge(unsigned num_cycles){
 		find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index);
 
 		// run macroscopic kernel to find interaction length and reaction isotope
-		//macroscopic(blks, NUM_THREADS, N, );
+		macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix);
 
 		// run tally kernel to compute spectra from 1/sigma_t
+		tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count);
 
 		// run optix to detect the nearest surface
+		trace(1);
 
 		// run microscopic kernel to find reaction type
+		//microscopic();
 
-		// async call to do escatter/iscatter/abs/fission
+		// async call to do escatter/iscatter/abs/fission, serial execution for now :(
+		//
+		//
+		//
 
 		// update RNGs
+		update_RNG();
 
 
 	//}
