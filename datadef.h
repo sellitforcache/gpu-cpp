@@ -33,6 +33,13 @@ struct f3{
     float z;
 };
 
+//hit buffer struct
+struct hit_buffer {
+    int     cell;
+    int     mat;
+    int     fiss;
+};
+
 // intersection point struct
 struct intersection_point {
     float       x;
@@ -42,9 +49,7 @@ struct intersection_point {
     int         cell_first;
     int         cont;
     int         do_first_hit;
-    unsigned    is_fissile;
-    unsigned    matnum;
-    int         hitbuff[10];
+    hit_buffer  hitbuff[10];
 };
 
 // intersection point struct

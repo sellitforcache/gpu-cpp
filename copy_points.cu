@@ -10,12 +10,15 @@ __global__ void copy_points_kernel( unsigned Nout, unsigned * Nvalid , unsigned 
 	unsigned index_in  = to_valid[tid];
 	unsigned index_out = current_index + tid;
 	if (index_out>=Nout){index_out=index_out-Nout;} //wrap to start
-	printf("index out = %u\n",index_out);
+	//printf("index out = %u\n",index_out);
 
 	// copy points
-	positions_out[index_out].x = positions_in[index_in].x; 
-	positions_out[index_out].y = positions_in[index_in].y; 
-	positions_out[index_out].z = positions_in[index_in].z;  
+	positions_out[index_out].x    = positions_in[index_in].x; 
+	positions_out[index_out].y    = positions_in[index_in].y; 
+	positions_out[index_out].z    = positions_in[index_in].z; 
+	positions_out[index_out].xhat = positions_in[index_in].xhat; 
+	positions_out[index_out].yhat = positions_in[index_in].yhat; 
+	positions_out[index_out].zhat = positions_in[index_in].zhat;  
 
 }
 

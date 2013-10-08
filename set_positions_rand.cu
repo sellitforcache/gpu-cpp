@@ -20,10 +20,10 @@ __global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD,
 	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * rn3 + x_min );  
 	positions_ptr[tid].y         =     0.9 * ( ( y_max - y_min ) * rn4 + y_min );  
 	positions_ptr[tid].z         =     0.9 * ( ( z_max - z_min ) * rn5 + z_min ); 
-	positions_ptr[tid].xhat      =  sqrtf(1-mu*mu) * cosf( theta );
-	positions_ptr[tid].yhat      =  sqrtf(1-mu*mu) * sinf( theta );
-	positions_ptr[tid].zhat      =        mu;
-
+	positions_ptr[tid].xhat      =     0.0;//sqrtf(1-mu*mu) * cosf( theta );
+	positions_ptr[tid].yhat      =     0.0;//sqrtf(1-mu*mu) * sinf( theta );
+	positions_ptr[tid].zhat      =    -1.0;//      mu;
+  
 	//printf("tid=%d, rn1=%10.8E, rn2=%10.8E, x=%6.3f, y=%6.3f, z=%6.3f, xhat=%6.3f, yhat=%6.3f, zhat=%6.3f \n",tid,rn1,rn2,positions_ptr[tid].x,positions_ptr[tid].y,positions_ptr[tid].z,positions_ptr[tid].xhat,positions_ptr[tid].yhat,positions_ptr[tid].zhat);
 
 }

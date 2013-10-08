@@ -24,7 +24,11 @@ void print_banner();
 // device calls
 void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
 void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * );
-
+void macroscopic();
+void microscopic();
+void elastic_scatter();
+void inelastic_scatter();
+void fission();
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -295,6 +299,7 @@ class wgeometry {
 	unsigned n_transforms;
 	unsigned outer_cell;
 	unsigned n_materials;
+	unsigned n_isotopes;
 	unsigned * material_num_list;
 	unsigned * cell_num_list;
 public:
@@ -313,8 +318,11 @@ public:
 	void add_material(unsigned , unsigned, unsigned , float, unsigned * , float * );
 	int check();
 	unsigned get_outer_cell_dims(float*);
+	unsigned get_material_count();
 	std::vector<primitive>   	primitives;
 	std::vector<material_def>	materials;
+	std::vector<unsigned>		isotopes;
+	std::string 				isotope_list;
 };
 
 wgeometry::wgeometry(){
@@ -325,6 +333,7 @@ wgeometry::wgeometry(){
 	n_transforms = 0;
 	outer_cell   = 0;
 	n_materials  = 0;
+	n_isotopes   = 0;
 }
 wgeometry::~wgeometry(){
 	//material destructor
@@ -361,8 +370,47 @@ void wgeometry::update(){
 		n_transforms+=primitives[k].n_transforms;
 	}
 
+	// allocate arrays for lists
 	cell_num_list = new unsigned [n_transforms];
 	material_num_list = new unsigned [n_transforms]; // allocate enough for every cell to have its own material
+
+	// compile list of all isotopes
+	unsigned this_mat  = 0;
+	unsigned n_topes   = 0;
+	unsigned this_tope = 0;
+	std::vector<unsigned>  all_isotopes;
+	for(this_mat=0 ; this_mat<n_materials ; this_mat++){
+		n_topes = materials[this_mat].num_isotopes;
+		for(int k=0;k<n_topes;k++){
+			all_isotopes.push_back(materials[this_mat].isotopes[k]);
+		}
+	}
+	// go through list, get rid of extra copies
+	n_isotopes = 0;
+	unsigned notfound=0;
+	std::cout << "all_isotopes.size() = " << all_isotopes.size() << "\n";
+	for(int k=0;k<all_isotopes.size();k++){
+		notfound=1;
+		for(int j=0;j<isotopes.size();j++){
+			if(isotopes[j]==all_isotopes[k])
+				notfound=0; 
+		}
+		if(notfound){
+			isotopes.push_back(all_isotopes[k]);  //add if not found already
+		}
+	}
+	n_isotopes = isotopes.size();
+
+	//make string from isotope table
+	char numstr[16];
+	for(int k =0;k<n_isotopes;k++){
+		sprintf(numstr,"%u",isotopes[k]);
+		isotope_list += numstr;
+		if(k<n_isotopes-1){
+			isotope_list += ",";
+		}
+	}
+
 }
 void wgeometry::print_summary(){
 	std::cout << "\e[1;32m" << "--- GEOMETRY SUMMARY ---" << "\e[m \n";
@@ -372,7 +420,20 @@ void wgeometry::print_summary(){
 	std::cout << "total primitives   = " << n_primitives << "\n";
 	std::cout << "total transforms   = " << n_transforms << "\n";
 	std::cout << "outer cell         = " << outer_cell << "\n";
+	std::cout << "\e[1;32m" << "--- MATERIAL SUMMARY ---" << "\e[m \n";
 	std::cout << "materials          = " << n_materials << "\n";
+	std::cout << "isotopes           = " << n_isotopes << "\n";
+	std::cout << "isotope list:    " << isotope_list << "\n";
+	std::cout << "  --------------   " << n_materials << "\n";
+	for(int k=0;k<n_materials;k++){
+		std::cout << "material #       = " << materials[k].matnum << "\n";
+		std::cout << "density (g/cc)   = " << materials[k].density << "\n";
+		std::cout << "is fissile       = " << materials[k].is_fissile << "\n";
+		std::cout << "isotopes         = " << materials[k].num_isotopes << "\n";
+		for(int j=0;j<materials[k].num_isotopes;j++){
+			std::cout << "  number "<< j << ":  isotope " << materials[k].isotopes[j] << " frac = " << materials[k].fractions[j] << "\n";
+		}
+	}
 }
 void wgeometry::print_all(){
 	for(int k=0;k<n_primitives;k++){
@@ -535,6 +596,9 @@ unsigned wgeometry::get_outer_cell_dims(float * input_array){
 		}
 	}
 
+}
+unsigned wgeometry::get_material_count(){
+	return n_materials;
 }
 
 
@@ -795,7 +859,13 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			phi =         problem_geom.primitives[j].transforms[k].phi;
 			cellnum =     problem_geom.primitives[j].transforms[k].cellnum;
 			cellmat =     problem_geom.primitives[j].transforms[k].cellmat;
-			is_fissile =  problem_geom.materials[cellmat].is_fissile;
+			for(int z=0;z<problem_geom.get_material_count();z++){
+				if (cellmat == problem_geom.materials[z].matnum){
+					is_fissile =  problem_geom.materials[z].is_fissile;
+					break;
+				}
+			}
+			//std::cout << "cellnum " << cellnum << " matnum " << cellmat << " is fissile " << is_fissile << "\n";
 
 			//create instances
 			ginst = context -> createGeometryInstance();
@@ -810,6 +880,7 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			cellnum_var 	-> setUint(cellnum);
 			cellmat_var 	-> setUint(cellmat);
 			cellfissile_var -> setUint(is_fissile);
+			//std::cout << "cellnum,matnum,isfiss " << cellnum << " " << cellmat << " " << is_fissile << "\n";
 
 			// make geometry group for this primitive (to attach acceleration to)
 			this_accel = context->createAcceleration("Sbvh","Bvh");
@@ -891,6 +962,8 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 	{
 	    for (size_t x = 0; x < image.get_width(); ++x)
 	    {
+	    	//mincell=0;
+	    	//maxcell=3;
 	    	make_color(colormap,image_local[y*width+x],mincell,maxcell);
 	    	//printf("%u %u %6.3f %6.3f %6.3f\n",mincell,maxcell,colormap[0],colormap[1],colormap[2]);
 	        image[y][x] = png::rgb_pixel(colormap[0],colormap[1],colormap[2]);
@@ -948,6 +1021,9 @@ class whistory {
 	CUDPPHandle            reduplan_float;
 	CUDPPHandle            compactplan;
 	CUDPPResult            res;
+	unsigned * 				d_valid_result;
+	unsigned * 				d_valid_N;
+	unsigned * 				d_remap;
 	// CURAND
 	curandGenerator_t rand_gen;
 	// cuda parameters
@@ -1003,6 +1079,7 @@ class whistory {
     unsigned 		MT_columns;
     //geom parameters
     float 			outer_cell_dims [6];
+    // private transport functions
 public:
      whistory(int,wgeometry);
     ~whistory();
@@ -1013,7 +1090,7 @@ public:
     void load_cross_sections();
     void print_xs_data();
     void print_pointers();
-    void converge();
+    void converge(unsigned);
     void sample_fissile_points();
     void trace(unsigned);
     void write_xs_data(std::string);
@@ -1021,7 +1098,7 @@ public:
 whistory::whistory(int Nin, wgeometry problem_geom){
 	// init optix stuff first
 	optix_obj.N=Nin;
-	optix_obj.stack_size_multiplier=4;
+	optix_obj.stack_size_multiplier=12;
 	optix_obj.init(problem_geom);
 	optix_obj.print();
 	// CUDA stuff
@@ -1060,6 +1137,7 @@ whistory::whistory(int Nin, wgeometry problem_geom){
 	total_bytes_energy  = 0;
 	//copy any info needed
 	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
+	xs_isotope_string = problem_geom.isotope_list;
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1251,16 +1329,10 @@ void whistory::copy_to_device(){
 }
 void whistory::load_cross_sections(){
 	
-	std::string tope_string;
-
-	//make tope string from material tables
-	tope_string = "92235";
-
 	printf("\e[1;32m%-6s\e[m \n","Loading cross sections and unionizing...");
 
 	// set the string, make ints list
-	xs_isotope_string = tope_string;
-	std::istringstream ss(tope_string);
+	std::istringstream ss(xs_isotope_string);
 	std::string token;
 	unsigned utoken;
 	unsigned bytes,rows,columns;
@@ -1313,7 +1385,7 @@ void whistory::load_cross_sections(){
 		// init the libraries wanted
 		char tope_string_c[256];
 		call_string = PyString_FromString("_init_from_string");
-		arg_string  = PyString_FromString(tope_string.c_str());
+		arg_string  = PyString_FromString(xs_isotope_string.c_str());
 		call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, arg_string, NULL);
 		PyErr_Print();
 		Py_DECREF(arg_string);
@@ -1784,15 +1856,16 @@ void whistory::sample_fissile_points(){
 	//allocate intermediate vectors
 	unsigned remap[N];
 	for(int k =0;k<N;k++){remap[k]=k;}
-	unsigned * d_valid_result;
-	unsigned * d_valid_N;
-	unsigned * d_remap;
 	source_point * d_fissile_points;
 	cudaMalloc(&d_valid_result,   N*sizeof(unsigned));
 	cudaMalloc(&d_valid_N,        1*sizeof(unsigned));
 	cudaMalloc(&d_remap,          N*sizeof(unsigned));
 	cudaMalloc(&d_fissile_points, N*sizeof(source_point));
 	cudaMemcpy(d_remap, remap,    N*sizeof(unsigned),cudaMemcpyHostToDevice);
+
+	//debug stuff
+	//unsigned compacted[N];
+	//unsigned ncompacted;
 
 	// iterate
 	unsigned current_index = 0;
@@ -1806,15 +1879,15 @@ void whistory::sample_fissile_points(){
 		set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
 		
 		//run OptiX to get cell number, set as a hash run for fissile, writes 1/0 to matnum, trace_type=4
-		trace(4);
+		trace(3);
 		
 		// compact
 		res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_matnum , N);
 		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
-		
-		std::cout << "done compacting\n";
 
-		//copy in new values, keep track of index, DOES NOT COPY DIRECTION, only position
+		//std::cout << "done compacting\n";
+
+		//copy in new values, keep track of index, copies positions and direction
 		copy_points(blks, NUM_THREADS, N, d_valid_N, current_index, d_valid_result, d_fissile_points, d_space); 
 		
 		// copy back and add
@@ -1822,16 +1895,33 @@ void whistory::sample_fissile_points(){
 		current_index += valid_N;
 		
 		// print how far along we are
-		std::cout << (float)current_index/(float)N <<"\% done\n"; 
+		std::cout << (float)current_index/(float)N*100.0 <<" \% done\r";
+
+		if((float)current_index/(float)N > 1){
+			std::cout << "100.00 \% done     \n";
+		} 
 	}
+
+	std::cout << "Copying to starting points...\n";
+
+	cudaMemcpy(d_space,d_fissile_points,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
+	cudaFree(d_fissile_points);
 
 	std::cout << "Done.\n";
 
+	cudaMemcpy(space,d_space,N*sizeof(source_point),cudaMemcpyDeviceToHost);
+	FILE* positionsfile = fopen("starting_positions","w");
+	for(int k=0;k<N;k++){
+		fprintf(positionsfile,"% 10.8E % 10.8E % 10.8E % 10.8E % 10.8E % 10.8E\n",space[k].x,space[k].y,space[k].z,space[k].xhat,space[k].yhat,space[k].zhat);
+	}
+	fclose(positionsfile);
+
 }
-void whistory::converge(){
+void whistory::converge(unsigned num_cycles){
 
-	set_positions_rand ( blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
+	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
 
+	}
 }
 
 

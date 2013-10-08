@@ -17,6 +17,7 @@ int main(){
 	// set up geometry
 	wgeometry geom;
 
+	// materials
 	unsigned topes[2]={92235,92238};
 	float    fracs[2]={0.10,0.90};
 	float    dens = 10.1;
@@ -24,7 +25,9 @@ int main(){
 	geom.add_material(2,0,2,dens,topes,fracs);
 	geom.add_material(3,0,2,dens,topes,fracs);
 	geom.add_primitive();
-	geom.primitives[0].type=2;
+
+	// geom
+	geom.primitives[0].type=1;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]=-20.0;
 	geom.primitives[0].min[1]=-20.0;
@@ -103,6 +106,7 @@ int main(){
 	//////////////////////////////
 
 	hist.sample_fissile_points();
+	
 
 
 

@@ -41,7 +41,9 @@ RT_PROGRAM void camera()
   payload.cont=1;
   payload.do_first_hit=1;
   for(cnt=0;cnt<10;cnt++){
-    payload.hitbuff[cnt]=-1;
+    payload.hitbuff[cnt].cell = -1;
+    payload.hitbuff[cnt].mat  = -1;
+    payload.hitbuff[cnt].fiss = -1;
   }
 
   // first trace to find closest hit
@@ -96,7 +98,8 @@ RT_PROGRAM void camera()
    positions_buffer[launch_index].z = z;
    }
 
-   else if(trace_type==2 | trace_type ==4){   // where am I? trace
+
+   else if(trace_type==2 | trace_type==3){   // where am I? trace
       // check if bc
       if (payload.cell_first==outer_cell){
             payload.cont=0; 
@@ -107,34 +110,17 @@ RT_PROGRAM void camera()
          ray = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
          rtTrace(top_object, ray, payload);      
       }
-      cellnum_buffer[launch_index] = payload.hitbuff[0];
+      cellnum_buffer[launch_index] = payload.hitbuff[0].cell;
       // if number 4 requested, then write fissile flag to matnum instead of matnum
-      if (trace_type==2){
-        matnum_buffer[launch_index] = payload.matnum;
+      //rtPrintf("cellnum,matnum,is_fissile = %d %d %d \n",payload.hitbuff[0].cell,payload.hitbuff[0].mat,payload.hitbuff[0].fiss);
+      if(trace_type == 2){
+        matnum_buffer[launch_index]=payload.hitbuff[0].mat;
       }
-      else if (trace_type==4){
-        matnum_buffer[launch_index] = payload.is_fissile;
+      else if(trace_type == 3){
+        matnum_buffer[launch_index]=payload.hitbuff[0].fiss;
       }
-   }
 
-   else if (trace_type==3){// intersection point trace
-    dist_to_surf = payload.surf_dist;
-    if (payload.cell_first==outer_cell){ // supress hit
-      x = 0;
-      y = 0;
-      z = 0;
-    }
-    else{
-      // move to surface
-      x = positions_buffer[launch_index].x + dist_to_surf*positions_buffer[launch_index].xhat;
-      y = positions_buffer[launch_index].y + dist_to_surf*positions_buffer[launch_index].yhat;
-      z = positions_buffer[launch_index].z + dist_to_surf*positions_buffer[launch_index].zhat;
-    }
-    positions_buffer[launch_index].x = x;
-    positions_buffer[launch_index].y = y;
-    positions_buffer[launch_index].z = z;
    }
-
 
 
 }
