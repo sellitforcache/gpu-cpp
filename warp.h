@@ -29,6 +29,8 @@ void microscopic();
 void elastic_scatter();
 void inelastic_scatter();
 void fission();
+void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned * );
+void sample_fission_spectra(unsigned,unsigned,unsigned,float*,float*);
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -292,16 +294,16 @@ void primitive::make_hex_array(int n, float x, float y, float phi, unsigned star
 
 
 class wgeometry {
-	unsigned n_box;
-	unsigned n_cyl;
-	unsigned n_hex;
-	unsigned n_primitives;
-	unsigned n_transforms;
-	unsigned outer_cell;
-	unsigned n_materials;
-	unsigned n_isotopes;
-	unsigned * material_num_list;
-	unsigned * cell_num_list;
+	unsigned 	n_box;
+	unsigned 	n_cyl;
+	unsigned 	n_hex;
+	unsigned 	n_primitives;
+	unsigned 	n_transforms;
+	unsigned 	outer_cell;
+	unsigned 	n_materials;
+	unsigned 	n_isotopes;
+	unsigned * 	material_num_list;
+	unsigned * 	cell_num_list;
 public:
 	 wgeometry();
 	~wgeometry();
@@ -319,10 +321,16 @@ public:
 	int check();
 	unsigned get_outer_cell_dims(float*);
 	unsigned get_material_count();
+	void make_material_table();
+	void get_material_table(unsigned*,unsigned*,unsigned**,unsigned**,float**);
 	std::vector<primitive>   	primitives;
 	std::vector<material_def>	materials;
 	std::vector<unsigned>		isotopes;
 	std::string 				isotope_list;
+	unsigned *	isotope_list_array;
+	unsigned *	material_list_array;
+	float * 	concentrations_matrix;
+	float * 	awr_list;
 };
 
 wgeometry::wgeometry(){
@@ -600,7 +608,90 @@ unsigned wgeometry::get_outer_cell_dims(float * input_array){
 unsigned wgeometry::get_material_count(){
 	return n_materials;
 }
+void wgeometry::make_material_table(){
 
+	// allocate and copy the insotope list to the array
+	isotope_list_array = new unsigned [n_isotopes];
+	memcpy(isotope_list_array,isotopes.data(),n_isotopes*sizeof(unsigned));
+
+	// allocate and copy the material number list to the array
+	material_list_array = new unsigned [n_materials];
+	for(int k=0;k<n_materials;k++){
+		material_list_array[k]=materials[k].matnum;
+	}
+
+	// allocate and copy the fractions to the matrix
+	unsigned notfound=1;
+	int z=0;
+	concentrations_matrix = new float [n_materials*n_isotopes];
+	for(int j=0;j<n_materials;j++){     // isotope in a column
+		for(int k=0;k<n_isotopes;k++){  // material in a row
+			
+			notfound=1;
+			//scan the material object to see if the isotope is there
+			for(z=0;z<materials[j].num_isotopes;z++){
+				if(materials[j].isotopes[z] == isotope_list_array[k]){
+					notfound=0;
+					break;
+				}
+			}
+
+			// use the internal index to copy to matrix
+			if(notfound){
+				concentrations_matrix[j*n_isotopes + k] = 0.0;
+			}
+			else{
+				concentrations_matrix[j*n_isotopes + k] = materials[j].fractions[z];
+			}
+		}
+	}
+
+	// now convert fractions into number densities
+	float frac   = 0.0;
+	float m_avg  = 0.0;
+	float N_avg  = 0.0;
+	float awr    = 0.0;
+	float dens   = 0.0;
+	float u_to_g = 1.66053892e-24; // grams
+	float m_n    = 1.008664916;    // u
+	float barns  = 1e24;
+
+	for(int j=0;j<n_materials;j++){
+
+		//normalize the fractions for this material and calculate average mass
+		for(int k=0;k<n_isotopes;k++){
+			frac += concentrations_matrix[j*n_isotopes+k];
+		}
+		for(int k=0;k<n_isotopes;k++){
+			concentrations_matrix[j*n_isotopes+k] = concentrations_matrix[j*n_isotopes+k]/frac;
+			m_avg += concentrations_matrix[j*n_isotopes+k] * awr_list[k] * m_n;
+		}
+
+		//get density
+		dens = materials[j].density;
+
+		// average num density
+		N_avg = dens/(m_avg * u_to_g * barns);
+
+		//  multiply normalized fractions by average number density to get topes number density
+		for(int k=0;k<n_isotopes;k++){
+			concentrations_matrix[j*n_isotopes+k] = concentrations_matrix[j*n_isotopes+k] * N_avg;
+		}
+	}
+}
+void wgeometry::get_material_table(unsigned* n_mat_in, unsigned * n_tope_in, unsigned** material_list_in, unsigned** isotope_list_in, float** conc_mat_in){
+
+	*n_mat_in  = n_materials;
+	*n_tope_in = n_isotopes;
+
+	*material_list_in 	= new unsigned [n_materials];
+	*isotope_list_in 	= new unsigned [n_isotopes];
+	*conc_mat_in 		= new float    [n_materials*n_isotopes];
+
+	memcpy(*material_list_in,  material_list_array,    n_materials*sizeof(unsigned)         );
+	memcpy(*isotope_list_in,   isotope_list_array,     n_isotopes *sizeof(unsigned)         );
+	memcpy(*conc_mat_in,       concentrations_matrix,  n_materials*n_isotopes*sizeof(float) );
+}
 
 
 
@@ -1007,7 +1098,9 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 
 //history struct
 class whistory { 
-	// optix object pointer
+	// geommetry object
+	wgeometry 			   problem_geom;
+	// optix object 
 	optix_stuff 		   optix_obj;
 	// CUDPP
 	CUDPPHandle            theCudpp;
@@ -1032,6 +1125,8 @@ class whistory {
 	unsigned 	NUM_THREADS;
 	unsigned 	blks;
 	// host data
+	unsigned 		n_materials;
+	unsigned 		n_isotopes;
     source_point *  space;
     unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points 
     unsigned *      xs_MT_numbers_total;
@@ -1045,12 +1140,17 @@ class whistory {
     float *         E;
     float *         Q;
     float *         rn_bank;
+    float * 		awr_list;
+    unsigned * 		index;
     unsigned *      cellnum;
     unsigned *      matnum;
     unsigned *      isonum;
     unsigned *      rxn;
     unsigned *      done;
     unsigned *      yield;
+    unsigned * 		material_list;
+    unsigned * 		isotope_list;
+    float *  		number_density_matrix;
 	// device data
 	source_point *  d_space;
 	unsigned *      d_xs_length_numbers;
@@ -1063,12 +1163,17 @@ class whistory {
     float *         d_E;
     float *         d_Q;
     float *         d_rn_bank;
+    float * 		d_awr_list;
+    unsigned * 		d_index;
     unsigned *      d_cellnum;
     unsigned *      d_matnum;
     unsigned *      d_isonum;
     unsigned *      d_rxn;
     unsigned *      d_done;
     unsigned *      d_yield;
+    unsigned * 		d_material_list;
+    unsigned * 		d_isotope_list;
+    float *  		d_number_density_matrix;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1095,8 +1200,10 @@ public:
     void trace(unsigned);
     void write_xs_data(std::string);
 };
-whistory::whistory(int Nin, wgeometry problem_geom){
-	// init optix stuff first
+whistory::whistory(int Nin, wgeometry problem_geom_in){
+	// do problem gemetry stuff first
+	problem_geom = problem_geom_in;
+	// init optix stuff second
 	optix_obj.N=Nin;
 	optix_obj.stack_size_multiplier=12;
 	optix_obj.init(problem_geom);
@@ -1120,12 +1227,14 @@ whistory::whistory(int Nin, wgeometry problem_geom){
 	cudaMalloc( &d_rn_bank  			, N*RNUM_PER_THREAD*sizeof(float)    );
 	cudaMalloc( &d_isonum   			, N*sizeof(unsigned) );
 	cudaMalloc( &d_yield				, N*sizeof(unsigned) );
+	cudaMalloc( &d_index				, N*sizeof(unsigned) );
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point [N];
 	E 					= new float [N];
 	Q 					= new float [N];
 	rn_bank  			= new float [N*RNUM_PER_THREAD];
+	index     			= new unsigned [N];
 	cellnum 			= new unsigned [N];
 	matnum 				= new unsigned [N];
 	rxn 				= new unsigned [N];
@@ -1147,17 +1256,21 @@ whistory::~whistory(){
 	cudaFree( d_xs_data_main_E_grid );
 	cudaFree( d_xs_data_scatter     );
 	cudaFree( d_xs_data_energy      );
+	cudaFree( d_index   );
 	cudaFree( E         );
 	cudaFree( Q         );
 	cudaFree( rn_bank   );
 	cudaFree( isonum    );
 	cudaFree( yield     );
+	cudaFree( d_awr_list);
 	delete xs_length_numbers; 
 	delete xs_MT_numbers_total;
     delete xs_MT_numbers;
     delete xs_data_MT;
 	delete xs_data_main_E_grid;
 	delete space;
+	delete index;
+	delete awr_list;
 	delete E;
 	delete Q;
 	delete rn_bank;
@@ -1296,11 +1409,12 @@ void whistory::copy_to_device(){
     std::cout << "Done.\n";
     std::cout << "Unionized cross sections... ";
     // copy xs_data,  0=isotopes, 1=main E points, 2=total numer of reaction channels
-    cudaMemcpy( d_xs_length_numbers, 	xs_length_numbers,		6 																*sizeof(unsigned), cudaMemcpyHostToDevice );
-    cudaMemcpy( d_xs_MT_numbers_total, 	xs_MT_numbers_total,	xs_length_numbers[0]											*sizeof(unsigned), cudaMemcpyHostToDevice );
-    cudaMemcpy( d_xs_MT_numbers,		xs_MT_numbers,			xs_length_numbers[2]											*sizeof(unsigned), cudaMemcpyHostToDevice );
-    cudaMemcpy(	d_xs_data_MT,			xs_data_MT,				xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float) , cudaMemcpyHostToDevice );
-	cudaMemcpy(	d_xs_data_main_E_grid,	xs_data_main_E_grid,	xs_length_numbers[1]											*sizeof(float)	 , cudaMemcpyHostToDevice );
+    cudaMemcpy( d_xs_length_numbers, 	xs_length_numbers,		6 																*sizeof(unsigned), 	cudaMemcpyHostToDevice );
+    cudaMemcpy( d_xs_MT_numbers_total, 	xs_MT_numbers_total,	xs_length_numbers[0]											*sizeof(unsigned), 	cudaMemcpyHostToDevice );
+    cudaMemcpy( d_xs_MT_numbers,		xs_MT_numbers,			xs_length_numbers[2]											*sizeof(unsigned), 	cudaMemcpyHostToDevice );
+    cudaMemcpy(	d_xs_data_MT,			xs_data_MT,				xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float) , 	cudaMemcpyHostToDevice );
+	cudaMemcpy(	d_xs_data_main_E_grid,	xs_data_main_E_grid,	xs_length_numbers[1]											*sizeof(float)	 , 	cudaMemcpyHostToDevice );
+	cudaMemcpy( d_awr_list, 			awr_list,   			xs_length_numbers[0]       										*sizeof(float), 	cudaMemcpyHostToDevice );
 	std::cout << "Done.\n";
 	// copy device pointer array to device array
 	std::cout << "Pointer arrays... ";
@@ -1602,6 +1716,41 @@ void whistory::load_cross_sections(){
 
 
 
+
+    // AWR vector
+    call_string = PyString_FromString("_get_awr_pointer");
+	call_result = PyObject_CallMethodObjArgs(xsdat_instance, call_string, NULL);
+	Py_DECREF(call_string);
+	if (PyObject_CheckBuffer(call_result)){
+		PyObject_GetBuffer(call_result, &pBuff,PyBUF_ND);
+	}
+	else{
+		PyErr_Print();
+        fprintf(stderr, "Returned object does not support buffer interface\n");
+        return;
+	}
+
+    //
+    // get and copy lengths vector
+    //
+	rows    = pBuff.shape[0];
+	columns = pBuff.shape[1];
+	bytes   = pBuff.len;
+	//std::cout << "lengths " << rows << " " << columns << " " << bytes << "\n";
+    // allocate xs_data pointer arrays
+    awr_list     = new float  [rows];
+    // check to make sure bytes *= elements
+    assert(bytes==rows*4);
+    // copy python buffer contents to pointer
+    memcpy( awr_list,   pBuff.buf , bytes );
+    // cudaallocate device memory now that we know the size!
+    cudaMalloc(&d_awr_list,bytes);
+    // release python variable to free memory
+    Py_DECREF(call_result);
+
+
+
+
     ////////////////////////////////////
     // do scattering stuff
     ////////////////////////////////////
@@ -1772,6 +1921,13 @@ void whistory::load_cross_sections(){
 
     Py_Finalize();
 
+
+
+    //pass awr pointer to geometry object, make the number density table, copy pointers back
+    problem_geom.awr_list = awr_list;
+    problem_geom.make_material_table();
+    problem_geom.get_material_table(&n_materials,&n_isotopes,&material_list,&isotope_list,&number_density_matrix);  
+
 }
 void whistory::print_xs_data(){
 	unsigned dsum = 0;
@@ -1919,9 +2075,32 @@ void whistory::sample_fissile_points(){
 }
 void whistory::converge(unsigned num_cycles){
 
-	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
+	//intital samples
+	sample_fissile_points();
 
-	}
+	//set fission spectra
+	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
+
+	//for(int iteration = 0 ; iteration<num_cycles ; iteration++){
+
+		//find the main E grid index
+		find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index);
+
+		// run macroscopic kernel to find interaction length and reaction isotope
+		//macroscopic(blks, NUM_THREADS, N, );
+
+		// run tally kernel to compute spectra from 1/sigma_t
+
+		// run optix to detect the nearest surface
+
+		// run microscopic kernel to find reaction type
+
+		// async call to do escatter/iscatter/abs/fission
+
+		// update RNGs
+
+
+	//}
 }
 
 

@@ -23,6 +23,9 @@ COBJS =	mt19937ar.o \
 		print_banner.o \
 		set_positions_rand.o \
 		copy_points.o \
+		macroscopic.o \
+		find_E_grid_index.o \
+		sample_fission_spectra.o \
 		main.o
 
 ptx_objects = 	camera.ptx \
@@ -68,6 +71,15 @@ print_banner.o:
 
 set_positions_rand.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c set_positions_rand.cu
+
+find_E_grid_index.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c find_E_grid_index.cu
+
+sample_fission_spectra.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_fission_spectra.cu
+
+macroscopic.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c macroscopic.cu
 
 copy_points.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c copy_points.cu

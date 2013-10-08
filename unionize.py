@@ -11,6 +11,7 @@ class cross_section_data:
 		self.temp_extension   = '.03c'
 		self.tables           = []
 		self.libraries        = []
+		self.awr 			  = []
 		self.num_main_E		  = 0
 		self.reaction_numbers = []
 		self.reaction_numbers_total = []
@@ -57,6 +58,8 @@ class cross_section_data:
 	def _insert_reactions(self):
 
 		for table in self.tables:
+
+			self.awr.append(table.awr)
 
 			self.reaction_numbers_total.append(table.reactions.__len__())
 			for MT in table.reactions: # reactions is a dict
@@ -108,6 +111,10 @@ class cross_section_data:
 	def _get_MT_numbers_pointer(self):
 		MT_num_array = numpy.ascontiguousarray(numpy.array(self.reaction_numbers,order='C'),dtype=numpy.uint32)
 		return MT_num_array
+
+	def _get_awr_pointer(self):
+		awr_array = numpy.ascontiguousarray(numpy.array(self.awr,order='C'),dtype=numpy.uint32)
+		return awr_array
 
 	def _get_MT_array_pointer(self):
 		self.MT_array = numpy.ascontiguousarray(self.MT_array,dtype=numpy.float32)

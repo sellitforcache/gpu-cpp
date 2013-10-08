@@ -105,8 +105,7 @@ int main(){
 	// converge fission source? //
 	//////////////////////////////
 
-	hist.sample_fissile_points();
-	
+	hist.converge(50);
 
 
 
