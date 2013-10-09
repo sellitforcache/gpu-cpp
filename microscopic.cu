@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers, unsigned * rxn){
+__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers, unsigned * rxn, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
+	if (done[tid]){return;}
 
 	// load from array
 	unsigned  	RNUM_PER_THREAD = 15;
@@ -64,9 +65,9 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 }
 
-void microscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers, unsigned * rxn){
+void microscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers, unsigned * rxn, unsigned* done){
 
-	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, n_isotopes, n_columns, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, rxn);
+	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, n_isotopes, n_columns, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, rxn, done);
 	cudaThreadSynchronize();
 
 }

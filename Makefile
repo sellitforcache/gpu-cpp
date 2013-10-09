@@ -31,6 +31,8 @@ COBJS =	mt19937ar.o \
 		tally_spec.o \
 		escatter.o \
 		iscatter.o \
+		fission.o \
+		absorb.o \
 		main.o
 
 ptx_objects = 	camera.ptx \
@@ -103,6 +105,12 @@ escatter.o:
 
 iscatter.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c iscatter.cu
+
+fission.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c fission.cu
+
+absorb.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c absorb.cu
 
 gpu: $(ptx_objects) $(COBJS)
 	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 

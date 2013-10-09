@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , float* material_matrix){
+__global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
+	if (done[tid]){return;}
 
 	// load from arrays
 	unsigned  	RNUM_PER_THREAD = 15;
@@ -59,9 +60,9 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 }
 
-void macroscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned Ntopes, unsigned n_col ,source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , float* material_matrix){
+void macroscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned Ntopes, unsigned n_col ,source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
-	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, Ntopes, n_col, space, isonum, index, matnum, main_E_grid, rn_bank, E, xs_data_MT , material_matrix);
+	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, Ntopes, n_col, space, isonum, index, matnum, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
 	cudaThreadSynchronize();
 
 }

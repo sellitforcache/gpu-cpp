@@ -24,15 +24,17 @@ void print_banner();
 // device calls
 void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
 void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * );
-void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* );
-void microscopic(unsigned, unsigned, unsigned, unsigned , unsigned , unsigned* , unsigned * , float * , float * , float *, float *  , unsigned * , unsigned * , unsigned *);
-void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * );
-void sample_isotropic_directions(unsigned, unsigned, unsigned, unsigned, source_point* , float*);
-void escatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*);
-void iscatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*);
-void fission();
-void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned * );
 void sample_fission_spectra(unsigned,unsigned,unsigned,float*,float*);
+void sample_isotropic_directions(unsigned, unsigned, unsigned, unsigned, source_point* , float*);
+void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* , unsigned*);
+void microscopic(unsigned, unsigned, unsigned, unsigned , unsigned , unsigned* , unsigned * , float * , float * , float *, float *  , unsigned * , unsigned * , unsigned *, unsigned*);
+void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * , unsigned*);
+void escatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*);
+void iscatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*);
+void fission(unsigned , unsigned , unsigned, unsigned , unsigned*  , unsigned*  , float * , unsigned* );
+void absorb(unsigned , unsigned , unsigned , unsigned*  , unsigned* );
+void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned *, unsigned* );
+
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -1222,6 +1224,7 @@ class whistory {
 	unsigned * 		d_isotope_list;
     float *  		d_number_density_matrix;
     unsigned * 		d_reduced_yields;
+    unsigned * 		d_reduced_done;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1248,6 +1251,7 @@ public:
     void converge(unsigned);
     void sample_fissile_points();
     float reduce_yield();
+    unsigned reduce_done();
     void trace(unsigned);
     void write_xs_data(std::string);
 };
@@ -1284,6 +1288,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc( &d_tally_score  		, n_tally*sizeof(float));
 	cudaMalloc( &d_tally_count  		, n_tally*sizeof(unsigned));
 	cudaMalloc( &d_reduced_yields 		, 1*sizeof(unsigned));
+	cudaMalloc( &d_reduced_done 		, 1*sizeof(unsigned));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point [N];
@@ -1457,12 +1462,23 @@ void whistory::init_CUDPP(){
 float whistory::reduce_yield(){
 
 	res = cudppReduce(reduplan_int, d_reduced_yields, d_yield, N);
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing values\n");exit(-1);}
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing yield values\n");exit(-1);}
 	cudaMemcpy(&reduced_yields, d_reduced_yields, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
 	float keff = reduced_yields / N ;
 
 	return keff;
+
+}
+unsigned whistory::reduce_done(){
+
+	unsigned reduced_done = 0;
+
+	res = cudppReduce(reduplan_int, d_reduced_done, d_done, N);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing done values\n");exit(-1);}
+	cudaMemcpy(&reduced_done, d_reduced_done, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
+
+	return reduced_done;
 
 }
 void whistory::copy_to_device(){
@@ -2192,6 +2208,7 @@ void whistory::sample_fissile_points(){
 void whistory::converge(unsigned num_cycles){
 
 	float keff = 0.0;
+	unsigned completed_hist = 0;
 
 	//intital samples
 	sample_fissile_points();
@@ -2204,41 +2221,45 @@ void whistory::converge(unsigned num_cycles){
 
 	//for(int iteration = 0 ; iteration<num_cycles ; iteration++){
 
-		//while(notdone){
+		while(completed_hist<N){
 	
 			//find the main E grid index
-			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index);
+			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
 
 			// find what material we are in
 			trace(2);
 	
 			// run macroscopic kernel to find interaction length and reaction isotope
-			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix);
+			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 	
 			// run tally kernel to compute spectra from 1/sigma_t
-			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count);
+			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done);
 	
 			// run optix to detect the nearest surface and move particle there
 			trace(1);
 	
 			// run microscopic kernel to find reaction type
-			microscopic(blks, NUM_THREADS, N, n_isotopes, MT_columns, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_rxn);
+			microscopic(blks, NUM_THREADS, N, n_isotopes, MT_columns, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_rxn, d_done);
 	
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
-			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list);
-			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list);
-			//fission();
-			//absorb();
+			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done);
+			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done);
+			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_yield , d_rn_bank, d_done);
+			absorb(   blks,  NUM_THREADS,   N, d_rxn , d_done);
 	
 			// update RNGs
 			update_RNG();
 
 			// get how many histories are complete
-	
-		//}
+			completed_hist = reduce_done();
+
+			std::cout << completed_hist << "/" << N << " histories complete\n";
+		}
 
 		//reduce yield
-		//keff = reduce_yield();
+		keff = reduce_yield();
+
+		std::cout << "cycle keff = " << keff << "\n";
 
 
 	//}
