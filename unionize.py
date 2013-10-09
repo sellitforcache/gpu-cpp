@@ -57,23 +57,28 @@ class cross_section_data:
 
 	def _insert_reactions(self):
 
+		
 		for table in self.tables:
-
+			#append ones to front
+			self.reaction_numbers.append(1)
+			#append this topes AWR
 			self.awr.append(table.awr)
-
+			#append totals
 			self.reaction_numbers_total.append(table.reactions.__len__())
+
+		#append reaction numbers
+		for table in self.tables:
 			for MT in table.reactions: # reactions is a dict
 				self.reaction_numbers.append(MT)
-
-		self.num_reactions=self.reaction_numbers.__len__()
+				self.num_reactions += 1
 
 		#print self.num_reactions
-		#print self.reaction_numbers
+		print self.reaction_numbers
 		#print self.reaction_numbers_total
 
 	def _allocate_arrays(self):
 
-		n_columns  = 2*self.num_isotopes + self.num_reactions  # totals + (abs + all other reactions (elastic scatter included) )
+		n_columns  = self.num_isotopes + self.num_reactions  # totals + ( all other reactions (elastic scatter included) )
 		n_rows     = self.num_main_E
 
 		self.MT_array  = numpy.zeros((n_rows,n_columns),dtype=float,order='C')
@@ -92,9 +97,9 @@ class cross_section_data:
 			self.MT_array[:,tope_index]=this_array
 
 			#do abs and higher, start at reaction block
-			this_array    = numpy.interp( self.MT_E_grid, table.energy, table.sigma_a ) #total abs vector
-			self.MT_array[:,MT_array_dex] = this_array
-			MT_array_dex = MT_array_dex + 1  #increment MT array index
+			#this_array    = numpy.interp( self.MT_E_grid, table.energy, table.sigma_a ) #total abs vector
+			#self.MT_array[:,MT_array_dex] = this_array
+			#MT_array_dex = MT_array_dex + 1  #increment MT array index
 
 			for MT in table.reactions:
 				rxn        = table.reactions[MT]
@@ -129,7 +134,9 @@ class cross_section_data:
 		return lengths
 
 	def _get_MT_numbers_total_pointer(self):
-		numbers = numpy.ascontiguousarray(numpy.array(self.reaction_numbers_total,order='C'),dtype=numpy.uint32)
+		numbers = numpy.array(self.reaction_numbers_total,order='C')
+		numbers = numpy.cumsum(numbers)
+		numbers = numpy.ascontiguousarray(numbers,dtype=numpy.uint32)
 		return numbers
 
 	def _print_isotopes(self):

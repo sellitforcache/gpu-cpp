@@ -24,8 +24,10 @@ COBJS =	mt19937ar.o \
 		set_positions_rand.o \
 		copy_points.o \
 		macroscopic.o \
+		microscopic.o \
 		find_E_grid_index.o \
 		sample_fission_spectra.o \
+		sample_isotropic_directions.o \
 		tally_spec.o \
 		main.o
 
@@ -79,8 +81,14 @@ find_E_grid_index.o:
 sample_fission_spectra.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_fission_spectra.cu
 
+sample_isotropic_directions.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_isotropic_directions.cu
+
 macroscopic.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c macroscopic.cu
+
+microscopic.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c microscopic.cu
 
 copy_points.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c copy_points.cu

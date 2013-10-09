@@ -25,8 +25,9 @@ void print_banner();
 void set_positions_rand(unsigned , unsigned, unsigned, unsigned, source_point * , float *  , float  * );
 void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * );
 void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* );
-void microscopic();
+void microscopic(unsigned, unsigned, unsigned, unsigned , unsigned , unsigned* , unsigned * , float * , float * , float *, float *  , unsigned * , unsigned * , unsigned *);
 void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * );
+void sample_isotropic_directions(unsigned, unsigned, unsigned, unsigned, source_point* , float*);
 void elastic_scatter();
 void inelastic_scatter();
 void fission();
@@ -670,7 +671,7 @@ void wgeometry::make_material_table(){
 		for(int k=0;k<n_isotopes;k++){
 			concentrations_matrix[j*n_isotopes+k] = concentrations_matrix[j*n_isotopes+k]/frac;
 			m_avg += concentrations_matrix[j*n_isotopes+k] * awr_list[k] * m_n;
-			std::cout << "awr["<<k<<"] = "<<awr_list[k]<<"\n";
+			//std::cout << "awr["<<k<<"] = "<<awr_list[k]<<"\n";
 		}
 
 		//get density
@@ -1194,6 +1195,7 @@ class whistory {
     unsigned * 		material_list;
     unsigned * 		isotope_list;
     float *  		number_density_matrix;
+    unsigned 		reduced_yields;
 	// device data
 	source_point *  d_space;
 	unsigned *      d_xs_length_numbers;
@@ -1219,6 +1221,7 @@ class whistory {
 	unsigned * 		d_material_list;
 	unsigned * 		d_isotope_list;
     float *  		d_number_density_matrix;
+    unsigned * 		d_reduced_yields;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1244,6 +1247,7 @@ public:
     void print_materials_table();
     void converge(unsigned);
     void sample_fissile_points();
+    float reduce_yield();
     void trace(unsigned);
     void write_xs_data(std::string);
 };
@@ -1261,6 +1265,8 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	RNUM_PER_THREAD = 15;
 	blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
+	// set tally vector length
+	n_tally = 1024;
 	// device data stuff
 	N = Nin;
 				 d_space 	= (source_point*) optix_obj.positions_ptr;
@@ -1277,6 +1283,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc( &d_index				, N*sizeof(unsigned) );
 	cudaMalloc( &d_tally_score  		, n_tally*sizeof(float));
 	cudaMalloc( &d_tally_count  		, n_tally*sizeof(unsigned));
+	cudaMalloc( &d_reduced_yields 		, 1*sizeof(unsigned));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point [N];
@@ -1447,6 +1454,17 @@ void whistory::init_CUDPP(){
 	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in inserting values into hash table\n");exit(-1);}
 
 }
+float whistory::reduce_yield(){
+
+	res = cudppReduce(reduplan_int, d_reduced_yields, d_yield, N);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing values\n");exit(-1);}
+	cudaMemcpy(&reduced_yields, d_reduced_yields, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
+
+	float keff = reduced_yields / N ;
+
+	return keff;
+
+}
 void whistory::copy_to_device(){
 
 	float * this_pointer;
@@ -1472,7 +1490,7 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_xs_length_numbers, 	xs_length_numbers,		6 																*sizeof(unsigned), 	cudaMemcpyHostToDevice );
     cudaMemcpy( d_xs_MT_numbers_total, 	xs_MT_numbers_total,	xs_length_numbers[0]											*sizeof(unsigned), 	cudaMemcpyHostToDevice );
     cudaMemcpy( d_xs_MT_numbers,		xs_MT_numbers,			xs_length_numbers[2]											*sizeof(unsigned), 	cudaMemcpyHostToDevice );
-    cudaMemcpy(	d_xs_data_MT,			xs_data_MT,				xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float) , 	cudaMemcpyHostToDevice );
+    cudaMemcpy(	d_xs_data_MT,			xs_data_MT,				MT_rows*MT_columns*sizeof(float) , 	cudaMemcpyHostToDevice );
 	cudaMemcpy(	d_xs_data_main_E_grid,	xs_data_main_E_grid,	xs_length_numbers[1]											*sizeof(float)	 , 	cudaMemcpyHostToDevice );
 	cudaMemcpy( d_awr_list, 			awr_list,   			xs_length_numbers[0]       										*sizeof(float), 	cudaMemcpyHostToDevice );
 	cudaMemcpy( d_material_list,        material_list,         	n_materials     												*sizeof(unsigned), 	cudaMemcpyHostToDevice );
@@ -1839,25 +1857,30 @@ void whistory::load_cross_sections(){
     unsigned 	cdfRows, cdfColumns, cdfBytes;
 
     //set total cross sections to NULL
-    for (int j=0 ; j<2*xs_length_numbers[0] ; j++){  //start after the total xs and total abs vectors
+    for (int j=0 ; j<1*xs_length_numbers[0] ; j++){  //start after the total xs and total abs vectors
     	for (int k=0 ; k<MT_rows ; k++){
     		xs_data_scatter     [k*MT_columns + j] = NULL;
 			xs_data_scatter_host[k*MT_columns + j] = NULL;
 		}
 	}
 
-    // do the rest fo the MT numbers
-    for (int j=2*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs and total abs vectors
+    // do the rest of the MT numbers
+    for (int j=1*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs and total abs vectors
+    	
+    	// get MT number and isotope
+    	this_MT     = xs_MT_numbers[j];  //adjust for the first total xs when accessing this array
+    	for (int z=0 ; z<xs_length_numbers[0] ; z++){ // see what isotope were in
+    		if(j< (xs_MT_numbers_total[z] + 1*xs_length_numbers[0] )){
+    			this_tope=z;
+    			break;
+    		}
+    	}
+    	std::cout << "tope = " << this_tope << " MT = " << this_MT << "\n";
+
     	for (int k=0 ; k<MT_rows ; k++){
 
-    		// get this energy point, MT number, and isotope
+    		// get this energy point
     		this_energy = xs_data_main_E_grid[k];
-    		this_MT     = xs_MT_numbers[j-2*xs_length_numbers[0]];  //adjust for the first total/abs xs when accessing this array
-    		for (int z=0 ; z<xs_length_numbers[0] ; z++){ // see what isotope were in
-    			if(j<=xs_MT_numbers_total[z]){
-    				this_tope=z;
-    			}
-    		}
 
     		//SHOULD TRY TO FIX THIS CRAP FROM PRECISION LOSS
     		if (k==0){this_energy=this_energy*1.0000001;}
@@ -2000,7 +2023,7 @@ void whistory::load_cross_sections(){
     cudaMalloc(&d_number_density_matrix , 	n_materials*n_isotopes*sizeof(unsigned) );
 
 }
-void whistory::print_xs_data(){
+void whistory::print_xs_data(){  // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points
 	unsigned dsum = 0;
 	printf("\e[1;32m%-6s\e[m \n","Cross section data info:");
 	std::cout << "--- Bytes ---" << "\n";
@@ -2008,9 +2031,9 @@ void whistory::print_xs_data(){
 	std::cout << "  xs_MT_numbers_total:      " << xs_length_numbers[0]											*sizeof(unsigned) 		<< "\n";  dsum += (xs_length_numbers[0]											*sizeof(unsigned) );
 	std::cout << "  xs_MT_numbers:            " << xs_length_numbers[2]											*sizeof(unsigned) 		<< "\n";  dsum += (xs_length_numbers[2]											*sizeof(unsigned) );
 	std::cout << "  xs_data_main_E_grid:      " << xs_length_numbers[1]											*sizeof(float)	  		<< "\n";  dsum += (xs_length_numbers[1]											*sizeof(float)	  );
-	std::cout << "  xs_data_MT:               " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
-	std::cout << "  xs_data_scatter_pointers: " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
-	std::cout << "  xs_data_energy_pointers:  " << xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float)		<< "\n";  dsum += (xs_length_numbers[1]*(2*xs_length_numbers[0]+xs_length_numbers[2])*sizeof(float));
+	std::cout << "  xs_data_MT:               " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
+	std::cout << "  xs_data_scatter_pointers: " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
+	std::cout << "  xs_data_energy_pointers:  " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
 	std::cout << "  scatter data:             " << total_bytes_scatter																	<< "\n";  dsum += (total_bytes_scatter);
 	std::cout << "  energy data:              " << total_bytes_energy																	<< "\n";  dsum += (total_bytes_energy);
 	std::cout << "  TOTAL:                    " << dsum << " bytes \n";
@@ -2020,17 +2043,32 @@ void whistory::write_xs_data(std::string filename){
 
 	std::cout << "\e[1;32m" << "Writing xs_data to " << filename << "... ";
 
-	FILE* xsfile = fopen(filename.c_str(),"w");
-
+	std::string this_name;
+	// write MT array
+	this_name = filename + ".MTarray";
+	FILE* xsfile = fopen(this_name.c_str(),"w");
 	for (int k=0;k<MT_rows;k++){
-
-		fprintf(xsfile,"% 10.8E ",xs_data_main_E_grid[k]);
 		for(int j=0;j<MT_columns;j++){
 			fprintf(xsfile,"% 10.8E ",xs_data_MT[k*MT_columns+j]);
 		}
 		fprintf(xsfile,"\n");
 	}
+	fclose(xsfile);
 
+	// write unionized E grid
+	this_name = filename + ".Egrid";
+	xsfile = fopen(this_name.c_str(),"w");
+	for (int k=0;k<MT_rows;k++){
+		fprintf(xsfile,"%10.8E\n",xs_data_main_E_grid[k]);
+	}
+	fclose(xsfile);
+
+	// write MT number array
+	this_name = filename + ".MTnums";
+	xsfile = fopen(this_name.c_str(),"w");
+	for(int j=0;j<MT_columns;j++){
+		fprintf(xsfile,"%u\n",xs_MT_numbers[j]);
+	}
 	fclose(xsfile);
 
 	std::cout << "Done." << "\e[m \n";
@@ -2117,8 +2155,6 @@ void whistory::sample_fissile_points(){
 		res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_matnum , N);
 		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
 
-		//std::cout << "done compacting\n";
-
 		//copy in new values, keep track of index, copies positions and direction
 		copy_points(blks, NUM_THREADS, N, d_valid_N, current_index, d_valid_result, d_fissile_points, d_space); 
 		
@@ -2141,6 +2177,7 @@ void whistory::sample_fissile_points(){
 
 	std::cout << "Done.\n";
 
+	//write starting positions to file
 	cudaMemcpy(space,d_space,N*sizeof(source_point),cudaMemcpyDeviceToHost);
 	FILE* positionsfile = fopen("starting_positions","w");
 	for(int k=0;k<N;k++){
@@ -2148,8 +2185,13 @@ void whistory::sample_fissile_points(){
 	}
 	fclose(positionsfile);
 
+	// advance RN bank
+	curandGenerateUniform( rand_gen , d_rn_bank , N*RNUM_PER_THREAD );
+
 }
 void whistory::converge(unsigned num_cycles){
+
+	float keff = 0.0;
 
 	//intital samples
 	sample_fissile_points();
@@ -2157,33 +2199,45 @@ void whistory::converge(unsigned num_cycles){
 	//set fission spectra
 	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
 
+	//make directions isotropic
+	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
+
 	//for(int iteration = 0 ; iteration<num_cycles ; iteration++){
 
-		//find the main E grid index
-		find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index);
+		//while(notdone){
+	
+			//find the main E grid index
+			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index);
+	
+			// run macroscopic kernel to find interaction length and reaction isotope
+			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix);
+	
+			// run tally kernel to compute spectra from 1/sigma_t
+			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count);
+	
+			// run optix to detect the nearest surface
+			trace(1);
+	
+			// run microscopic kernel to find reaction type
+			microscopic(blks, NUM_THREADS, N, n_isotopes, MT_columns, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_rxn);
+	
+			// async call to do escatter/iscatter/abs/fission, serial execution for now :(
+			//
+			//
+			//
+	
+			// update RNGs
+			update_RNG();
+	
+		//}
 
-		// run macroscopic kernel to find interaction length and reaction isotope
-		macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix);
-
-		// run tally kernel to compute spectra from 1/sigma_t
-		tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count);
-
-		// run optix to detect the nearest surface
-		trace(1);
-
-		// run microscopic kernel to find reaction type
-		//microscopic();
-
-		// async call to do escatter/iscatter/abs/fission, serial execution for now :(
-		//
-		//
-		//
-
-		// update RNGs
-		update_RNG();
+		//reduce yield
+		//keff = reduce_yield();
 
 
 	//}
+
+		
 }
 
 

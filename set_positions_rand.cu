@@ -7,14 +7,14 @@ __global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD,
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid>=N){return;}
 
-	const float rn1   =  rn_bank[ (tid * RNUM_PER_THREAD) + 0];
-	const float rn2   =  rn_bank[ (tid * RNUM_PER_THREAD) + 1];
-	const float rn3   =  rn_bank[ (tid * RNUM_PER_THREAD) + 2];
-	const float rn4   =  rn_bank[ (tid * RNUM_PER_THREAD) + 3];
-	const float rn5   =  rn_bank[ (tid * RNUM_PER_THREAD) + 4];
-	const float pi    =   3.14159265359 ;
-	const float mu    = ( rn1 ) * 2.0 - 1.0;
-	const float theta = ( rn2 ) * 2.0 * pi ;
+	//const float rn1   =  rn_bank[ (tid * RNUM_PER_THREAD) + 0];
+	//const float rn2   =  rn_bank[ (tid * RNUM_PER_THREAD) + 1];
+	const float rn3   =  rn_bank[ (tid * RNUM_PER_THREAD) + 0];
+	const float rn4   =  rn_bank[ (tid * RNUM_PER_THREAD) + 1];
+	const float rn5   =  rn_bank[ (tid * RNUM_PER_THREAD) + 2];
+	//const float pi    =   3.14159265359 ;
+	//const float mu    = ( rn1 ) * 2.0 - 1.0;
+	//const float theta = ( rn2 ) * 2.0 * pi ;
 
 	positions_ptr[tid].samp_dist =     500;   
 	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * rn3 + x_min );  
