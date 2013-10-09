@@ -29,6 +29,8 @@ COBJS =	mt19937ar.o \
 		sample_fission_spectra.o \
 		sample_isotropic_directions.o \
 		tally_spec.o \
+		escatter.o \
+		iscatter.o \
 		main.o
 
 ptx_objects = 	camera.ptx \
@@ -95,6 +97,12 @@ copy_points.o:
 
 tally_spec.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c tally_spec.cu
+
+escatter.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c escatter.cu
+
+iscatter.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c iscatter.cu
 
 gpu: $(ptx_objects) $(COBJS)
 	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 

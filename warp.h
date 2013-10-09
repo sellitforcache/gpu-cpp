@@ -28,8 +28,8 @@ void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_po
 void microscopic(unsigned, unsigned, unsigned, unsigned , unsigned , unsigned* , unsigned * , float * , float * , float *, float *  , unsigned * , unsigned * , unsigned *);
 void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * );
 void sample_isotropic_directions(unsigned, unsigned, unsigned, unsigned, source_point* , float*);
-void elastic_scatter();
-void inelastic_scatter();
+void escatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*);
+void iscatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*);
 void fission();
 void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned * );
 void sample_fission_spectra(unsigned,unsigned,unsigned,float*,float*);
@@ -2208,6 +2208,9 @@ void whistory::converge(unsigned num_cycles){
 	
 			//find the main E grid index
 			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index);
+
+			// find what material we are in
+			trace(2);
 	
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix);
@@ -2215,19 +2218,22 @@ void whistory::converge(unsigned num_cycles){
 			// run tally kernel to compute spectra from 1/sigma_t
 			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count);
 	
-			// run optix to detect the nearest surface
+			// run optix to detect the nearest surface and move particle there
 			trace(1);
 	
 			// run microscopic kernel to find reaction type
 			microscopic(blks, NUM_THREADS, N, n_isotopes, MT_columns, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_rxn);
 	
-			// async call to do escatter/iscatter/abs/fission, serial execution for now :(
-			//
-			//
-			//
+			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
+			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list);
+			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list);
+			//fission();
+			//absorb();
 	
 			// update RNGs
 			update_RNG();
+
+			// get how many histories are complete
 	
 		//}
 

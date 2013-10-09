@@ -46,7 +46,6 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 
 void tally_spec(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned Ntally, source_point * space, float* E, float * tally_score, unsigned * tally_count){
 
-	printf("Ntally = %u\n",Ntally);
 	tally_spec_kernel <<< blks, NUM_THREADS >>> ( N, Ntally, space, E, tally_score, tally_count);
 	cudaThreadSynchronize();
 
