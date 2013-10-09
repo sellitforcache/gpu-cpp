@@ -8,7 +8,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
 
-	// load from arrays
+	// load from array
 	unsigned  	RNUM_PER_THREAD = 15;
 	unsigned 	this_tope 		= isonum[tid];
 	unsigned 	dex 			= index[tid];
@@ -17,6 +17,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	float 		this_E  		= E[tid];
 	float 		rn1 			= rn_bank[tid*RNUM_PER_THREAD + 0];
 	float 		cum_prob 		= 0.0;
+	unsigned 	k 				= 0;
 	unsigned 	this_rxn 		= 999999999;
 
 	if (this_tope == 0){  //first isotope
@@ -27,6 +28,8 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		tope_beginning = n_isotopes + xs_MT_numbers_total[this_tope-1];
 		tope_ending    = n_isotopes + xs_MT_numbers_total[this_tope]-1;
 	}
+
+	//printf("tope,begin,end = %u %u %u\n",this_tope,tope_beginning,tope_ending);
 
 	float xs_total = 0.0;
 	float e0 = main_E_grid[dex];
@@ -40,7 +43,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	xs_total 	= (t1-t0)/(e1-e0)*this_E + t0 ;    
 
 	// determine the reaction for this isotope
-	for(int k=tope_beginning; k<tope_ending; k++){
+	for(k=tope_beginning; k<tope_ending; k++){
 		//lienarly interpolate
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
@@ -55,7 +58,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	if(this_rxn == 999999999){printf("REACTION NOT SAMPLED CORRECTLY! this_rxn=%u\n",this_rxn);}
 
 	// write results out
-	printf("this_rxn(%d,(1:2))=[%u,%u];\n",tid+1,this_rxn,this_tope);
+	//printf("this_rxn(%d,(1:3))=[%u,%u,%u];\n",tid+1,this_rxn,this_tope,k);
 	rxn[tid] = this_rxn;
 
 
