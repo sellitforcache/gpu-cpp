@@ -496,6 +496,9 @@ unsigned wgeometry::get_maximum_cell(){
 }
 void wgeometry::add_material(unsigned matnum , unsigned is_fissile, unsigned num_topes, float density, unsigned * isotopes, float * fractions){
 	
+	// get current material index
+	unsigned dex = materials.size(); 
+
 	material_def this_material_def;
 
 	this_material_def.fractions = new float    [num_topes];
@@ -503,6 +506,7 @@ void wgeometry::add_material(unsigned matnum , unsigned is_fissile, unsigned num
 	
 	this_material_def.num_isotopes  = num_topes;
 	this_material_def.matnum        = matnum;
+	this_material_def.id 			= dex;
 	this_material_def.density       = density;
 	this_material_def.is_fissile    = is_fissile;
 	memcpy(this_material_def.fractions,  fractions,   num_topes*sizeof(float));
@@ -707,6 +711,7 @@ void wgeometry::print_materials_table(){
 
 	for(int j=0;j<n_materials;j++){
 
+		assert(j==materials[j].id);
 		std::cout <<  "material index " << j << " = material " << material_list_array[j] << "\n";
 		std::cout <<  " (isotope index, ZZZAAA) \n";
 		std::cout <<  " (number density #/bn-cm) \n";
@@ -995,7 +1000,8 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			cellmat =     problem_geom.primitives[j].transforms[k].cellmat;
 			for(int z=0;z<problem_geom.get_material_count();z++){
 				if (cellmat == problem_geom.materials[z].matnum){
-					is_fissile =  problem_geom.materials[z].is_fissile;
+					is_fissile =  problem_geom.materials[z].is_fissile;   // set fissile flag
+					cellmat    = problem_geom.materials[z].id;            // hash the material number to the ID, which is the matrix index, not that user-set number
 					break;
 				}
 			}
@@ -1465,7 +1471,7 @@ float whistory::reduce_yield(){
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing yield values\n");exit(-1);}
 	cudaMemcpy(&reduced_yields, d_reduced_yields, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
-	float keff = reduced_yields / N ;
+	float keff = (float)reduced_yields / (float)N ;
 
 	return keff;
 

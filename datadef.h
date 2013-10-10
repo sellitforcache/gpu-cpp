@@ -54,6 +54,7 @@ struct intersection_point {
 
 // intersection point struct
 struct material_def {
+    unsigned id;
     unsigned matnum;
     unsigned is_fissile;
     unsigned num_isotopes;
