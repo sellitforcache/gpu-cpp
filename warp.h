@@ -34,7 +34,7 @@ void iscatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* ,
 void fission(unsigned , unsigned , unsigned, unsigned , unsigned*  , unsigned*  , float * , unsigned* );
 void absorb(unsigned , unsigned , unsigned , unsigned*  , unsigned* );
 void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned *, unsigned* );
-
+void make_mask(unsigned, unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -1204,6 +1204,8 @@ class whistory {
     unsigned * 		isotope_list;
     float *  		number_density_matrix;
     unsigned 		reduced_yields;
+    unsigned * 		remap;
+    unsigned * 		zeros;
 	// device data
 	source_point *  d_space;
 	unsigned *      d_xs_length_numbers;
@@ -1231,6 +1233,8 @@ class whistory {
     float *  		d_number_density_matrix;
     unsigned * 		d_reduced_yields;
     unsigned * 		d_reduced_done;
+    source_point * 	d_fissile_points;
+    unsigned * 		d_mask;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1257,9 +1261,12 @@ public:
     void converge(unsigned);
     void sample_fissile_points();
     float reduce_yield();
+    void run(unsigned);
     unsigned reduce_done();
+    unsigned reset_cycle(unsigned);
     void trace(unsigned);
     void write_xs_data(std::string);
+    void write_tally(unsigned, std::string);
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
@@ -1295,6 +1302,11 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc( &d_tally_count  		, n_tally*sizeof(unsigned));
 	cudaMalloc( &d_reduced_yields 		, 1*sizeof(unsigned));
 	cudaMalloc( &d_reduced_done 		, 1*sizeof(unsigned));
+	cudaMalloc(	&d_valid_result			, N*sizeof(unsigned));
+	cudaMalloc(	&d_valid_N				, 1*sizeof(unsigned));
+	cudaMalloc(	&d_remap				, N*sizeof(unsigned));
+	cudaMalloc(	&d_fissile_points		, N*sizeof(source_point));
+	cudaMalloc( &d_mask 				, N*sizeof(unsigned));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point [N];
@@ -1310,12 +1322,18 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	done 				= new unsigned [N];
 	isonum   			= new unsigned [N];
 	yield	   			= new unsigned [N];
+	remap 				= new unsigned [N];
+	zeros 				= new unsigned [N];
 	// init counters to 0
 	total_bytes_scatter = 0;
 	total_bytes_energy  = 0;
 	//copy any info needed
 	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
 	xs_isotope_string = problem_geom.isotope_list;
+	// init remapping stuff for compaction
+	for(int k =0;k<N;k++){remap[k]=k;}
+	// zero out the zeros vector
+	for(int k =0;k<N;k++){zeros[k]=0;}
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1506,6 +1524,7 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_remap, 		remap,    	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     std::cout << "Done.\n";
     std::cout << "Unionized cross sections... ";
     // copy xs_data,  0=isotopes, 1=main E points, 2=total numer of reaction channels
@@ -2145,20 +2164,6 @@ void whistory::sample_fissile_points(){
 
 	std::cout << "\e[1;32m" << "Sampling initial fissile starting points uniformly... " << "\e[m \n";
 
-	//allocate intermediate vectors
-	unsigned remap[N];
-	for(int k =0;k<N;k++){remap[k]=k;}
-	source_point * d_fissile_points;
-	cudaMalloc(&d_valid_result,   N*sizeof(unsigned));
-	cudaMalloc(&d_valid_N,        1*sizeof(unsigned));
-	cudaMalloc(&d_remap,          N*sizeof(unsigned));
-	cudaMalloc(&d_fissile_points, N*sizeof(source_point));
-	cudaMemcpy(d_remap, remap,    N*sizeof(unsigned),cudaMemcpyHostToDevice);
-
-	//debug stuff
-	//unsigned compacted[N];
-	//unsigned ncompacted;
-
 	// iterate
 	unsigned current_index = 0;
 	unsigned valid_N = 0;
@@ -2195,7 +2200,7 @@ void whistory::sample_fissile_points(){
 	std::cout << "Copying to starting points...\n";
 
 	cudaMemcpy(d_space,d_fissile_points,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
-	cudaFree(d_fissile_points);
+	//cudaFree(d_fissile_points);
 
 	std::cout << "Done.\n";
 
@@ -2213,8 +2218,11 @@ void whistory::sample_fissile_points(){
 }
 void whistory::converge(unsigned num_cycles){
 
+	std::cout << "--- Running "<< num_cycles << " INACTIVE CYCLES ---\n";
+
 	float keff = 0.0;
 	unsigned completed_hist = 0;
+	unsigned current_fission_index = 0;
 
 	//intital samples
 	sample_fissile_points();
@@ -2225,7 +2233,107 @@ void whistory::converge(unsigned num_cycles){
 	//make directions isotropic
 	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
 
-	//for(int iteration = 0 ; iteration<num_cycles ; iteration++){
+	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
+
+		while(completed_hist<N){
+	
+			//find the main E grid index
+			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
+
+			// find what material we are in
+			trace(2);
+	
+			// run macroscopic kernel to find interaction length and reaction isotope
+			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
+	
+			// run optix to detect the nearest surface and move particle there
+			trace(1);
+	
+			// run microscopic kernel to find reaction type
+			microscopic(blks, NUM_THREADS, N, n_isotopes, MT_columns, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_rxn, d_done);
+	
+			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
+			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done);
+			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done);
+			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_yield , d_rn_bank, d_done);
+			absorb(   blks,  NUM_THREADS,   N, d_rxn , d_done);
+	
+			// update RNGs
+			update_RNG();
+
+			// get how many histories are complete
+			completed_hist = reduce_done();
+
+			//std::cout << completed_hist << "/" << N << " histories complete\n";
+		}
+
+		//reduce yield
+		keff = reduce_yield();
+
+		std::cout << "DISCARDED cycle keff = " << keff << "\n";
+
+		//reset cycle, adding new fission points to starting points
+		current_fission_index = reset_cycle(current_fission_index);
+		completed_hist = 0;
+
+	}
+
+		
+}
+unsigned whistory::reset_cycle(unsigned current_fission_index){
+
+	unsigned valid_N;
+
+	// do fissile query by setting rnx=16-18 as valid
+	make_mask(blks, NUM_THREADS, N, d_mask, d_rxn, 16, 18);  // add ones for all fission numbers
+
+	// copy fission points to fission points vector
+	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , N);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
+	copy_points(blks, NUM_THREADS, N, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space);   //copy in new values, keep track of index, copies positions and direction
+	cudaMemcpy(d_space,d_fissile_points,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
+
+	// copy back and add, wrap to beginning 
+	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
+	current_fission_index += valid_N;
+	if(current_fission_index>=N){current_fission_index = current_fission_index - N;}
+
+	//set fission spectra
+	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
+
+	//make directions isotropic
+	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
+
+	// rest run arrays
+	cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_done,			done,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_matnum,		matnum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+
+	// return updated fission index
+	return current_fission_index;
+
+}
+void whistory::run(unsigned num_cycles){
+
+	std::cout << "--- Running "<< num_cycles << " ACTIVE CYCLES ---\n";
+
+	float keff = 0.0;
+	float keff_cycle = 0.0;
+	float it = 0.0;
+	unsigned completed_hist = 0;
+	unsigned current_fission_index = 0;
+
+	//set fission spectra
+	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
+
+	//make directions isotropic
+	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
+
+	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
 
 		while(completed_hist<N){
 	
@@ -2259,19 +2367,45 @@ void whistory::converge(unsigned num_cycles){
 			// get how many histories are complete
 			completed_hist = reduce_done();
 
-			std::cout << completed_hist << "/" << N << " histories complete\n";
+			//std::cout << completed_hist << "/" << N << " histories complete\n";
 		}
 
 		//reduce yield
-		keff = reduce_yield();
+		keff_cycle = reduce_yield();
+		if (iteration == 0){
+			keff  = keff_cycle;
+		}
+		else {
+			it = (float) iteration;
+			keff  = (it/(it+1)) * keff + (1/(it+1)) * keff_cycle;
+		}
 
-		std::cout << "cycle keff = " << keff << "\n";
+		std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle keff = " << keff_cycle << "\n";
 
+		//reset cycle, adding new fission points to starting points
+		current_fission_index = reset_cycle(current_fission_index);
+		completed_hist = 0;
 
-	//}
+	}
 
-		
 }
+void whistory::write_tally(unsigned tallynum, std::string filename){
+
+	//tallynum is unused at this point
+
+	// copy down from device
+	cudaMemcpy( tally_score, d_tally_score , n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
+	cudaMemcpy( tally_count, d_tally_count , n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
+
+	// write unionized E grid
+	FILE* tfile = fopen(filename.c_str(),"w");
+	for (int k=0;k<n_tally;k++){
+		fprintf(tfile,"%10.8E %u\n",tally_score[k],tally_count[k]);
+	}
+	fclose(tfile);
+
+}
+
 
 
 

@@ -98,18 +98,16 @@ int main(){
 	hist.print_xs_data();
 	hist.copy_to_device();
 	hist.write_xs_data("xsdata");
-	//hist.print_pointers();
 	hist.print_materials_table();
 
 
-	//////////////////////////////
-	// converge fission source? //
-	//////////////////////////////
+	/////////////////////////////////////
+	// converge fission source and run //
+	/////////////////////////////////////
 
-	hist.converge(50);
-
-
-
+	hist.converge(10);
+	hist.run(20);
+	hist.write_tally(0,"tally");
 
 
 	return 0;
