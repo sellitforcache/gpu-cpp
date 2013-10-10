@@ -49,7 +49,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		}
 	}
 
-	if(tope == 999999999){printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u\n",tope);}
+	if(tope == 999999999){printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u\n",tope, this_E, dex, this_mat);}
 
 	//printf("tid=%d, samp_dist=% 10.8E\n",tid,samp_dist);
 
