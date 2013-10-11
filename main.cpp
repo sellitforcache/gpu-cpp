@@ -18,9 +18,17 @@ int main(){
 	wgeometry geom;
 
 	// materials
-	unsigned topes[2]={92235,92238};
-	float    fracs[2]={0.10,0.90};
-	float    dens = 10.424;
+	//unsigned topes[2]={92235,92238};
+	//float    fracs[2]={0.10,0.90};
+	//float    dens = 10.424;
+	//geom.add_material(1,1,2,dens,topes,fracs);
+	//geom.add_material(2,0,2,dens,topes,fracs);
+	//geom.add_material(3,0,2,dens,topes,fracs);
+
+	// non-fissile materials
+	unsigned topes[2]={8016,1001};
+	float    fracs[2]={1,2};
+	float    dens = 1.00;
 	geom.add_material(1,1,2,dens,topes,fracs);
 	geom.add_material(2,0,2,dens,topes,fracs);
 	geom.add_material(3,0,2,dens,topes,fracs);

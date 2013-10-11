@@ -1410,6 +1410,7 @@ void whistory::init_host(){
 		space[k].yhat 		= 0.0;
 		space[k].zhat 		= 0.0;
 		space[k].samp_dist 	= 10000.0;
+		space[k].macro_t 	= 0.0;
 		E[k]				= 0.0;
 		Q[k]				= 0.0;
 		cellnum[k]			= 0;

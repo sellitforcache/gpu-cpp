@@ -42,7 +42,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	// linearly interpolate, dex is the row number
 	t0 			= xs_data_MT[n_columns* dex    + this_tope];     
 	t1 			= xs_data_MT[n_columns*(dex+1) + this_tope];
-	xs_total 	= (t1-t0)/(e1-e0)*this_E + t0 ;    
+	xs_total 	= (t1-t0)/(e1-e0)*(this_E-e0) + t0 ;    
 
 	// determine the reaction for this isotope
 	for(k=tope_beginning; k<tope_ending; k++){
@@ -58,7 +58,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		}
 	}
 
-	if(this_rxn == 999999999){ //do same ac macro
+	if(this_rxn == 999999999){ // there is a gap in between the last MT and the total cross section, remap the rn to fit into the available data (effectively rescales the total cross section so everything adds up to it, if things aren't samples the first time around)
 		//printf("REACTION NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u rxn=%u cum_prob=%6.4E\n",this_tope, this_E, dex, this_rxn, cum_prob);
 		rn1 = rn1 * cum_prob;
 		cum_prob = 0.0;
@@ -77,7 +77,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	}
 
 	// write results out
-	//printf("this_rxn(%d,(1:3))=[%u,%u,%u];\n",tid+1,this_rxn,this_tope,k);
+	//if(this_rxn!=2){printf("this_rxn(%d,(1:3))=[%u,%u,%u];\n",tid+1,this_rxn,this_tope,k);}
 	rxn[tid] = this_rxn;
 	Q[tid] 	 = this_Q;
 
