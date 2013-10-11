@@ -16,7 +16,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	unsigned 	tope_beginning;
 	unsigned 	tope_ending;
 	float 		this_E  		= E[tid];
-	float 		rn1 			= rn_bank[tid*RNUM_PER_THREAD + 0];
+	float 		rn1 			= rn_bank[tid*RNUM_PER_THREAD + 2];
 	float 		cum_prob 		= 0.0;
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;

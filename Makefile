@@ -101,10 +101,10 @@ copy_points.o:
 tally_spec.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c tally_spec.cu
 
-escatter.o:
+escatter.o: 
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c escatter.cu
 
-iscatter.o:
+iscatter.o: 
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c iscatter.cu
 
 fission.o:

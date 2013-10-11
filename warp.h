@@ -401,7 +401,7 @@ void wgeometry::update(){
 	// go through list, get rid of extra copies
 	n_isotopes = 0;
 	unsigned notfound=0;
-	std::cout << "all_isotopes.size() = " << all_isotopes.size() << "\n";
+	//std::cout << "all_isotopes.size() = " << all_isotopes.size() << "\n";
 	for(int k=0;k<all_isotopes.size();k++){
 		notfound=1;
 		for(int j=0;j<isotopes.size();j++){

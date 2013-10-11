@@ -43,6 +43,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
 		cum_prob += ( ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * material_matrix[n_isotopes*this_mat+k] ) / macro_t_total;
+		if( k==n_isotopes-1 & cum_prob<1.0){cum_prob=1.0;}  //sometimes roundoff makes this a problem
 		if(rn2 <= cum_prob){
 			// reactions happen in isotope k
 			tope = k;
@@ -50,7 +51,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		}
 	}
 	if(tope == 999999999){ 
-		printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u cum_prob=%6.4E\n",tope, this_E, dex, this_mat, cum_prob);
+		printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u rn2=%12.10E cum_prob=%12.10E\n",tope, this_E, dex, this_mat, rn2, cum_prob);
 	}
 
 	//printf("tid=%d, samp_dist=% 10.8E\n",tid,samp_dist);

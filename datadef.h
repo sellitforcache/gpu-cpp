@@ -27,13 +27,6 @@ struct source_point{
     float macro_t;
 };
 
-// 3-float for scattering calculations
-struct f3{
-    float x;
-    float y;
-    float z;
-};
-
 //hit buffer struct
 struct hit_buffer {
     int     cell;
