@@ -14,7 +14,7 @@ public:
 	inline __device__ wfloat3 	operator/ (float);
 	inline __device__ wfloat3 	cross(wfloat3);
 	inline __device__ float   	dot(wfloat3);
-	inline __device__ wfloat3 	rodrigues_rotation(wfloat3,float);
+	inline __device__ void  	rodrigues_rotation(wfloat3,float);
 	inline __device__ float 	norm2();
 };
 __device__ wfloat3::wfloat3(){x=0;y=0;z=0;};
@@ -60,10 +60,8 @@ __device__ float wfloat3::dot(wfloat3 arg){
 	result = x*arg.x + y*arg.y + z*arg.z;
 	return result;
 };
-__device__ wfloat3 wfloat3::rodrigues_rotation(wfloat3 k, float theta){
-	wfloat3 result;
-	result = (*this)*cos(theta) + (k.cross(*this))*sin(theta) + k*(k.dot(*this))*(1.0-cos(theta));
-	return result;
+__device__ void wfloat3::rodrigues_rotation(wfloat3 k, float theta){
+	*this = (*this)*cos(theta) + (k.cross(*this))*sin(theta) + k*(k.dot(*this))*(1.0-cos(theta));
 };
 __device__ float wfloat3::norm2(){
 	float result = sqrtf(x*x+y*y+z*z);
