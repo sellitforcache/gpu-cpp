@@ -26,7 +26,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 	else if( my_E >  Emax ){ my_bin_index = Ntally-1; }
 	else{
 		this_bin=Emin;
-		for(k=1;k<Ntally-1;k++){
+		for(k=0;k<Ntally;k++){
 			next_bin=multiplier*this_bin;
 			if(my_E>this_bin & my_E<=next_bin){
 				my_bin_index=k;

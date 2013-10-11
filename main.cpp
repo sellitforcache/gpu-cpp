@@ -9,7 +9,7 @@ int main(){
 	///////////////////
 
 	//get inputs?
-	int N=1e4;
+	int N=1e3;
 
 	//print banner
 	print_banner();
@@ -132,7 +132,7 @@ int main(){
 	/////////////////////////////////////
 
 	//hist.converge(10);
-	hist.run(40);
+	hist.run(1);
 	hist.write_tally(0,"tally");
 
 

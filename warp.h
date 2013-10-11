@@ -11,6 +11,7 @@
 #include <png++/png.hpp>
 #include <cmath>
 #include <assert.h>
+#include <time.h>
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -1268,6 +1269,7 @@ public:
     unsigned reset_cycle(unsigned);
     void reset_fixed();
     void trace(unsigned);
+    float get_time();
     void write_xs_data(std::string);
     void write_tally(unsigned, std::string);
 };
@@ -2395,6 +2397,7 @@ void whistory::run(unsigned num_cycles){
 	float it = 0.0;
 	unsigned completed_hist = 0;
 	unsigned current_fission_index = 0;
+	float runtime = get_time();
 
 	//set fission spectra
 	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
@@ -2458,6 +2461,9 @@ void whistory::run(unsigned num_cycles){
 
 	}
 
+	runtime = get_time() - runtime;
+	std::cout << "RUNTIME = " << runtime << " seconds.\n";
+
 }
 void whistory::write_tally(unsigned tallynum, std::string filename){
 
@@ -2488,6 +2494,11 @@ void whistory::write_tally(unsigned tallynum, std::string filename){
 		edge = edge*multiplier;
 	}
 	fclose(tfile);
+
+}
+float whistory::get_time(){
+
+	return ((float)clock())/((float)CLOCKS_PER_SEC);
 
 }
 
