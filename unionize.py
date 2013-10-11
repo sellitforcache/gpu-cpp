@@ -12,6 +12,7 @@ class cross_section_data:
 		self.tables           = []
 		self.libraries        = []
 		self.awr 			  = []
+		self.Q 				  = []
 		self.num_main_E		  = 0
 		self.reaction_numbers = []
 		self.reaction_numbers_total = []
@@ -61,6 +62,7 @@ class cross_section_data:
 		for table in self.tables:
 			#append ones to front
 			self.reaction_numbers.append(1)
+			self.Q.append(0)
 			#append this topes AWR
 			self.awr.append(table.awr)
 			#append totals
@@ -69,11 +71,14 @@ class cross_section_data:
 		#append reaction numbers
 		for table in self.tables:
 			for MT in table.reactions: # reactions is a dict
+				rxn = table.reactions[MT]
 				self.reaction_numbers.append(MT)
+				self.Q.append(rxn.Q)
 				self.num_reactions += 1
 
 		#print self.num_reactions
 		print self.reaction_numbers
+		print self.Q
 		#print self.reaction_numbers_total
 
 	def _allocate_arrays(self):
@@ -119,6 +124,10 @@ class cross_section_data:
 
 	def _get_awr_pointer(self):
 		awr_array = numpy.ascontiguousarray(numpy.array(self.awr,order='C'),dtype=numpy.float32)
+		return awr_array
+
+	def _get_Q_pointer(self):
+		awr_array = numpy.ascontiguousarray(numpy.array(self.Q,order='C'),dtype=numpy.float32)
 		return awr_array
 
 	def _get_MT_array_pointer(self):

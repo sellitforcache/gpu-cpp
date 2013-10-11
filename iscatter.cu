@@ -2,10 +2,8 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned * done){
+__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done){
 
-
-	//PLACEHOLDER FOR INELASTIC SCATTERS, RIGHT NOW JUST TREATED AS ELASTIC
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
@@ -21,6 +19,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
 	float 		this_E 		= E[tid];
+	float 		this_Q 		= Q[tid];
 	float 		m_tope		= awr_list[this_tope];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
@@ -39,7 +38,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float xhat_new = sqrtf(1.0-mu*mu)*cosf(phi);
 	float yhat_new = sqrtf(1.0-mu*mu)*sinf(phi);
 	float zhat_new = mu;
-	float E_new = this_E  * ( (1+alpha) + (1-alpha)*mu ) / 2.0 ;
+	float E_new = this_E  * ( (1+alpha) + (1-alpha)*mu ) / 2.0 + this_Q ;
+	//printf("Q=%6.3E\n",this_Q);
 
 	// approximate thermal
 	if (E_new < 1.5*E_target){E_new=E_target;}
@@ -52,9 +52,9 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 }
 
-void iscatter(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, unsigned* done){
+void iscatter(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done){
 
-	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, isonum, index, rn_bank, E, space, rxn, awr_list, done);
+	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done);
 	cudaThreadSynchronize();
 
 }

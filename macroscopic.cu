@@ -30,7 +30,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		//lienarly interpolate
 		t0 = xs_data_MT[n_columns* dex    + k];     //dex is the row number
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
-		macro_t_total += ( (t1-t0)/(e1-e0)*this_E + t0 ) * material_matrix[n_isotopes*this_mat+k];    //interpolated micro times number density
+		macro_t_total += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * material_matrix[n_isotopes*this_mat+k];    //interpolated micro times number density
 		//printf("mat %u - density of tope %u = %6.3E\n",this_mat,k,material_matrix[n_isotopes*this_mat+k]);
 	}
 
@@ -49,13 +49,28 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 			break;
 		}
 	}
-
-	if(tope == 999999999){printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u\n",tope, this_E, dex, this_mat);}
+	if(tope == 999999999){ // there is a gap in between the last MT and the total cross section, remap the rn to fit into the available data (effectively rescales the total cross section so everything adds up to it, if things aren't samples the first time around)
+		//printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u\n",tope, this_E, dex, this_mat);
+		rn2 = rn2 * cum_prob;
+		cum_prob = 0.0;
+		for(int k=0; k<n_isotopes; k++){
+			//lienarly interpolate
+			t0 = xs_data_MT[n_columns* dex    + k];     
+			t1 = xs_data_MT[n_columns*(dex+1) + k];
+			cum_prob += ( ( (t1-t0)/(e1-e0)*this_E + t0 ) * material_matrix[n_isotopes*this_mat+k] ) / macro_t_total;
+			if(rn2 <= cum_prob){
+				// reactions happen in isotope k
+				tope = k;
+				break;
+			}
+		}
+	}
 
 	//printf("tid=%d, samp_dist=% 10.8E\n",tid,samp_dist);
 
 	// write results out
 	space[tid].samp_dist 	= samp_dist;
+	space[tid].macro_t 		= macro_t_total;
 	isonum[tid] 			= tope;
 
 

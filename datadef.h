@@ -24,6 +24,7 @@ struct source_point{
     float yhat;
     float zhat; 
     float samp_dist;
+    float macro_t;
 };
 
 // 3-float for scattering calculations
@@ -54,11 +55,11 @@ struct intersection_point {
 
 // intersection point struct
 struct material_def {
-    unsigned id;
-    unsigned matnum;
-    unsigned is_fissile;
-    unsigned num_isotopes;
-    float    density;
-    unsigned * isotopes;
-    float    * fractions;
+    unsigned    id;
+    unsigned    matnum;
+    unsigned    is_fissile;
+    unsigned    num_isotopes;
+    float       density;
+    unsigned *  isotopes;
+    float    *  fractions;
 };

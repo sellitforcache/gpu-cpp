@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers, unsigned * rxn, unsigned* done){
+__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -18,6 +18,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	float 		this_E  		= E[tid];
 	float 		rn1 			= rn_bank[tid*RNUM_PER_THREAD + 0];
 	float 		cum_prob 		= 0.0;
+	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
 	unsigned 	this_rxn 		= 999999999;
 
@@ -48,26 +49,44 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		//lienarly interpolate
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
-		cum_prob += ( (t1-t0)/(e1-e0)*this_E + t0 ) / xs_total;
+		cum_prob += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) / xs_total;
 		if(rn1 <= cum_prob){
-			// reactions happen in isotope k
+			// reactions happen in reaction k
 			this_rxn = xs_MT_numbers[k];
+			this_Q   = xs_data_Q[k];
 			break;
 		}
 	}
 
-	if(this_rxn == 999999999){printf("REACTION NOT SAMPLED CORRECTLY! this_rxn=%u\n",this_rxn);}
+	if(this_rxn == 999999999){ //do same ac macro
+		//printf("REACTION NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u rxn=%u cum_prob=%6.4E\n",this_tope, this_E, dex, this_rxn, cum_prob);
+		rn1 = rn1 * cum_prob;
+		cum_prob = 0.0;
+		for(k=tope_beginning; k<tope_ending; k++){
+			//lienarly interpolate
+			t0 = xs_data_MT[n_columns* dex    + k];     
+			t1 = xs_data_MT[n_columns*(dex+1) + k];
+			cum_prob += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) / xs_total;
+			if(rn1 <= cum_prob){
+				// reactions happen in reaction k
+				this_rxn = xs_MT_numbers[k];
+				this_Q   = xs_data_Q[k];
+				break;
+			}
+		}
+	}
 
 	// write results out
 	//printf("this_rxn(%d,(1:3))=[%u,%u,%u];\n",tid+1,this_rxn,this_tope,k);
 	rxn[tid] = this_rxn;
+	Q[tid] 	 = this_Q;
 
 
 }
 
-void microscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers, unsigned * rxn, unsigned* done){
+void microscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
-	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, n_isotopes, n_columns, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, rxn, done);
+	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, n_isotopes, n_columns, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, xs_data_Q, rxn, Q, done);
 	cudaThreadSynchronize();
 
 }

@@ -10,7 +10,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	if (done[tid]){return;}      // return if done, duh
-	if (rxn[tid] < 16 | rxn[tid] > 18 ){return;}  //return if not fission
+	if (rxn[tid] != 18 ){return;}  //return if not fission
 
 	float yield_avg = 2.53;
 	unsigned this_yield = 0;
