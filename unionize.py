@@ -222,11 +222,15 @@ class cross_section_data:
 		table = self.tables[isotope]
 		rxn   = table.reactions[MTnum]
 		#print "here now"
-		if hasattr(rxn,"ang_energy_in"):
-			scatterE   = rxn.ang_energy_in
-			scatterMu  = rxn.ang_cos 
-			scatterCDF = rxn.ang_cdf
-			#print "here kjsdnlfkjalkh"
+		if hasattr(rxn,"energy_dist"):
+			if rxn.energy_dist.law == 3:
+				nextE = self.MT_E_grid[self.num_main_E-1]
+				return [nextE,0,numpy.array([0]),numpy.array([0])]
+			else:
+				scatterE   = rxn.energy_dist.energy_in
+				scatterMu  = rxn.energy_dist.energy_out
+				scatterCDF = rxn.energy_dist.cdf
+				#print "here kjsdnlfkjalkh"
 		else:
 			#print "no angular tables"
 			nextE = self.MT_E_grid[self.num_main_E-1]
