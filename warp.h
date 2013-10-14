@@ -29,7 +29,7 @@ void sample_fission_spectra(unsigned,unsigned,unsigned,float*,float*);
 void sample_isotropic_directions(unsigned, unsigned, unsigned, unsigned, source_point* , float*);
 void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* , unsigned*);
 void microscopic(unsigned , unsigned ,  unsigned , unsigned , unsigned , unsigned* , unsigned * , float * , float * , float * , float *  , unsigned * , unsigned * ,  float* , unsigned * , float*, unsigned* );
-void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * , unsigned*);
+void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * , unsigned*, unsigned*);
 void escatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*);
 void iscatter(unsigned , unsigned , unsigned , unsigned , unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* );
 void fission(unsigned , unsigned , unsigned, unsigned , unsigned*  , unsigned*  , float * , unsigned* );
@@ -1195,6 +1195,7 @@ class whistory {
     float * 		awr_list;
     float * 		tally_score;
     unsigned * 		tally_count;
+    unsigned 		tally_cell;
     unsigned * 		index;
     unsigned *      cellnum;
     unsigned *      matnum;
@@ -1272,6 +1273,7 @@ public:
     float get_time();
     void write_xs_data(std::string);
     void write_tally(unsigned, std::string);
+    void set_tally_cell(unsigned);
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
@@ -2418,8 +2420,9 @@ void whistory::run(unsigned num_cycles){
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 	
-			// run tally kernel to compute spectra from 1/sigma_t
-			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done);
+			// run tally kernel to compute spectra
+			make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
+			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
 	
 			// run optix to detect the nearest surface and move particle there
 			trace(1);
@@ -2462,7 +2465,12 @@ void whistory::run(unsigned num_cycles){
 	}
 
 	runtime = get_time() - runtime;
-	std::cout << "RUNTIME = " << runtime << " seconds.\n";
+	if(runtime<60.0){
+		std::cout << "RUNTIME = " << runtime/60.0 << " minutes.\n";
+	}
+	else{
+		std::cout << "RUNTIME = " << runtime << " seconds.\n";
+	}
 
 }
 void whistory::write_tally(unsigned tallynum, std::string filename){
@@ -2499,6 +2507,11 @@ void whistory::write_tally(unsigned tallynum, std::string filename){
 float whistory::get_time(){
 
 	return ((float)clock())/((float)CLOCKS_PER_SEC);
+
+}
+void whistory::set_tally_cell(unsigned cell){
+
+	tally_cell = cell;
 
 }
 

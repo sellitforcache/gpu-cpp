@@ -166,6 +166,67 @@ class cross_section_data:
 			scatterMu  = rxn.ang_cos 
 			scatterCDF = rxn.ang_cdf
 			#print "here kjsdnlfkjalkh"
+		elif hasattr(table,"nu_t_type"):
+			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has nu type = "+table.nu_t_type
+			nextE = self.MT_E_grid[self.num_main_E-1]
+			#find the nu value for this energy
+			dex = numpy.argmax( table.nu_t_energy >= energy )
+			return [nextE,-1,numpy.array([table.nu_t_value[dex]]),numpy.array([table.nu_t_value[dex]])]
+		else:
+			#print "no angular tables"
+			nextE = self.MT_E_grid[self.num_main_E-1]
+			return [nextE,0,numpy.array([0]),numpy.array([0])]
+
+
+		# check length
+		assert scatterE.__len__() > 0
+
+		# find the proper energy index
+		# "snap to grid" method
+		dex = numpy.argmax( scatterE >= energy )
+
+		#print scatterE
+		#print energy
+		#print scatterE >= energy
+		#print "dex = "+str(dex)
+
+		#get energy of next bin
+		if dex == scatterE.__len__()-1:
+			nextE = scatterE  [dex]
+		else:
+			nextE = scatterE  [dex+1]
+
+		# return 0 if below the first energy
+		if energy < scatterE[0]:
+			return [nextE,0,numpy.array([0]),numpy.array([0])]
+
+		# construct vector
+		vlen  = scatterCDF[dex].__len__()
+		cdf   = numpy.ascontiguousarray(scatterCDF[dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays
+		mu    = numpy.ascontiguousarray(scatterMu[dex], dtype=numpy.float32)
+
+		#check to make sure the same length
+		assert vlen == mu.__len__()
+
+		# return
+		return [nextE,vlen,mu,cdf]
+
+
+
+	def _get_energy_data(self,isotope,MTnum,energy):
+		# scatter table returned in this form
+		# returns [nextE, length, mu, cdf]
+
+		#print isotope,MTnum,energy
+
+		table = self.tables[isotope]
+		rxn   = table.reactions[MTnum]
+		#print "here now"
+		if hasattr(rxn,"ang_energy_in"):
+			scatterE   = rxn.ang_energy_in
+			scatterMu  = rxn.ang_cos 
+			scatterCDF = rxn.ang_cdf
+			#print "here kjsdnlfkjalkh"
 		else:
 			#print "no angular tables"
 			nextE = self.MT_E_grid[self.num_main_E-1]
