@@ -18,13 +18,14 @@ int main(){
 	wgeometry geom;
 
 	// materials
-	unsigned topes[4]={92235,92238,8016,1001};
-	float    fracs_fuel[4]={0.10,0.90,2,0};
-	float    fracs_water[4]={0,0,1,2};
-	float    dens = 10.424;
-	geom.add_material(1,1,4,dens,topes,fracs_fuel);
-	geom.add_material(2,0,4,dens,topes,fracs_water);
-	geom.add_material(3,0,4,dens,topes,fracs_water);
+	unsigned topes[5]={92235,92238,8016,1001,5010};
+	float    fracs_fuel[5]={0.01,0.99,2,0,0};
+	float    fracs_water[5]={0,0,1,2,1};
+	float    dens_fuel = 10.424;
+	float 	 dens_water = 1.0;
+	geom.add_material(1,1,5,dens_fuel,topes,fracs_fuel);
+	geom.add_material(2,0,5,dens_water,topes,fracs_water);
+	geom.add_material(3,0,5,dens_water,topes,fracs_water);
 
 	// non-fissile materials
 	//unsigned topes[2]={8016,1001};

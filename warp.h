@@ -36,6 +36,7 @@ void fission(unsigned , unsigned , unsigned, unsigned , unsigned*  , unsigned*  
 void absorb(unsigned , unsigned , unsigned , unsigned*  , unsigned* );
 void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned *, unsigned* );
 void make_mask(unsigned, unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
+void print_histories(unsigned, unsigned, unsigned, unsigned *, unsigned*, source_point*, float*, unsigned*);
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -2601,6 +2602,7 @@ void whistory::run(unsigned num_cycles){
 			completed_hist = reduce_done();
 
 			//std::cout << completed_hist << "/" << N << " histories complete\n";
+			//if((N-completed_hist)<=15){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 		}
 
 		//reduce yield
@@ -2615,7 +2617,7 @@ void whistory::run(unsigned num_cycles){
 
 		std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", keff = " << keff_cycle << "\n";
 
-		//reset cycle, adding new fission points to starting points
+		// reset cycle, adding new fission points to starting points
 		//current_fission_index = reset_cycle(current_fission_index);
 		reset_fixed();
 		completed_hist = 0;
@@ -2672,6 +2674,8 @@ void whistory::set_tally_cell(unsigned cell){
 	tally_cell = cell;
 
 }
+
+
 
 
 

@@ -10,7 +10,7 @@ __global__ void absorb_kernel(unsigned N, unsigned * rxn , unsigned* done){
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	if (done[tid]){return;}      // return if done, duh
-	if (rxn[tid] != 102 ){return;}  //return if not fission
+	if (rxn[tid] >= 102 & rxn[tid] <= 113 ){return;}  //return if no secondary neutron
 
 	done[tid]  = 1;
 
