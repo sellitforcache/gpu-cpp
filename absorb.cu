@@ -8,9 +8,9 @@ __global__ void absorb_kernel(unsigned N, unsigned * rxn , unsigned* done){
 	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
 	
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
-	if (tid >= N){return;}       //return if out of bounds
-	if (done[tid]){return;}      // return if done, duh
-	if (rxn[tid] <= 102 | rxn[tid] >= 113 ){return;}  //return if no secondary neutron
+	if (tid >= N){return;}         //return if out of bounds
+	if (done[tid]){return;}        // return if done, duh
+	if (rxn[tid] < 102 ){return;}  //return if not some sort of absorption, ie (n,not-n)
 
 	done[tid]  = 1;
 

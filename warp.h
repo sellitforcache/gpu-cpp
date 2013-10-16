@@ -2565,7 +2565,7 @@ void whistory::run(unsigned num_cycles){
 	float runtime = get_time();
 
 	//set mask to ones
-	cudaMemcpy(d_mask,ones,n_tally*sizeof(unsigned),cudaMemcpyHostToDevice);
+	//cudaMemcpy(d_mask,ones,n_tally*sizeof(unsigned),cudaMemcpyHostToDevice);
 
 	//set fission spectra
 	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
@@ -2587,7 +2587,7 @@ void whistory::run(unsigned num_cycles){
 			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 	
 			// run tally kernel to compute spectra
-			//make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
+			make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
 			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
 	
 			// run optix to detect the nearest surface and move particle there
@@ -2609,7 +2609,7 @@ void whistory::run(unsigned num_cycles){
 			completed_hist = reduce_done();
 
 			//std::cout << completed_hist << "/" << N << " histories complete\n";
-			//if((N-completed_hist)<=15){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
+			//if((N-completed_hist)<=150){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 		}
 
 		//reduce yield
