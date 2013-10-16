@@ -15,6 +15,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	unsigned 	dex 			= index[tid];
 	unsigned 	tope_beginning;
 	unsigned 	tope_ending;
+	unsigned 	this_dex;
 	float 		this_E  		= E[tid];
 	float 		rn1 			= rn_bank[tid*RNUM_PER_THREAD + 2];
 	float 		cum_prob 		= 0.0;
@@ -54,6 +55,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 			// reactions happen in reaction k
 			this_rxn = xs_MT_numbers[k];
 			this_Q   = xs_data_Q[k];
+			this_dex = k;
 			break;
 		}
 	}
@@ -71,6 +73,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 				// reactions happen in reaction k
 				this_rxn = xs_MT_numbers[k];
 				this_Q   = xs_data_Q[k];
+				this_dex = k;
 				break;
 			}
 		}
@@ -80,6 +83,8 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	//if(this_rxn!=2){printf("this_rxn(%d,(1:3))=[%u,%u,%u];\n",tid+1,this_rxn,this_tope,k);}
 	rxn[tid] = this_rxn;
 	Q[tid] 	 = this_Q;
+	//also write MT array index to dex instead of energy vector index
+	index[tid] = this_dex;
 
 
 }

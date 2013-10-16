@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "wfloat3.h"
 
-__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done){
+__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -19,10 +19,12 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  E_max        =   20.0; //MeV
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
+	unsigned 	this_dex	= index[tid];
 	float 		this_E 		= E[tid];
-	float 		this_Q 		= Q[tid];
+	float 		this_Q 		= 0.0;
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
+	float * 	this_array 	= scatterdat[this_dex];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
 	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
@@ -32,23 +34,32 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		rn7 		= rn_bank[ tid*RNUM_PER_THREAD + 9];
 
 	// internal kernel variables
+	float 		mu, phi;
+    unsigned 	vlen; 
 	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
 	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	float 		alpha 				= 	this_awr/(1.0+this_awr);
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm;
-    //float 		v_rel,E_rel;
+	//float 		v_rel,E_rel;
 
-	// make target isotropic 
-	float mu  = 2.0* rn4 - 1.0;
-	float phi = 2.0* pi * rn5;
-	wfloat3 hats_target(sqrtf(1.0-mu*mu)*cosf(phi),sqrtf(1.0-mu*mu)*sinf(phi), mu);
-
-	// make scatter isotropic - change to tables later
-	mu  = 2.0*rn6-1.0;
+	//get mu, should always not be NULL since the rxn has already been decided, elastic should always be there
+	memcpy(&vlen, &this_array[0], sizeof(float));
+	for(unsigned k=0;k<vlen;k++){
+		if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
+			//in this bin, linearly interpolate 
+			mu = (this_array[1+k+1]-this_array[1+k])/(this_array[1+vlen+k+1]-this_array[1+vlen+k])*(rn6-this_array[1+vlen+k])+this_array[1+k];
+			break;
+		}
+	}
 	phi = 2*pi*rn7;
 	wfloat3 hats_new(sqrtf(1.0-mu*mu)*cosf(phi),sqrtf(1.0-mu*mu)*sinf(phi), mu);
+
+	// make target isotropic 
+	mu  = 2.0* rn4 - 1.0;
+	phi = 2.0* pi * rn5;
+	wfloat3 hats_target(sqrtf(1.0-mu*mu)*cosf(phi),sqrtf(1.0-mu*mu)*sinf(phi), mu);
 
 	// make speed vectors
 	v_n_lf = hats_old * speed_n;
@@ -90,9 +101,9 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 }
 
-void iscatter(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done){
+void iscatter(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat){
 
-	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done);
+	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat);
 	cudaThreadSynchronize();
 
 }
