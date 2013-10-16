@@ -1210,6 +1210,7 @@ class whistory {
     unsigned 		reduced_yields;
     unsigned * 		remap;
     unsigned * 		zeros;
+    unsigned * 		ones;
 	// device data
 	source_point *  d_space;
 	unsigned *      d_xs_length_numbers;
@@ -1332,6 +1333,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	yield	   			= new unsigned [N];
 	remap 				= new unsigned [N];
 	zeros 				= new unsigned [N];
+	ones 				= new unsigned [N];
 	// init counters to 0
 	total_bytes_scatter = 0;
 	total_bytes_energy  = 0;
@@ -1341,7 +1343,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// init remapping stuff for compaction
 	for(int k =0;k<N;k++){remap[k]=k;}
 	// zero out the zeros vector
-	for(int k =0;k<N;k++){zeros[k]=0;}
+	for(int k =0;k<N;k++){zeros[k]=0;ones[k]=1;}
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1381,6 +1383,8 @@ whistory::~whistory(){
 	delete yield; 
 	delete tally_count;
 	delete tally_score;
+	delete zeros;
+	delete ones;
 	// for loops to deallocate everything in the pointer arrays
 	for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
 		for (int k=0 ; k < MT_rows ; k++){
@@ -2560,6 +2564,9 @@ void whistory::run(unsigned num_cycles){
 	unsigned current_fission_index = 0;
 	float runtime = get_time();
 
+	//set mask to ones
+	cudaMemcpy(d_mask,ones,n_tally*sizeof(unsigned),cudaMemcpyHostToDevice);
+
 	//set fission spectra
 	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
 
@@ -2580,7 +2587,7 @@ void whistory::run(unsigned num_cycles){
 			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 	
 			// run tally kernel to compute spectra
-			make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
+			//make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
 			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
 	
 			// run optix to detect the nearest surface and move particle there
@@ -2625,7 +2632,7 @@ void whistory::run(unsigned num_cycles){
 	}
 
 	runtime = get_time() - runtime;
-	if(runtime<60.0){
+	if(runtime>60.0){
 		std::cout << "RUNTIME = " << runtime/60.0 << " minutes.\n";
 	}
 	else{
