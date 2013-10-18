@@ -55,7 +55,7 @@ class cross_section_data:
 		#print self.MT_E_grid.shape
 		#print self.MT_E_grid
 
-
+	pass
 	def _insert_reactions(self):
 
 		
@@ -165,7 +165,7 @@ class cross_section_data:
 			scatterE   = rxn.ang_energy_in
 			scatterMu  = rxn.ang_cos 
 			scatterCDF = rxn.ang_cdf
-			#print "here kjsdnlfkjalkh"
+			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
 		elif hasattr(table,"nu_t_type"):
 			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has nu type = "+table.nu_t_type
 			nextE = self.MT_E_grid[self.num_main_E-1]
@@ -173,7 +173,7 @@ class cross_section_data:
 			dex = numpy.argmax( table.nu_t_energy >= energy )
 			return [nextE,-1,numpy.array([table.nu_t_value[dex]]),numpy.array([table.nu_t_value[dex]])]
 		else:
-			#print "no angular tables"
+			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no angular tables"
 			nextE = self.MT_E_grid[self.num_main_E-1]
 			return [nextE,0,numpy.array([0]),numpy.array([0])]
 
@@ -185,10 +185,10 @@ class cross_section_data:
 		# "snap to grid" method
 		dex = numpy.argmax( scatterE >= energy )
 
-		#print scatterE
-		#print energy
-		#print scatterE >= energy
-		#print "dex = "+str(dex)
+		print scatterE
+		print energy
+		print scatterE >= energy
+		print "dex = "+str(dex)
 
 		#get energy of next bin
 		if dex == scatterE.__len__()-1:
@@ -223,18 +223,22 @@ class cross_section_data:
 		rxn   = table.reactions[MTnum]
 		#print "here now"
 		if hasattr(rxn,"energy_dist"):
+			print "LAW="+str(rxn.energy_dist.law)+" MT="+str(MTnum)+" E="+str(energy)
 			if rxn.energy_dist.law == 3:
 				nextE = self.MT_E_grid[self.num_main_E-1]
-				return [nextE,0,numpy.array([0]),numpy.array([0])]
+				return [nextE,0,3,numpy.array([0]),numpy.array([0])]
 			else:
 				scatterE   = rxn.energy_dist.energy_in
 				scatterMu  = rxn.energy_dist.energy_out
 				scatterCDF = rxn.energy_dist.cdf
-				#print "here kjsdnlfkjalkh"
+				law        = rxn.energy_dist.law
+				#print "lengths = "+str(scatterMu.__len__())
+				#print scatterMu[1]
+				#print scatterCDF[1]
 		else:
 			#print "no angular tables"
 			nextE = self.MT_E_grid[self.num_main_E-1]
-			return [nextE,0,numpy.array([0]),numpy.array([0])]
+			return [nextE,0,0,numpy.array([0]),numpy.array([0])]
 
 
 		# check length
@@ -257,7 +261,7 @@ class cross_section_data:
 
 		# return 0 if below the first energy
 		if energy < scatterE[0]:
-			return [nextE,0,numpy.array([0]),numpy.array([0])]
+			return [nextE,0,0,numpy.array([0]),numpy.array([0])]
 
 		# construct vector
 		vlen  = scatterCDF[dex].__len__()
@@ -268,7 +272,7 @@ class cross_section_data:
 		assert vlen == mu.__len__()
 
 		# return
-		return [nextE,vlen,mu,cdf]
+		return [nextE,vlen,law,mu,cdf]
 
 
 

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * rxn , unsigned * yield , float * rn_bank, unsigned* done){
+__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
 
 	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
@@ -12,26 +12,37 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * 
 	if (done[tid]){return;}      // return if done, duh
 	if (rxn[tid] != 18 ){return;}  //return if not fission
 
-	float yield_avg = 2.53;
-	unsigned this_yield = 0;
+	unsigned 	this_yield 	= 0;
+	unsigned 	inu 		= 0;
+	float 		nu 			= 0.0;
 
-	float rn1 = rn_bank[ tid*RNUM_PER_THREAD + 10 ];
+	// load from arrays
+	unsigned 	this_dex 	= index[tid];
+	float * 	this_array 	= scatterdat[this_dex];
+	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 11 ];
 
-	if(2.0+rn1 < yield_avg){
-		this_yield = 3;
+	//load nu value, since e search has alrady been done!
+	memcpy(&nu, &this_array[1], sizeof(float));
+	inu = (unsigned) nu;
+
+	printf("nu=%6.4f inu=%u\n",nu,inu);
+
+	if((float)inu+rn1 < nu){
+		this_yield = inu+1;
 	}
 	else{
-		this_yield = 2;
+		this_yield = inu;
 	}
 
+	// write output and terminate history
 	yield[tid] = this_yield;
 	done[tid]  = 1;
 
 }
 
-void fission(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned * rxn , unsigned * yield , float * rn_bank, unsigned* done){
+void fission(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
-	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD,  rxn , yield , rn_bank, done);
+	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD,  rxn , index, yield , rn_bank, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

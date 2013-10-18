@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "wfloat3.h"
 
-__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat){
+__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -21,10 +21,10 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	unsigned 	this_tope 	= isonum[tid];
 	unsigned 	this_dex	= index[tid];
 	float 		this_E 		= E[tid];
-	float 		this_Q 		= 0.0;
+	float 		this_Q 		= Q[tid];
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
-	float * 	this_array 	= scatterdat[this_dex];
+	float * 	this_array 	= scatterdat[this_dex+1];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
 	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
@@ -32,10 +32,11 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		rn5 		= rn_bank[ tid*RNUM_PER_THREAD + 7];
 	float 		rn6 		= rn_bank[ tid*RNUM_PER_THREAD + 8];
 	float 		rn7 		= rn_bank[ tid*RNUM_PER_THREAD + 9];
+	float 		rn8 		= rn_bank[ tid*RNUM_PER_THREAD + 10];
 
 	// internal kernel variables
 	float 		mu, phi;
-    unsigned 	vlen; 
+    unsigned 	vlen, offset, k, law; 
 	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
 	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
@@ -44,12 +45,14 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm;
 	//float 		v_rel,E_rel;
 
-	//get mu, should always not be NULL since the rxn has already been decided, elastic should always be there
+	//get mu, should always not be NULL since the rxn has already been decided, inelastic should always be there since this rxn shuldn't be spampled in a region below threshold
+	//printf("ptr=%p E=%6.4E rxn=%u dex=%u \n ",this_array, this_E, rxn[tid], this_dex);
 	memcpy(&vlen, &this_array[0], sizeof(float));
-	for(unsigned k=0;k<vlen;k++){
-		if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
+	offset=1;
+	for(k=0;k<vlen;k++){
+		if(rn6 <= this_array[offset+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
 			//in this bin, linearly interpolate 
-			mu = (this_array[1+k+1]-this_array[1+k])/(this_array[1+vlen+k+1]-this_array[1+vlen+k])*(rn6-this_array[1+vlen+k])+this_array[1+k];
+			mu = (this_array[offset+k+1]-this_array[offset+k])/(this_array[offset+vlen+k+1]-this_array[offset+vlen+k])*(rn6-this_array[offset+vlen+k])+this_array[offset+k];
 			break;
 		}
 	}
@@ -72,8 +75,26 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	v_n_cm = v_n_lf - v_cm;
 	v_t_cm = v_t_lf - v_cm;
 
-	// calculate final rotated neutron velocity
-	v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + (2.0* this_Q * alpha/(m_n)) );
+	// calculate final rotated neutron velocity  -  ***the other laws may have an angle/energy correlation that is disregarded...
+	this_array = energydat[this_dex];
+	memcpy(&vlen, &this_array[0], sizeof(float));
+	memcpy(&law,  &this_array[1], sizeof(float));
+	if(law==3){  //level
+		printf("inelastic,Q=% 6.4E\n",this_Q);
+		v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + (2.0* this_Q * alpha/(m_n)) );
+	}
+	else{// distribution
+		printf("law=%u\n",law);
+		offset=2;
+		for(k=0;k<vlen;k++){
+			if(rn8 <= this_array[offset+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
+				//in this bin, linearly interpolate 
+				E_new = (this_array[offset+k+1]-this_array[offset+k])/(this_array[offset+vlen+k+1]-this_array[offset+vlen+k])*(rn8-this_array[offset+vlen+k])+this_array[offset+k];
+				break;
+			}
+		}
+		v_n_cm = hats_new * sqrtf(2.0*E_new/m_n);
+	}
 
 	// transform back to LF
 	v_n_lf = v_n_cm + v_cm;
@@ -101,9 +122,9 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 }
 
-void iscatter(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat){
+void iscatter(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
-	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat);
+	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }

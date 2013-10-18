@@ -27,6 +27,12 @@ struct source_point{
     float macro_t;
 };
 
+//quaternary search nodes
+struct qnode{
+    float  values[5];
+    float* leaf[4];
+};
+
 //hit buffer struct
 struct hit_buffer {
     int     cell;

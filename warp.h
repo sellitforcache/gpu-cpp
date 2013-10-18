@@ -31,8 +31,8 @@ void macroscopic(unsigned , unsigned ,  unsigned, unsigned, unsigned , source_po
 void microscopic(unsigned , unsigned ,  unsigned , unsigned , unsigned , unsigned* , unsigned * , float * , float * , float * , float *  , unsigned * , unsigned * ,  float* , unsigned * , float*, unsigned* );
 void tally_spec(unsigned , unsigned ,  unsigned , unsigned , source_point * , float* , float * , unsigned * , unsigned*, unsigned*);
 void escatter(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*, float**);
-void iscatter(unsigned , unsigned , unsigned , unsigned , unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**);
-void fission(unsigned , unsigned , unsigned, unsigned , unsigned*  , unsigned*  , float * , unsigned* );
+void iscatter(unsigned , unsigned , unsigned , unsigned , unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
+void fission(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , unsigned*  , float * , unsigned* , float**);
 void absorb(unsigned , unsigned , unsigned , unsigned*  , unsigned* );
 void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned *, unsigned* );
 void make_mask(unsigned, unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
@@ -1558,8 +1558,8 @@ void whistory::copy_to_device(){
 	std::cout << "Done.\n";
 	// copy device pointer array to device array
 	std::cout << "Pointer arrays... ";
-	cudaMemcpy( d_xs_data_scatter, 	xs_data_scatter_host,	MT_rows*MT_columns*sizeof(float), cudaMemcpyHostToDevice); 	
-	cudaMemcpy( d_xs_data_energy, 	xs_data_energy_host,	MT_rows*MT_columns*sizeof(float), cudaMemcpyHostToDevice); 	
+	cudaMemcpy( d_xs_data_scatter, 	xs_data_scatter_host,	MT_rows*MT_columns*sizeof(float*), cudaMemcpyHostToDevice); 	
+	cudaMemcpy( d_xs_data_energy, 	xs_data_energy_host,	MT_rows*MT_columns*sizeof(float*), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
 	// copy scattering data to device array pointers
 	std::cout << "Scattering data... ";
@@ -1946,8 +1946,8 @@ void whistory::load_cross_sections(){
     xs_data_energy       = new float* [MT_rows*MT_columns];
     xs_data_scatter_host = new float* [MT_rows*MT_columns];
     xs_data_energy_host  = new float* [MT_rows*MT_columns];
-    cudaMalloc(&d_xs_data_scatter,MT_rows*MT_columns*sizeof(float));
-    cudaMalloc(&d_xs_data_energy, MT_rows*MT_columns*sizeof(float));
+    cudaMalloc(&d_xs_data_scatter,MT_rows*MT_columns*sizeof(float*));
+    cudaMalloc(&d_xs_data_energy, MT_rows*MT_columns*sizeof(float*));
     // python variables for arguments
     PyObject 	*E_obj, *MT_obj, *tope_obj;
     PyObject 	*cdf_vector_obj, *mu_vector_obj , *vector_length_obj, *nextE_obj; 
@@ -2131,6 +2131,8 @@ void whistory::load_cross_sections(){
     ////////////////////////////////////
     // do energy stuff
     ////////////////////////////////////
+	PyObject 	*law_obj;
+	unsigned 	law=0;
 
     //set total cross sections to NULL
     for (int j=0 ; j<1*xs_length_numbers[0] ; j++){  //start after the total xs vectors
@@ -2176,16 +2178,18 @@ void whistory::load_cross_sections(){
 			// get objects in the returned list
 			nextE_obj  			= PyList_GetItem(obj_list,0);
 			vector_length_obj 	= PyList_GetItem(obj_list,1);
-			mu_vector_obj 		= PyList_GetItem(obj_list,2);
-			cdf_vector_obj 		= PyList_GetItem(obj_list,3);
+			law_obj 			= PyList_GetItem(obj_list,2);
+			mu_vector_obj 		= PyList_GetItem(obj_list,3);
+			cdf_vector_obj 		= PyList_GetItem(obj_list,4);
 			PyErr_Print();
 
 			// expand list to c variables
 			nextE         = PyFloat_AsDouble(nextE_obj);
 			vector_length = PyInt_AsLong    (vector_length_obj);
+			law 		  = PyInt_AsLong    (law_obj);
 			PyErr_Print();
 
-			//std::cout << " nextE " << nextE << " vector_length " << vector_length << "\n";
+			//std::cout << " nextE " << nextE << " vector_length " << vector_length << " law " << law << "\n";
 
 			if(vector_length==0){
 				//std::cout << "set as NULL \n";
@@ -2228,6 +2232,7 @@ void whistory::load_cross_sections(){
 				//std::cout << muRows << " " << muColumns << " " << muBytes << "\n";
 	
 				//make sure every is ok
+				assert(muRows==vector_length);
 				assert(muRows==cdfRows);
 				assert(muColumns==cdfColumns);
 				assert(muBytes==cdfBytes);
@@ -2246,8 +2251,9 @@ void whistory::load_cross_sections(){
 				//copy data from python buffer to pointer in array
 				//std::cout <<this_pointer<<" "<<&this_pointer[1]<<" "<<&this_pointer[1+muRows] << "\n";
 				memcpy(this_pointer, 			&muRows,   		sizeof(unsigned));  // to first position
-				memcpy(&this_pointer[1],		muBuff.buf,  	muRows*sizeof(float));     // to len bytes after
-				memcpy(&this_pointer[1+muRows],	cdfBuff.buf, 	cdfRows*sizeof(float));     // to len bytes after that
+				memcpy(&this_pointer[1], 		&law,  		   	sizeof(unsigned));
+				memcpy(&this_pointer[2],		muBuff.buf,  	muRows*sizeof(float));     // to len bytes after
+				memcpy(&this_pointer[2+muRows],	cdfBuff.buf, 	cdfRows*sizeof(float));     // to len bytes after that
 				//std::cout << "done copying\n";
 				
 				// free python variables
@@ -2325,13 +2331,23 @@ void whistory::write_xs_data(std::string filename){
 	// write MT array
 	this_name = filename + ".MTarray";
 	FILE* xsfile = fopen(this_name.c_str(),"w");
+	this_name = filename + ".scatterptr";
+	FILE* scatterfile = fopen(this_name.c_str(),"w");
+	this_name = filename + ".energyptr";
+	FILE* energyfile = fopen(this_name.c_str(),"w");
 	for (int k=0;k<MT_rows;k++){
 		for(int j=0;j<MT_columns;j++){
 			fprintf(xsfile,"% 10.8E ",xs_data_MT[k*MT_columns+j]);
+			fprintf(scatterfile,"%p ",xs_data_scatter_host[k*MT_columns+j]);
+			fprintf(energyfile,"%p ",xs_data_energy_host[k*MT_columns+j]);
 		}
 		fprintf(xsfile,"\n");
+		fprintf(scatterfile,"\n");
+		fprintf(energyfile,"\n");
 	}
 	fclose(xsfile);
+	fclose(scatterfile);
+	fclose(energyfile);
 
 	// write unionized E grid
 	this_name = filename + ".Egrid";
@@ -2492,8 +2508,8 @@ void whistory::converge(unsigned num_cycles){
 	
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
-			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter);
-			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_yield , d_rn_bank, d_done);
+			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 			absorb(   blks,  NUM_THREADS,   N, d_rxn , d_done);
 	
 			// update RNGs
@@ -2525,7 +2541,7 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 	// do fissile query by setting rnx=16-18 as valid
 	make_mask(blks, NUM_THREADS, N, d_mask, d_rxn, 18, 18);  // add ones for all fission numbers
 
-	// copy fission points to fission points vector
+	// copy fission points to fission points vector, ***NEED TO REPLICATE BY YIELD, THEN SAMPLE DIRECTION AND SAMPLE FISSION ENERGY INDEPENDENTLY (BEFORE THE DATASETS ARE RESET AND IN INCOMING ENERGY AND ISOTOPE ARE GONE)
 	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , N);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
 	copy_points(blks, NUM_THREADS, N, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space);   //copy in new values, keep track of index, copies positions and direction
@@ -2606,7 +2622,7 @@ void whistory::run(unsigned num_cycles){
 	
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
-	
+			
 			// run tally kernel to compute spectra
 			make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
 			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
@@ -2619,8 +2635,8 @@ void whistory::run(unsigned num_cycles){
 	
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
-			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter);
-			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_yield , d_rn_bank, d_done);
+			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 			absorb(   blks,  NUM_THREADS,   N, d_rxn , d_done);
 	
 			// update RNGs

@@ -45,11 +45,13 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//float 		v_rel,E_rel;
 
 	//get mu, should always not be NULL since the rxn has already been decided, elastic should always be there
+	//printf("ptr=%p E=%6.4E rxn=%u dex=%u \n ",this_array, this_E, rxn[tid], this_dex);
 	memcpy(&vlen, &this_array[0], sizeof(float));
 	for(unsigned k=0;k<vlen;k++){
 		if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
 			//in this bin, linearly interpolate 
 			mu = (this_array[1+k+1]-this_array[1+k])/(this_array[1+vlen+k+1]-this_array[1+vlen+k])*(rn6-this_array[1+vlen+k])+this_array[1+k];
+			//printf("tid=%d mu=% 6.4f\n",tid,mu);
 			break;
 		}
 	}
@@ -85,11 +87,11 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// check cutoff
 	if (E_new < E_cutoff){
 		E_new = E_cutoff;
-		//printf("enforcing E_min in iscatter");
+		//printf("enforcing E_min in escatter");
 	}
 	if (E_new > E_max){
 		E_new = 0.9*E_max;
-		//printf("enforcing E_max in iscatter");
+		//printf("enforcing E_max in escatter");
 	}
 
 	//printf("speed target = %6.4E, speed=%6.4E, Eold,Enew = %10.8E %10.8E\n",speed_target, speed_n,this_E,E_new);
