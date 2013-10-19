@@ -44,9 +44,11 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm;
 	//float 		v_rel,E_rel;
 
+	//printf("in escatter\n");
 	//get mu, should always not be NULL since the rxn has already been decided, elastic should always be there
 	//printf("ptr=%p E=%6.4E rxn=%u dex=%u \n ",this_array, this_E, rxn[tid], this_dex);
 	memcpy(&vlen, &this_array[0], sizeof(float));
+	//printf("vlen=%u\n",vlen);
 	for(unsigned k=0;k<vlen;k++){
 		if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
 			//in this bin, linearly interpolate 
@@ -100,6 +102,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	space[tid].xhat = hats_new.x;
 	space[tid].yhat = hats_new.y;
 	space[tid].zhat = hats_new.z;
+
 
 }
 

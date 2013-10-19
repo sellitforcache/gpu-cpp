@@ -98,7 +98,7 @@ class cross_section_data:
 			#print "interpolating isotope "+str(tope_index)
 
 			#do this isotopes entry in the total block
-			this_array = numpy.interp( self.MT_E_grid, table.energy, table.sigma_t )
+			this_array = numpy.interp( self.MT_E_grid, table.energy, table.sigma_t , left=0.0 )
 			self.MT_array[:,tope_index]=this_array
 
 			#do abs and higher, start at reaction block
@@ -109,7 +109,7 @@ class cross_section_data:
 			for MT in table.reactions:
 				rxn        = table.reactions[MT]
 				IE         = rxn.IE - 1       #convert to python/C indexing 
-				this_array = numpy.interp( self.MT_E_grid, table.energy[IE:], rxn.sigma )  #interpolate MT cross section
+				this_array = numpy.interp( self.MT_E_grid, table.energy[IE:], rxn.sigma , left=0.0 )  #interpolate MT cross section
 				self.MT_array[:,MT_array_dex] = this_array  # insert into the MT array
 
 				#  this MT is done, increment counter
@@ -152,64 +152,68 @@ class cross_section_data:
 		for tope in self.isotope_list:
 			print tope
 
-	def _get_scattering_data(self,isotope,MTnum,energy):
+	def _get_scattering_data(self,row,col):
 		# scatter table returned in this form
-		# returns [nextE, length, mu, cdf]
+		# returns [nextDex, length, mu, cdf] if scattering data exists
 
-		#print isotope,MTnum,energy
+		#find the isotope we are in
+		numbers = numpy.cumsum(self.reaction_numbers_total)
+		isotope = 0
+		for n in numbers:
+			if (col - self.num_isotopes) <= n:
+				break
+			else:
+				isotope = isotope + 1
 
 		table = self.tables[isotope]
+		MTnum = self.reaction_numbers[col]
 		rxn   = table.reactions[MTnum]
 		#print "here now"
 		if hasattr(rxn,"ang_energy_in"):
+			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
 			scatterE   = rxn.ang_energy_in
 			scatterMu  = rxn.ang_cos 
 			scatterCDF = rxn.ang_cdf
-			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
-		elif hasattr(table,"nu_t_type"):
-			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has nu type = "+table.nu_t_type
-			nextE = self.MT_E_grid[self.num_main_E-1]
-			#find the nu value for this energy
-			dex = numpy.argmax( table.nu_t_energy >= energy )
-			return [nextE,-1,numpy.array([table.nu_t_value[dex]]),numpy.array([table.nu_t_value[dex]])]
+			# check length
+			assert scatterE.__len__() > 0
+			# get the energy from this index
+			this_E = self.MT_E_grid[row]
+			# find the index of the scattering table energy
+			if this_E >= scatterE[0]:
+				scatter_dex = numpy.where( scatterE >= this_E )[0][0]
+				#get energy of next bin
+				if scatter_dex == scatterE.__len__()-1:
+					next_E = self.MT_E_grid[-1]
+				else:
+					next_E = scatterE[scatter_dex+1]
+				# find main E grid indext of next energy
+				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
+				print "MT = "+str(MTnum)
+				print row,col
+				print this_E,next_E
+				print scatter_dex
+				print nextDex
+				print scatterE
+				# construct vector
+				vlen  = scatterCDF[scatter_dex].__len__()
+				cdf   = numpy.ascontiguousarray(scatterCDF[scatter_dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays
+				mu    = numpy.ascontiguousarray(scatterMu[scatter_dex], dtype=numpy.float32)
+				#check to make sure the same length
+				assert vlen == mu.__len__()
+				# return
+				return [nextDex,vlen,mu,cdf]
+			else:  # return 0 if below the first energy]
+				next_E = scatterE[0]
+				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
+				return [nextDex,0,numpy.array([0]),numpy.array([0])]
 		else:
 			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no angular tables"
-			nextE = self.MT_E_grid[self.num_main_E-1]
-			return [nextE,0,numpy.array([0]),numpy.array([0])]
+			nextE   = self.MT_E_grid[self.num_main_E-1]
+			nextDex = self.MT_E_grid.__len__()
+			return [nextDex,0,numpy.array([0]),numpy.array([0])]
 
 
-		# check length
-		assert scatterE.__len__() > 0
 
-		# find the proper energy index
-		# "snap to grid" method
-		dex = numpy.argmax( scatterE >= energy )
-
-		print scatterE
-		print energy
-		print scatterE >= energy
-		print "dex = "+str(dex)
-
-		#get energy of next bin
-		if dex == scatterE.__len__()-1:
-			nextE = scatterE  [dex]
-		else:
-			nextE = scatterE  [dex+1]
-
-		# return 0 if below the first energy
-		if energy < scatterE[0]:
-			return [nextE,0,numpy.array([0]),numpy.array([0])]
-
-		# construct vector
-		vlen  = scatterCDF[dex].__len__()
-		cdf   = numpy.ascontiguousarray(scatterCDF[dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays
-		mu    = numpy.ascontiguousarray(scatterMu[dex], dtype=numpy.float32)
-
-		#check to make sure the same length
-		assert vlen == mu.__len__()
-
-		# return
-		return [nextE,vlen,mu,cdf]
 
 
 
@@ -273,6 +277,27 @@ class cross_section_data:
 
 		# return
 		return [nextE,vlen,law,mu,cdf]
+
+	def _get_nu_data():
+		#find the isotope we are in
+		numbers = numpy.cumsum(self.reaction_numbers_total)
+		isotope = 0
+		for n in numbers:
+			if (col - self.num_isotopes) <= n:
+				break
+			else:
+				isotope = isotope + 1
+
+		table = self.tables[isotope]
+		MTnum = self.reaction_numbers[col]
+		rxn   = table.reactions[MTnum]
+
+		if hasattr(table,"nu_t_type"):
+		#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has nu type"+table.nu_t_type
+		#return the nu value for this isotope
+			nu = numpy.interp( self.MT_E_grid, table.nu_t_energy, table.nu_t_value , left=0.0 ) 
+			nextDex = self.MT_E_grid.__len__() + 1
+			return [nextDex,-1,nu,nu]
 
 
 

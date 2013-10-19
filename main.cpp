@@ -30,12 +30,12 @@ int main(){
 
 
 	// water
-	//unsigned topes[2]={8016,1001};
-	//float    fracs[2]={1,2};
-	//float    dens = 1.00;
-	//geom.add_material(1,1,2,dens,topes,fracs);
-	//geom.add_material(2,0,2,dens,topes,fracs);
-	//geom.add_material(3,0,2,dens,topes,fracs);
+	unsigned topes[2]={8016,1001};
+	float    fracs[2]={1,2};
+	float    dens = 1.00;
+	geom.add_material(1,1,2,dens,topes,fracs);
+	geom.add_material(2,0,2,dens,topes,fracs);
+	geom.add_material(3,0,2,dens,topes,fracs);
 
 	// lead
 	//unsigned topes[1]={82208};
@@ -62,12 +62,12 @@ int main(){
 	//geom.add_material(3,0,1,dens,topes,fracs);
 
 	// u235
-	unsigned topes[1]={92235};
-	float    fracs[1]={1};
-	float    dens = 10.424;
-	geom.add_material(1,1,1,dens,topes,fracs);
-	geom.add_material(2,0,1,dens,topes,fracs);
-	geom.add_material(3,0,1,dens,topes,fracs);
+	//unsigned topes[1]={92235};
+	//float    fracs[1]={1};
+	//float    dens = 10.424;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
 
 	// assembly geom
 	//geom.add_primitive();

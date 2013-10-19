@@ -12,27 +12,29 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * 
 	if (done[tid]){return;}      // return if done, duh
 	if (rxn[tid] != 18 ){return;}  //return if not fission
 
+	//printf("in fission\n");
+
 	unsigned 	this_yield 	= 0;
 	unsigned 	inu 		= 0;
 	float 		nu 			= 0.0;
 
-	// load from arrays
-	unsigned 	this_dex 	= index[tid];
-	float * 	this_array 	= scatterdat[this_dex];
-	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 11 ];
-
-	//load nu value, since e search has alrady been done!
-	memcpy(&nu, &this_array[1], sizeof(float));
-	inu = (unsigned) nu;
-
-	printf("nu=%6.4f inu=%u\n",nu,inu);
-
-	if((float)inu+rn1 < nu){
-		this_yield = inu+1;
-	}
-	else{
-		this_yield = inu;
-	}
+//	// load from arrays
+//	unsigned 	this_dex 	= index[tid];
+//	float * 	this_array 	= scatterdat[this_dex];
+//	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 11 ];
+//
+//	//load nu value, since e search has alrady been done!
+//	memcpy(&nu, &this_array[1], sizeof(float));
+//	inu = (unsigned) nu;
+//
+//	printf("nu=%6.4f inu=%u\n",nu,inu);
+//
+//	if((float)inu+rn1 < nu){
+//		this_yield = inu+1;
+//	}
+//	else{
+//		this_yield = inu;
+//	}
 
 	// write output and terminate history
 	yield[tid] = this_yield;

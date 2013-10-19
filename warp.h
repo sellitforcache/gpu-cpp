@@ -1524,7 +1524,7 @@ void whistory::copy_to_device(){
 
 	float * this_pointer;
 	float * cuda_pointer;
-	unsigned vlen;
+	int vlen;
 	float * temp = new float [128];
 	for(int g=0;g<128;g++){temp[g]=123456789;}
 
@@ -1568,11 +1568,11 @@ void whistory::copy_to_device(){
 			// scatter
 			this_pointer =   xs_data_scatter     [k*MT_columns + j];
 			cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
-			if(this_pointer!=NULL & k<MT_rows-1){
+			if (this_pointer != NULL & k<MT_rows-1) {
+				memcpy(&vlen,&this_pointer[0],1*sizeof(int));
 				while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
 					k++; //push k to the end of the copies so don't try to free it twice
 				}
-				memcpy(&vlen,&this_pointer[0],sizeof(float));
 				cudaMemcpy(cuda_pointer,this_pointer,(2*vlen+1)*sizeof(float),cudaMemcpyHostToDevice);
 			}
 		}
@@ -1948,18 +1948,22 @@ void whistory::load_cross_sections(){
     xs_data_energy_host  = new float* [MT_rows*MT_columns];
     cudaMalloc(&d_xs_data_scatter,MT_rows*MT_columns*sizeof(float*));
     cudaMalloc(&d_xs_data_energy, MT_rows*MT_columns*sizeof(float*));
+    // nu container
+    float * nuBuff 		= new float [MT_rows];
     // python variables for arguments
-    PyObject 	*E_obj, *MT_obj, *tope_obj;
-    PyObject 	*cdf_vector_obj, *mu_vector_obj , *vector_length_obj, *nextE_obj; 
+    PyObject 	*E_obj, *row_obj, *col_obj;
+    PyObject 	*cdf_vector_obj, *mu_vector_obj , *vector_length_obj, *nextDex_obj; 
     PyObject 	*obj_list;
     Py_buffer 	muBuff, cdfBuff;
     float 		*this_pointer,*cuda_pointer;
     float  		nextE;
     float       this_energy;
     unsigned	this_MT, this_tope, vector_length_L;
-    unsigned 	vector_length;
-    unsigned 	 muRows,  muColumns,  muBytes;
+    int 		vector_length;
+    int 		minusone = -1;
+    unsigned 	muRows,  muColumns,  muBytes;
     unsigned 	cdfRows, cdfColumns, cdfBytes;
+    unsigned 	nextDex;
 
     //set total cross sections to NULL
     for (int j=0 ; j<1*xs_length_numbers[0] ; j++){  //start after the total xs vectors
@@ -1971,69 +1975,70 @@ void whistory::load_cross_sections(){
 
     // do the rest of the MT numbers
     for (int j=1*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs vectors
-    	
-    	// get MT number and isotope
-    	this_MT     = xs_MT_numbers[j];  //adjust for the first total xs when accessing this array
-    	for (int z=0 ; z<xs_length_numbers[0] ; z++){ // see what isotope were in
-    		if(j< (xs_MT_numbers_total[z] + 1*xs_length_numbers[0] )){
-    			this_tope=z;
-    			break;
-    		}
-    	}
-    	std::cout << "tope = " << this_tope << " MT = " << this_MT << "\n";
 
     	for (int k=0 ; k<MT_rows ; k++){
 
-    		// get this energy point
-    		this_energy = xs_data_main_E_grid[k];
-
-    		//SHOULD TRY TO FIX THIS CRAP FROM PRECISION LOSS
-    		if (k==0){this_energy=this_energy*1.0000001;}
-    		//////
-
-    		//std::cout << "j,k = " << j << ", " << k  <<" this_energy " << this_energy << " this_MT " << this_MT << " this_tope " << this_tope << "\n";
-    		//printf("this_energy = %12.10E\n",this_energy);
-
     		// call cross_section_data instance to get buffer
-    		E_obj       = PyFloat_FromDouble (this_energy);
-    		MT_obj      = PyInt_FromLong     (this_MT);
-    		tope_obj    = PyInt_FromLong     (this_tope);
+    		row_obj     = PyInt_FromLong     (k);
+    		col_obj 	= PyInt_FromLong     (j);
     		call_string = PyString_FromString("_get_scattering_data");
-			obj_list    = PyObject_CallMethodObjArgs(xsdat_instance, call_string, tope_obj, MT_obj, E_obj, NULL);
+			obj_list    = PyObject_CallMethodObjArgs(xsdat_instance, call_string, row_obj, col_obj, NULL);
 			PyErr_Print();
 
 			// get objects in the returned list
-			nextE_obj  			= PyList_GetItem(obj_list,0);
+			nextDex_obj  		= PyList_GetItem(obj_list,0);
 			vector_length_obj 	= PyList_GetItem(obj_list,1);
 			mu_vector_obj 		= PyList_GetItem(obj_list,2);
 			cdf_vector_obj 		= PyList_GetItem(obj_list,3);
 			PyErr_Print();
 
 			// expand list to c variables
-			nextE         = PyFloat_AsDouble(nextE_obj);
+			nextDex 	  = PyInt_AsLong 	(nextDex_obj);
 			vector_length = PyInt_AsLong    (vector_length_obj);
 			PyErr_Print();
 
-			//std::cout << " nextE " << nextE << " vector_length " << vector_length << "\n";
-
+			// set this pointer
 			if(vector_length==0){
-				//std::cout << "set as NULL \n";
 				xs_data_scatter     [k*MT_columns + j] = NULL;
 				xs_data_scatter_host[k*MT_columns + j] = NULL;
-				// free python variables
-				//std::cout << "freeing python stuff... ";
-				//Py_DECREF(call_string);
-				//Py_DECREF(E_obj);
-				//Py_DECREF(MT_obj); 
-				//Py_DECREF(tope_obj);
-				//Py_DECREF(vector_length_obj); 
-				//Py_DECREF(nextE_obj);
-				//Py_DECREF(obj_list);
-				//std::cout << "done. \n";
 				PyErr_Print();
 			}
+			//else if (vector_length==-1){
+			//	// this nu, not scatter, copy the entire column.
+			//	// get data buffer from numpy array
+			//	if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
+			//		PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
+			//		PyErr_Print();
+			//	}
+			//	else{
+			//		PyErr_Print();
+    		//	    fprintf(stderr, "Returned object does not support buffer interface\n");
+    		//	    return;
+			//	}
+	//
+			//	// shape info
+			//	muRows     =  muBuff.shape[0];
+			//	muColumns  =  muBuff.shape[1];
+			//	muBytes    =  muBuff.len;
+	//
+			//	//make sure every is ok
+			//	assert(muRows==MT_rows);
+//
+			//	// copy to regular array
+			//	memcpy(nuBuff, muBuff.buf , MT_rows*sizeof(float));
+	//
+			//	//write the returned values into the array, byte-copy into 64bit pointer
+			//	for(k;k<MT_rows;k++){
+			//		memcpy( &xs_data_scatter_host[ k*MT_columns + j ] , &minusone  , 1*sizeof(int) );
+			//		memcpy( &xs_data_scatter_host[ k*MT_columns + j ] , &nuBuff[k] , 1*sizeof(float) );
+			//	}
+//
+			//	PyErr_Print();
+//
+			//	break;
+//
+			//}
 			else{
-				//std::cout << "getting buffer...\n";
 				// get data buffer from numpy array
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
 					PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
@@ -2061,65 +2066,31 @@ void whistory::load_cross_sections(){
 	
 				//allocate pointer, write into array
 				//for cuda too
-				//std::cout << "muRows, cdfRows = " << muRows << ", " << cdfRows << "\n";
-				//std::cout << "new pointer size = " << muRows+cdfRows+1 << "\n";
 				this_pointer = new float [muRows+cdfRows+1];
 				cudaMalloc(&cuda_pointer,(muRows+cdfRows+1)*sizeof(float));
 				total_bytes_scatter += (muRows+cdfRows+1)*sizeof(float);  // add to total count
-				//std::cout <<"here "<< k*MT_columns + j <<"\n";
 				xs_data_scatter     [k*MT_columns + j] = this_pointer;
 				xs_data_scatter_host[k*MT_columns + j] = cuda_pointer;
 	
 				//copy data from python buffer to pointer in array
-				//std::cout <<this_pointer<<" "<<&this_pointer[1]<<" "<<&this_pointer[1+muRows] << "\n";
 				memcpy(this_pointer, 			&muRows,   		     sizeof(unsigned));  // to first position
 				memcpy(&this_pointer[1],		muBuff.buf,  	 muRows*sizeof(float));     // to len bytes after
 				memcpy(&this_pointer[1+muRows],	cdfBuff.buf, 	cdfRows*sizeof(float));     // to len bytes after that
-				//COPY TO CUDA POINTER
-				//memcpy(&vlen,&this_pointer[0],4);
-				//std::cout << vlen << "\n";
-				//std::cout << this_pointer[1] << " " << this_pointer[2] << " " << this_pointer[3] << "\n";
-				//std::cout << this_pointer[4] << " " << this_pointer[5] << " " << this_pointer[6] << "\n";
-				//cudaMemcpy(cuda_pointer,this_pointer,(muRows+cdfRows+1)*sizeof(float),cudaMemcpyHostToDevice);
-				//cudaMemcpy(temp,cuda_pointer,(2*vlen+1)*sizeof(float),cudaMemcpyDeviceToHost);
-				//memcpy(&vlen,&temp[0],4);
-				//std::cout << vlen << "\n";
-				//std::cout << temp[1] << " " << temp[2] << " " << temp[3] << "\n";
-				//std::cout << temp[4] << " " << temp[5] << " " << temp[6] << "\n";
-			
-				//std::cout << "done copying\n";
 
-				//std::cout << muRows << " " << muColumns << " " << muBytes << this_energy <<"\n";
-				//std::cout << this_pointer[0] << "\n";
-				//std::cout << this_pointer[1] << " " << this_pointer[2] << " " << this_pointer[3] << "\n";
-				//std::cout << this_pointer[4] << " " << this_pointer[5] << " " << this_pointer[6] << "\n";
-				
-				// free python variables
-				//Py_DECREF(call_string);
-				//Py_DECREF(E_obj);
-				//Py_DECREF(MT_obj); 
-				//Py_DECREF(tope_obj);
-				//Py_DECREF(cdf_vector_obj); 
-				//Py_DECREF(mu_vector_obj);
-				//Py_DECREF(vector_length_obj); 
-				//Py_DECREF(nextE_obj);
-				//Py_DECREF(obj_list);
 				PyErr_Print();
+
 			}
 
 			// replicate this pointer into array until nextE
 			// for cuda too
-			//std::cout << "replicating...\n";
-			//std::cout << "k now = " << xs_data_main_E_grid[k] << " nextE = " << nextE << "\n";
 			if (k < (MT_rows-1) ){
-				while(xs_data_main_E_grid[k+1]<nextE){
-					//std::cout << k << " " << MT_rows*MT_columns << " " << xs_data_main_E_grid[k+1] << "\n";
+				while(k<nextDex-1){
 					xs_data_scatter     [(k+1)*MT_columns + j] = this_pointer;
 					xs_data_scatter_host[(k+1)*MT_columns + j] = cuda_pointer;
 					k++;
 				}
 			}
-
+	
 			this_pointer = NULL;
 			cuda_pointer = NULL;
 
@@ -2131,7 +2102,7 @@ void whistory::load_cross_sections(){
     ////////////////////////////////////
     // do energy stuff
     ////////////////////////////////////
-	PyObject 	*law_obj;
+	PyObject 	*law_obj,*MT_obj,*tope_obj,*nextE_obj;
 	unsigned 	law=0;
 
     //set total cross sections to NULL

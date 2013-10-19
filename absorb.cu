@@ -12,6 +12,8 @@ __global__ void absorb_kernel(unsigned N, unsigned * rxn , unsigned* done){
 	if (done[tid]){return;}        // return if done, duh
 	if (rxn[tid] < 102 ){return;}  //return if not some sort of absorption, ie (n,not-n)
 
+	//printf("in abs\n");
+
 	done[tid]  = 1;
 
 }

@@ -45,15 +45,22 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm;
 	//float 		v_rel,E_rel;
 
-	//get mu, should always not be NULL since the rxn has already been decided, inelastic should always be there since this rxn shuldn't be spampled in a region below threshold
-	//printf("ptr=%p E=%6.4E rxn=%u dex=%u \n ",this_array, this_E, rxn[tid], this_dex);
-	memcpy(&vlen, &this_array[0], sizeof(float));
-	offset=1;
-	for(k=0;k<vlen;k++){
-		if(rn6 <= this_array[offset+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
-			//in this bin, linearly interpolate 
-			mu = (this_array[offset+k+1]-this_array[offset+k])/(this_array[offset+vlen+k+1]-this_array[offset+vlen+k])*(rn6-this_array[offset+vlen+k])+this_array[offset+k];
-			break;
+	//printf("in iscatter\n");
+	//get mu, should always not be NULL since the rxn has already been decided, elastic should always be there
+	//printf("ptr=%p E=%6.4E rxn=%u dex=%u Q=% 6.4E \n ",this_array, this_E, rxn[tid], this_dex, this_Q);
+	if(this_array == 0x0){
+		mu= 2*rn6-1; //MT=91 doesn't have angular tables for whatever reason
+	}
+	else{
+		memcpy(&vlen, &this_array[0], sizeof(float));
+		//printf("vlen=%u\n",vlen);
+		for(unsigned k=0;k<vlen;k++){
+			if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
+				//in this bin, linearly interpolate 
+				mu = (this_array[1+k+1]-this_array[1+k])/(this_array[1+vlen+k+1]-this_array[1+vlen+k])*(rn6-this_array[1+vlen+k])+this_array[1+k];
+				//printf("tid=%d mu=% 6.4f\n",tid,mu);
+				break;
+			}
 		}
 	}
 	phi = 2*pi*rn7;
@@ -75,26 +82,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	v_n_cm = v_n_lf - v_cm;
 	v_t_cm = v_t_lf - v_cm;
 
-	// calculate final rotated neutron velocity  -  ***the other laws may have an angle/energy correlation that is disregarded...
-	this_array = energydat[this_dex];
-	memcpy(&vlen, &this_array[0], sizeof(float));
-	memcpy(&law,  &this_array[1], sizeof(float));
-	if(law==3){  //level
-		printf("inelastic,Q=% 6.4E\n",this_Q);
-		v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + (2.0* this_Q * alpha/(m_n)) );
-	}
-	else{// distribution
-		printf("law=%u\n",law);
-		offset=2;
-		for(k=0;k<vlen;k++){
-			if(rn8 <= this_array[offset+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
-				//in this bin, linearly interpolate 
-				E_new = (this_array[offset+k+1]-this_array[offset+k])/(this_array[offset+vlen+k+1]-this_array[offset+vlen+k])*(rn8-this_array[offset+vlen+k])+this_array[offset+k];
-				break;
-			}
-		}
-		v_n_cm = hats_new * sqrtf(2.0*E_new/m_n);
-	}
+	// calculate final rotated neutron velocity
+	v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + (2.0* this_Q * alpha/(m_n)) );
 
 	// transform back to LF
 	v_n_lf = v_n_cm + v_cm;
@@ -106,11 +95,11 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	// check cutoff
 	if (E_new < E_cutoff){
 		E_new = E_cutoff;
-		//printf("enforcing E_min in iscatter");
+		//printf("enforcing E_min in escatter");
 	}
 	if (E_new > E_max){
 		E_new = 0.9*E_max;
-		//printf("enforcing E_max in iscatter");
+		//printf("enforcing E_max in escatter");
 	}
 
 	//printf("speed target = %6.4E, speed=%6.4E, Eold,Enew = %10.8E %10.8E\n",speed_target, speed_n,this_E,E_new);
