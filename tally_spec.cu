@@ -40,7 +40,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 	//printf("my_bin_index=%u: score there = %10.8E, count there = %u \n",my_bin_index,tally_score[my_bin_index],tally_count[my_bin_index]);
 
 	//score the bins atomically, could be bad if many neutrons are in a single bin since this will serialize their operations
-	atomicAdd(&tally_score[my_bin_index], macro_t);
+	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
 	atomicInc(&tally_count[my_bin_index], 4294967295);
 
 

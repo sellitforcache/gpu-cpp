@@ -8,6 +8,8 @@ int main(){
 	// BEGIN PROGRAM //
 	///////////////////
 
+	std::string tallyname = "tally";
+
 	//get inputs?
 	int N=1e5;
 
@@ -17,7 +19,7 @@ int main(){
 	// set up geometry
 	wgeometry geom;
 
-	// materials
+	// UO2 w boron materials
 	//unsigned topes[5]={92235,92238,8016,1001,5010};
 	//float    fracs_fuel[5]={0.01,0.99,2,0,0};
 	//float    fracs_water[5]={0,0,1,2,1};
@@ -27,8 +29,6 @@ int main(){
 	//geom.add_material(2,0,5,dens_water,topes,fracs_water);
 	//geom.add_material(3,0,5,dens_water,topes,fracs_water);
 
-
-
 	// water
 	unsigned topes[2]={8016,1001};
 	float    fracs[2]={1,2};
@@ -36,6 +36,7 @@ int main(){
 	geom.add_material(1,1,2,dens,topes,fracs);
 	geom.add_material(2,0,2,dens,topes,fracs);
 	geom.add_material(3,0,2,dens,topes,fracs);
+	tallyname = "water.tally";
 
 	// lead
 	//unsigned topes[1]={82208};
@@ -44,22 +45,25 @@ int main(){
 	//geom.add_material(1,1,1,dens,topes,fracs);
 	//geom.add_material(2,0,1,dens,topes,fracs);
 	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "lead.tally";
 
 	// carbon
-	//unsigned topes[1]={6012};
+	//unsigned topes[1]={6000};
 	//float    fracs[1]={1};
 	//float    dens = 1.00;
 	//geom.add_material(1,1,1,dens,topes,fracs);
 	//geom.add_material(2,0,1,dens,topes,fracs);
 	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "carbon.tally";
 
 	// lithium
-	//unsigned topes[1]={3007};
+	//unsigned topes[1]={3006};
 	//float    fracs[1]={1};
 	//float    dens = 1.00;
 	//geom.add_material(1,1,1,dens,topes,fracs);
 	//geom.add_material(2,0,1,dens,topes,fracs);
 	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "lithium.tally";
 
 	// u235
 	//unsigned topes[1]={92235};
@@ -68,6 +72,16 @@ int main(){
 	//geom.add_material(1,1,1,dens,topes,fracs);
 	//geom.add_material(2,0,1,dens,topes,fracs);
 	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "u235.tally";
+
+	// hydrogen2
+	//unsigned topes[1]={1002};
+	//float    fracs[1]={1};
+	//float    dens = 1.0;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "hydrogen2.tally";
 
 	// assembly geom
 	//geom.add_primitive();
@@ -172,7 +186,7 @@ int main(){
 	//hist.converge(10);
 	hist.set_tally_cell(999);
 	hist.run(40);
-	hist.write_tally(0,"tally");
+	hist.write_tally(0,tallyname);
 
 
 	return 0;

@@ -2,6 +2,7 @@ from pyne import ace
 from pyne import nucname
 import numpy
 import sys
+import glob
 
 class cross_section_data:
 
@@ -28,10 +29,12 @@ class cross_section_data:
 
 	def _read_tables(self):
 
+		datapath = '/usr/local/SERPENT/xsdata/endfb7/acedata/'
+		
 		for tope in self.isotope_list:
 			tope_number = nucname.mcnp(tope)
-			#print 'trying to load '+str(tope_number)
-			self.libraries.append(ace.Library('/usr/local/SERPENT/xsdata/endfb7/acedata/'+str(tope_number)+'ENDF7.ace'))
+			librarypath=glob.glob(datapath+str(tope_number)+'[A-Z]*[0-9]*.ace')[0]
+			self.libraries.append(ace.Library(librarypath))
 
 		for lib in self.libraries:
 			lib.read()
@@ -232,13 +235,16 @@ class cross_section_data:
 				nextE = self.MT_E_grid[self.num_main_E-1]
 				return [nextE,0,3,numpy.array([0]),numpy.array([0])]
 			else:
-				scatterE   = rxn.energy_dist.energy_in
-				scatterMu  = rxn.energy_dist.energy_out
-				scatterCDF = rxn.energy_dist.cdf
-				law        = rxn.energy_dist.law
-				#print "lengths = "+str(scatterMu.__len__())
-				#print scatterMu[1]
-				#print scatterCDF[1]
+				nextE = self.MT_E_grid[self.num_main_E-1]
+				return [nextE,0,3,numpy.array([0]),numpy.array([0])]
+			#else:
+			#	scatterE   = rxn.energy_dist.energy_in
+			#	scatterMu  = rxn.energy_dist.energy_out
+			#	scatterCDF = rxn.energy_dist.cdf
+			#	law        = rxn.energy_dist.law
+			#	#print "lengths = "+str(scatterMu.__len__())
+			#	#print scatterMu[1]
+			#	#print scatterCDF[1]
 		else:
 			#print "no angular tables"
 			nextE = self.MT_E_grid[self.num_main_E-1]

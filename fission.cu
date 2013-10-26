@@ -10,7 +10,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	if (done[tid]){return;}      // return if done, duh
-	if (rxn[tid] != 18 ){return;}  //return if not fission
+	if (rxn[tid] < 3 | rxn[tid] > 50 ){return;}  //return if no secondary neutron
 
 	//printf("in fission\n");
 

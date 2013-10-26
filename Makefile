@@ -1,8 +1,8 @@
 #
-CC = /usr/bin/gcc
-CXX = /usr/bin/g++
+CC =  /usr/local/Cellar/gcc46/4.6.4/bin/gcc-4.6
+CXX = /usr/local/Cellar/gcc46/4.6.4/bin/g++-4.6
 OPTIX = /Developer/OptiX
-NVCC = /usr/local/cuda/bin/nvcc
+NVCC = nvcc -ccbin=/usr/local/Cellar/gcc46/4.6.4/bin
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64
 NVCC_FLAGS = -m64  

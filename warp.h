@@ -2560,6 +2560,9 @@ void whistory::reset_fixed(){
 	//make directions isotropic
 	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
 
+	// update RNGs
+	update_RNG();
+
 }
 void whistory::run(unsigned num_cycles){
 
@@ -2636,6 +2639,9 @@ void whistory::run(unsigned num_cycles){
 		//current_fission_index = reset_cycle(current_fission_index);
 		reset_fixed();
 		completed_hist = 0;
+
+		//std::cout << "cycle done, press enter to continue...\n";
+		//std::cin.ignore();
 
 	}
 
