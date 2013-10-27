@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cuda.h>
 #include <curand.h>
-#include <optixu/optixpp_namespace.h>
+#include <optixu/optixpp.h>//_namespace.h>
 #include "datadef.h"
 #include <cudpp_hash.h>
 #include <Python.h>
@@ -791,7 +791,7 @@ optix_stuff::~optix_stuff(){
 		context->destroy();	
 	} 
 	catch( optix::Exception &e ){
-		std::cout << e.getErrorString().c_str();
+		std::cout << "OptiX Error on destroy: " << e.getErrorString().c_str() << "\n";
 		exit(1);
 	}
 }
@@ -911,7 +911,7 @@ void optix_stuff::init(wgeometry problem_geom){
 		init_internal(problem_geom);	
 	} 
 	catch( optix::Exception &e ){
-		std::cout << e.getErrorString().c_str();
+		std::cout << "OptiX Error in init:" << e.getErrorString().c_str() <<"\n";
 		exit(1);
 	}
 }
@@ -1179,6 +1179,7 @@ class whistory {
 	unsigned 		n_materials;
 	unsigned 		n_isotopes;
 	unsigned 		n_tally;
+	unsigned 		n_qnodes;
     source_point *  space;
     unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points 
     unsigned *      xs_MT_numbers_total;
@@ -1211,6 +1212,7 @@ class whistory {
     unsigned * 		remap;
     unsigned * 		zeros;
     unsigned * 		ones;
+    qnode * 		qnodes;
 	// device data
 	source_point *  d_space;
 	unsigned *      d_xs_length_numbers;
@@ -1241,6 +1243,7 @@ class whistory {
     unsigned * 		d_reduced_done;
     source_point * 	d_fissile_points;
     unsigned * 		d_mask;
+    qnode *			d_qnodes;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1276,6 +1279,7 @@ public:
     void write_xs_data(std::string);
     void write_tally(unsigned, std::string);
     void set_tally_cell(unsigned);
+    void create_quad_tree();
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
@@ -1286,6 +1290,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	optix_obj.init(problem_geom);
 	optix_obj.print();
 	// CUDA stuff
+	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
 	N=Nin;
 	NUM_THREADS = 256;
 	RNUM_PER_THREAD = 15;
@@ -1295,6 +1300,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	n_tally = 1024;
 	// device data stuff
 	N = Nin;
+	n_qnodes = 0;
 				 d_space 	= (source_point*) optix_obj.positions_ptr;
 				 d_cellnum 	= (unsigned*)     optix_obj.cellnum_ptr;
 				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
@@ -2695,8 +2701,102 @@ void whistory::set_tally_cell(unsigned cell){
 	tally_cell = cell;
 
 }
+void whistory::create_quad_tree(){
 
+	std::cout << "\e[1;32m" << "Building forked quad tree for energy search... " << "\e[m \n";
 
+	// node vectors
+	std::vector<qnode_host>   nodes;
+	std::vector<qnode_host>   nodes_next;
+
+	// node variables
+	qnode_host  this_qnode;
+	qnode*      cuda_qnode;
+
+	// build bottom-up from the unionized E vector
+	unsigned k, depth;
+	for(k=0; k < MT_rows ; k = k+4){
+		this_qnode.node.values[0] = xs_data_main_E_grid[ k+0 ];
+		this_qnode.node.values[1] = xs_data_main_E_grid[ k+1 ];
+		this_qnode.node.values[2] = xs_data_main_E_grid[ k+2 ];
+		this_qnode.node.values[3] = xs_data_main_E_grid[ k+3 ];
+		this_qnode.node.values[4] = xs_data_main_E_grid[ k+4 ];  // nodes share edge values
+		this_qnode.node.leaves[0] = (qnode*) k + 0;  // recast index as the pointer for lowest nodes
+		this_qnode.node.leaves[1] = (qnode*) k + 1;
+		this_qnode.node.leaves[2] = (qnode*) k + 2;
+		this_qnode.node.leaves[3] = (qnode*) k + 3;
+		cudaMalloc(&cuda_qnode,sizeof(qnode));
+		cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
+		this_qnode.cuda_pointer = cuda_qnode;
+		nodes.push_back(this_qnode);
+	}
+	//do the last values
+	unsigned n=0;
+	for(k=MT_rows-(MT_rows%4);k<MT_rows;k++){
+		this_qnode.node.values[n] = xs_data_main_E_grid[ k ];
+		this_qnode.node.leaves[n] = (qnode*) k; 
+		n++;
+	}
+	//repeat the last values
+	for(k=n+1;k<4;k++){
+		this_qnode.node.values[k] = this_qnode.node.values[n];
+		this_qnode.node.leaves[k] = this_qnode.node.leaves[n];
+	}
+	// device allocate and add to vector
+	cudaMalloc(&cuda_qnode,sizeof(qnode));
+	cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
+	this_qnode.cuda_pointer = cuda_qnode;
+	nodes.push_back(this_qnode);
+
+	//now build it up!  length will *always* be a multiple of 4
+	unsigned lowest_length = nodes.size();
+	unsigned this_width,repeats,start_dex;
+	for( depth=1 ; depth<=(logf(lowest_length)/logf(4)) ; depth++){
+		this_width = lowest_length/pow(4,depth-1);
+		for(unsigned repeat=0; repeats<pow(4,depth-1) ; repeats++){
+			start_dex = repeats*this_width;
+			for(unsigned j=0;j<4;j++){
+				for( k = start_dex ; k < (start_dex+this_width) ; k=k+4 ){
+					this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
+					this_qnode.node.values[1] = nodes[ k+1 ].node.values[0];
+					this_qnode.node.values[2] = nodes[ k+2 ].node.values[0];
+					this_qnode.node.values[3] = nodes[ k+3 ].node.values[0];
+					this_qnode.node.values[4] = nodes[ k+3 ].node.values[4];  
+					this_qnode.node.leaves[0] = nodes[ k+0 ].cuda_pointer;  // set pointers as the cuda pointer of the children
+					this_qnode.node.leaves[1] = nodes[ k+1 ].cuda_pointer;
+					this_qnode.node.leaves[2] = nodes[ k+2 ].cuda_pointer;
+					this_qnode.node.leaves[3] = nodes[ k+3 ].cuda_pointer;
+					cudaMalloc(&cuda_qnode,sizeof(qnode));
+					cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
+					this_qnode.cuda_pointer = cuda_qnode;
+					nodes_next.push_back(this_qnode);
+				}
+			}
+		}
+		nodes=nodes_next;
+		nodes_next.clear();
+	}
+
+	//copy root nodes vector to object variable
+	n_qnodes = lowest_length;
+	qnodes = new qnode[n_qnodes];
+	for(k=0;k<n_qnodes;k++){   //only need to copy heads, they have pointers to the rest in them
+			qnodes[k].values[0] = nodes[k].node.values[0];
+			qnodes[k].values[1] = nodes[k].node.values[1];
+			qnodes[k].values[2] = nodes[k].node.values[2];
+			qnodes[k].values[3] = nodes[k].node.values[3];
+			qnodes[k].values[4] = nodes[k].node.values[4];
+			qnodes[k].leaves[0] = nodes[k].node.leaves[0];
+			qnodes[k].leaves[1] = nodes[k].node.leaves[1];
+			qnodes[k].leaves[2] = nodes[k].node.leaves[2];
+			qnodes[k].leaves[3] = nodes[k].node.leaves[3];
+	}
+	cudaMalloc(	&d_qnodes,				n_qnodes*sizeof(qnode)	);
+	cudaMemcpy(	 d_qnodes,	qnodes,		n_qnodes*sizeof(qnode),	cudaMemcpyHostToDevice); 
+
+	std::cout << "  Complete.  Depth of tree is "<< depth << ", width is "<< lowest_length <<".\n";
+
+}
 
 
 

@@ -191,12 +191,12 @@ class cross_section_data:
 					next_E = scatterE[scatter_dex+1]
 				# find main E grid indext of next energy
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-				print "MT = "+str(MTnum)
-				print row,col
-				print this_E,next_E
-				print scatter_dex
-				print nextDex
-				print scatterE
+				#print "MT = "+str(MTnum)
+				#print row,col
+				#print this_E,next_E
+				#print scatter_dex
+				#print nextDex
+				#print scatterE
 				# construct vector
 				vlen  = scatterCDF[scatter_dex].__len__()
 				cdf   = numpy.ascontiguousarray(scatterCDF[scatter_dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays

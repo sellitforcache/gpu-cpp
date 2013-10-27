@@ -30,7 +30,11 @@ struct source_point{
 //quaternary search nodes
 struct qnode{
     float  values[5];
-    float* leaf[4];
+    qnode* leaves[4];
+};
+struct qnode_host{
+    qnode* cuda_pointer;
+    qnode  node;
 };
 
 //hit buffer struct

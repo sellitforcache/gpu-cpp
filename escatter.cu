@@ -91,10 +91,10 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// transform hats to CM, sample phi and rotate
 	hats_old = v_n_cm / v_n_cm.norm2();
 	
-	hats_new = hats_old.rotate(phi,mu);
-	//hats_new.x = sqrtf(1.0-mu*mu)*cosf(phi);
-	//hats_new.y = sqrtf(1.0-mu*mu)*sinf(phi); 
-	//hats_new.z = mu;
+	//hats_new = hats_old.rotate(phi,mu);
+	hats_new.x = sqrtf(1.0-mu*mu)*cosf(phi);
+	hats_new.y = sqrtf(1.0-mu*mu)*sinf(phi); 
+	hats_new.z = mu;
 
 	//calculate final velocity in CM
 	v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + 2.0 * a * this_Q / m_n );
