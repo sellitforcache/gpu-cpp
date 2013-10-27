@@ -27,7 +27,7 @@ struct source_point{
     float macro_t;
 };
 
-//quaternary search nodes
+//quaternary search node and host container
 struct qnode{
     float  values[5];
     qnode* leaves[4];
