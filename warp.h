@@ -2758,7 +2758,7 @@ void whistory::create_quad_tree(){
 	nodes.push_back(this_qnode);
 
 
-	//now build it up!  length will *always* be a multiple of 4
+	//now build it up!  length will *always* need be a multiple of 4.  this routine pads the end nodes with 
 	unsigned lowest_length = nodes.size();
 	unsigned this_width,repeats,start_dex;
 	unsigned end_depth = (logf(lowest_length)/logf(4));
@@ -2770,7 +2770,8 @@ void whistory::create_quad_tree(){
 			start_dex = repeats*this_width;
 			std::cout << "start_dex="<< start_dex << "\n";
 			for(unsigned j=0;j<4;j++){
-				for( k = start_dex ; k < (start_dex+this_width) ; k=k+4 ){
+				unsigned width_by_four=this_width/4;
+				for( k = start_dex ; k < (start_dex+width_by_four) ; k=k+4 ){
 					this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
 					this_qnode.node.values[1] = nodes[ k+1 ].node.values[0];
 					this_qnode.node.values[2] = nodes[ k+2 ].node.values[0];
@@ -2785,13 +2786,31 @@ void whistory::create_quad_tree(){
 					this_qnode.cuda_pointer = cuda_qnode;
 					nodes_next.push_back(this_qnode);
 				}
+				// do end node for the remining non-4divisible members
+				n=0;
+				for(k=width_by_four;k<this_width;k++){
+					this_qnode.node.values[n] = nodes[ k+0 ].node.values[0];
+					this_qnode.node.leaves[n] = nodes[ k+0 ].cuda_pointer;
+					n++;
+				}
+				//repeat the last values
+				for(k=n;k<4;k++){
+					this_qnode.node.values[k] = this_qnode.node.values[n-1];
+					this_qnode.node.leaves[k] = this_qnode.node.leaves[n-1];
+				}
+				this_qnode.node.values[4] = this_qnode.node.values[n-1];
+				// device allocate and add to vector
+				cudaMalloc(&cuda_qnode,sizeof(qnode));
+				cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
+				this_qnode.cuda_pointer = cuda_qnode;
+				nodes.push_back(this_qnode);
 			}
 		}
 		nodes=nodes_next;
 		std::cout << "nodes_next size = "<<nodes_next.size() << "\n";
 		for(int g=0;g<nodes_next.size();g++){ //node vector check
 			std::cout << "node " << g << " values " << nodes[g].node.values[0] << " " << nodes[g].node.values[1] << " "<< nodes[g].node.values[2] << " "<< nodes[g].node.values[3] << " "<< nodes[g].node.values[4] << " " <<"\n";
-			std::cout << "node " << g << " leaves " << (long unsigned)nodes[g].node.leaves[0] << " " << (long unsigned)nodes[g].node.leaves[1] << " "<< (long unsigned)nodes[g].node.leaves[2] << " "<< (long unsigned)nodes[g].node.leaves[3] << " " <<"\n";
+			std::cout << "node " << g << " leaves " << nodes[g].node.leaves[0] << " " << nodes[g].node.leaves[1] << " "<< (long unsigned)nodes[g].node.leaves[2] << " "<< (long unsigned)nodes[g].node.leaves[3] << " " <<"\n";
 		}
 		nodes_next.clear();
 	}
