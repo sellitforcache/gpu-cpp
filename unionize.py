@@ -205,6 +205,12 @@ class cross_section_data:
 				assert vlen == mu.__len__()
 				# return
 				return [nextDex,vlen,mu,cdf]
+			elif hasattr(table,"nu_t_energy"):
+				# return interpolated nu values
+				interped_nu = numpy.interp( self.MT_E_grid, table.nu_t_energy, table.nu_t_value )   #
+				interped_nu = numpy.ascontiguousarray(interped_nu, dtype=numpy.float32)
+				print interped_nu
+				return [-1,-1,interped_nu,interped_nu]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]

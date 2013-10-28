@@ -35,6 +35,7 @@ void iscatter(unsigned , unsigned , unsigned , unsigned , unsigned* , unsigned *
 void fission(unsigned , unsigned , unsigned, unsigned , unsigned* , unsigned* , unsigned*  , float * , unsigned* , float**);
 void absorb(unsigned , unsigned , unsigned , unsigned*  , unsigned* );
 void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , float* , unsigned *, unsigned* );
+void find_E_grid_index_quad(unsigned, unsigned, unsigned,  unsigned,  unsigned, qnode*, float*, unsigned*, unsigned*);
 void make_mask(unsigned, unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
 void print_histories(unsigned, unsigned, unsigned, unsigned *, unsigned*, source_point*, float*, unsigned*);
 
@@ -1965,6 +1966,7 @@ void whistory::load_cross_sections(){
     float 		*this_pointer,*cuda_pointer;
     float  		nextE;
     float       this_energy;
+    float 		nu_test;
     unsigned	this_MT, this_tope, vector_length_L;
     int 		vector_length;
     int 		minusone = -1;
@@ -2010,41 +2012,43 @@ void whistory::load_cross_sections(){
 				xs_data_scatter_host[k*MT_columns + j] = NULL;
 				PyErr_Print();
 			}
-			//else if (vector_length==-1){
-			//	// this nu, not scatter, copy the entire column.
-			//	// get data buffer from numpy array
-			//	if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
-			//		PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
-			//		PyErr_Print();
-			//	}
-			//	else{
-			//		PyErr_Print();
-    		//	    fprintf(stderr, "Returned object does not support buffer interface\n");
-    		//	    return;
-			//	}
-	//
-			//	// shape info
-			//	muRows     =  muBuff.shape[0];
-			//	muColumns  =  muBuff.shape[1];
-			//	muBytes    =  muBuff.len;
-	//
-			//	//make sure every is ok
-			//	assert(muRows==MT_rows);
-//
-			//	// copy to regular array
-			//	memcpy(nuBuff, muBuff.buf , MT_rows*sizeof(float));
-	//
-			//	//write the returned values into the array, byte-copy into 64bit pointer
-			//	for(k;k<MT_rows;k++){
-			//		memcpy( &xs_data_scatter_host[ k*MT_columns + j ] , &minusone  , 1*sizeof(int) );
-			//		memcpy( &xs_data_scatter_host[ k*MT_columns + j ] , &nuBuff[k] , 1*sizeof(float) );
-			//	}
-//
-			//	PyErr_Print();
-//
-			//	break;
-//
-			//}
+			else if (vector_length==-1){
+				// this nu, not scatter, copy the entire column.
+				// get data buffer from numpy array
+				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
+					PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
+					PyErr_Print();
+				}
+				else{
+					PyErr_Print();
+				    fprintf(stderr, "Returned object does not support buffer interface\n");
+				    return;
+				}
+			
+				// shape info
+				muRows     =  muBuff.shape[0];
+				muColumns  =  muBuff.shape[1];
+				muBytes    =  muBuff.len;
+			
+				//make sure every is ok
+				assert(muRows==MT_rows);
+			
+				// copy to regular array
+				memcpy(nuBuff, muBuff.buf , MT_rows*sizeof(float));
+			
+				//write the returned values into the array, byte-copy into 64bit pointer
+				for(k;k<MT_rows;k++){
+					//std::cout << "copying nu value "<< nuBuff[k] <<" at energy "<< xs_data_main_E_grid[k]<< " MeV\n";
+					memcpy( &xs_data_scatter_host[ k*MT_columns + j ] , &nuBuff[k] , 1*sizeof(float) );
+					memcpy( &nu_test , &xs_data_scatter_host[ k*MT_columns + j ], 1*sizeof(float) );
+					//std::cout << "copying nu value "<< nu_test <<" at energy "<< xs_data_main_E_grid[k]<< " MeV\n";
+				}
+			
+				PyErr_Print();
+			
+				break;
+			
+			}
 			else{
 				// get data buffer from numpy array
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
@@ -2717,16 +2721,18 @@ void whistory::create_quad_tree(){
 
 	// build bottom-up from the unionized E vector
 	unsigned k, depth;
-	for(k=0; k < MT_rows ; k = k+4){
+	unsigned rows_by_four = MT_rows/4;
+	rows_by_four = rows_by_four *4;
+	for(k=0; k < rows_by_four ; k = k+4){
 		this_qnode.node.values[0] = xs_data_main_E_grid[ k+0 ];
 		this_qnode.node.values[1] = xs_data_main_E_grid[ k+1 ];
 		this_qnode.node.values[2] = xs_data_main_E_grid[ k+2 ];
 		this_qnode.node.values[3] = xs_data_main_E_grid[ k+3 ];
 		this_qnode.node.values[4] = xs_data_main_E_grid[ k+4 ];  // nodes share edge values
-		this_qnode.node.leaves[0] = (qnode*) k + 0;  // recast index as the pointer for lowest nodes
-		this_qnode.node.leaves[1] = (qnode*) k + 1;
-		this_qnode.node.leaves[2] = (qnode*) k + 2;
-		this_qnode.node.leaves[3] = (qnode*) k + 3;
+		this_qnode.node.leaves[0] = (qnode*) ((long unsigned)k + 0);  // recast index as the pointer for lowest nodes
+		this_qnode.node.leaves[1] = (qnode*) ((long unsigned)k + 1);
+		this_qnode.node.leaves[2] = (qnode*) ((long unsigned)k + 2);
+		this_qnode.node.leaves[3] = (qnode*) ((long unsigned)k + 3);
 		cudaMalloc(&cuda_qnode,sizeof(qnode));
 		cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
 		this_qnode.cuda_pointer = cuda_qnode;
@@ -2734,29 +2740,35 @@ void whistory::create_quad_tree(){
 	}
 	//do the last values
 	unsigned n=0;
-	for(k=MT_rows-(MT_rows%4);k<MT_rows;k++){
+	for(k=rows_by_four;k<MT_rows;k++){
 		this_qnode.node.values[n] = xs_data_main_E_grid[ k ];
-		this_qnode.node.leaves[n] = (qnode*) k; 
+		this_qnode.node.leaves[n] = (qnode*) ((long unsigned)k); 
 		n++;
 	}
 	//repeat the last values
-	for(k=n+1;k<4;k++){
-		this_qnode.node.values[k] = this_qnode.node.values[n];
-		this_qnode.node.leaves[k] = this_qnode.node.leaves[n];
+	for(k=n;k<4;k++){
+		this_qnode.node.values[k] = this_qnode.node.values[n-1];
+		this_qnode.node.leaves[k] = this_qnode.node.leaves[n-1];
 	}
+	this_qnode.node.values[4] = this_qnode.node.values[n-1];
 	// device allocate and add to vector
 	cudaMalloc(&cuda_qnode,sizeof(qnode));
 	cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
 	this_qnode.cuda_pointer = cuda_qnode;
 	nodes.push_back(this_qnode);
 
+
 	//now build it up!  length will *always* be a multiple of 4
 	unsigned lowest_length = nodes.size();
 	unsigned this_width,repeats,start_dex;
-	for( depth=1 ; depth<=(logf(lowest_length)/logf(4)) ; depth++){
+	unsigned end_depth = (logf(lowest_length)/logf(4));
+	for( depth=1 ; depth<=end_depth ; depth++){
 		this_width = lowest_length/pow(4,depth-1);
-		for(unsigned repeat=0; repeats<pow(4,depth-1) ; repeats++){
+		std::cout << "this width="<< this_width << "\n";
+		std::cout << "repeats="<< pow(4,depth-1) << "\n";
+		for(unsigned repeats=0; repeats<pow(4,depth-1) ; repeats++){
 			start_dex = repeats*this_width;
+			std::cout << "start_dex="<< start_dex << "\n";
 			for(unsigned j=0;j<4;j++){
 				for( k = start_dex ; k < (start_dex+this_width) ; k=k+4 ){
 					this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
@@ -2776,6 +2788,11 @@ void whistory::create_quad_tree(){
 			}
 		}
 		nodes=nodes_next;
+		std::cout << "nodes_next size = "<<nodes_next.size() << "\n";
+		for(int g=0;g<nodes_next.size();g++){ //node vector check
+			std::cout << "node " << g << " values " << nodes[g].node.values[0] << " " << nodes[g].node.values[1] << " "<< nodes[g].node.values[2] << " "<< nodes[g].node.values[3] << " "<< nodes[g].node.values[4] << " " <<"\n";
+			std::cout << "node " << g << " leaves " << (long unsigned)nodes[g].node.leaves[0] << " " << (long unsigned)nodes[g].node.leaves[1] << " "<< (long unsigned)nodes[g].node.leaves[2] << " "<< (long unsigned)nodes[g].node.leaves[3] << " " <<"\n";
+		}
 		nodes_next.clear();
 	}
 
