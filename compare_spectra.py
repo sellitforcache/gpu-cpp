@@ -1,7 +1,11 @@
+#! /usr/bin/python
 import pylab
 import sys
+import numpy
 import os
 import re
+
+case = sys.argv[1]
 
 def get_serpent_det(filepath):
 	fobj    = open(filepath)
@@ -13,10 +17,10 @@ def get_serpent_det(filepath):
 	for name in names:
 		varname  = name.split()[0]
 		moredata = re.findall(' [ .+-eE0-9^\[]+\n',data[dex])
-		thisarray = numpy.array([])
-		for lines in moredata:
-			thisarray=numpy.append(thisarray,numpy.array(moredata[1].split(),dtype=float),0)
-		alldata[varname]=thisarray
+		thisarray = numpy.array(moredata[0].split(),dtype=float)
+		for line in moredata[1:]:
+			thisarray=numpy.vstack((thisarray,numpy.array(line.split(),dtype=float)))
+		alldata[varname]=numpy.mat(thisarray)
 		dex = dex + 1
 	return alldata
 
@@ -24,7 +28,7 @@ def get_serpent_det(filepath):
 if   case=='water':
 	tally      = numpy.loadtxt('water.tally')
 	tallybins  = numpy.loadtxt('water.tallybins')
-	serpdata   = get_serpent_det('..serpent-benchmark/nonfiss_mono2_det0.m')
+	serpdata   = get_serpent_det('../serpent-benchmark/nonfiss_mono2_det0.m')
 elif case== 'carbon':
 	tally      = numpy.loadtxt('carbon.tally')
 	tallybins  = numpy.loadtxt('carbon.tallybins')
@@ -42,15 +46,22 @@ elif case== 'hydrogen2':
 	tallybins  = numpy.loadtxt('hydrogen2.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/hydrogen2_mono2_det0.m')
 
-plot_spectra_serpent(DETfluxlogE,DETfluxlog)
-plot_spectra_warp(tally,tallybins,'r')
 
-set(gca,'FontSize',14)
-title({'Serpent2 (Serial) vs. WARP','4e6 histories, 2MeV point source at origin of 84x84x84cm water block'})
-xlabel('Energy (MeV)')
-ylabel('Normalized Flux/Lethary')
-legend('Serpent2, 18.2 minutes','WARP, 5.76 minutes','MCNP6.1','Location','NW')
-grid on
-a=ylim();
-ylim(a*.5)
-xlim([2e-11,25])
+widths=numpy.diff(tallybins);
+avg=(tallybins[:-1]+tallybins[1:])/2;
+newflux=numpy.divide(tally[:-1,0],widths)
+newflux=numpy.multiply(newflux,avg)
+newflux=numpy.divide(newflux,numpy.max(newflux))
+
+serpE=serpdata['DETfluxlogE'][:,2]
+serpF=numpy.divide(serpdata['DETfluxlog'][:,10],numpy.max(serpdata['DETfluxlog'][:,10]))
+
+p1=pylab.semilogx(serpE,serpF,'b',avg,newflux,'r',linestyle='steps-mid')
+pylab.xlabel('Energy (MeV)')
+pylab.ylabel('Normalized Flux/Lethary')
+pylab.title('Serpent2 (Serial) vs. WARP\n 4e6 histories, 2MeV point source at origin of 84x84x84cm water block')
+pylab.legend(p1,['Serpent 2.1.15, 18.2 minutes','WARP, 5.76 minutes'],loc=2)
+pylab.ylim([0,.25])
+pylab.xlim([1e-11,20])
+pylab.grid(True)
+pylab.show()
