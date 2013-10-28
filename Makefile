@@ -26,6 +26,7 @@ COBJS =	mt19937ar.o \
 		macroscopic.o \
 		microscopic.o \
 		find_E_grid_index.o \
+		find_E_grid_index_quad.o \
 		sample_fission_spectra.o \
 		sample_isotropic_directions.o \
 		tally_spec.o \
@@ -83,6 +84,9 @@ set_positions_rand.o:
 
 find_E_grid_index.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c find_E_grid_index.cu
+
+find_E_grid_index_quad.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c find_E_grid_index_quad.cu
 
 sample_fission_spectra.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_fission_spectra.cu

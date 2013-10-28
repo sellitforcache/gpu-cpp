@@ -1176,6 +1176,7 @@ class whistory {
 	unsigned 	NUM_THREADS;
 	unsigned 	blks;
 	// host data
+	unsigned 		qnodes_depth, qnodes_width;
 	unsigned 		n_materials;
 	unsigned 		n_isotopes;
 	unsigned 		n_tally;
@@ -2595,7 +2596,8 @@ void whistory::run(unsigned num_cycles){
 		while(completed_hist<N){
 	
 			//find the main E grid index
-			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
+			//find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
+			find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// find what material we are in
 			trace(2);
@@ -2791,8 +2793,12 @@ void whistory::create_quad_tree(){
 			qnodes[k].leaves[2] = nodes[k].node.leaves[2];
 			qnodes[k].leaves[3] = nodes[k].node.leaves[3];
 	}
+
+	// make an copy device data, copy to object values
 	cudaMalloc(	&d_qnodes,				n_qnodes*sizeof(qnode)	);
 	cudaMemcpy(	 d_qnodes,	qnodes,		n_qnodes*sizeof(qnode),	cudaMemcpyHostToDevice); 
+	qnodes_depth = depth;
+	qnodes_width = lowest_length;
 
 	std::cout << "  Complete.  Depth of tree is "<< depth << ", width is "<< lowest_length <<".\n";
 

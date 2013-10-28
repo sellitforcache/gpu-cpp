@@ -106,13 +106,12 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
-	// check cutoff
 	if (E_new <= E_cutoff){
 		//E_new = 1.5*E_cutoff;
 		done[tid]=1;
 		//printf("enforcing E_min in escatter");
 	}
-	if (E_new > E_max){
+	else if (E_new > E_max){
 		//E_new = 0.9*E_max;
 		done[tid]=1;
 		//printf("enforcing E_max in escatter");
