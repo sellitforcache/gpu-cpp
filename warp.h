@@ -2758,62 +2758,74 @@ void whistory::create_quad_tree(){
 	nodes.push_back(this_qnode);
 
 
-	//now build it up!  length will *always* need be a multiple of 4.  this routine pads the end nodes with 
-	unsigned lowest_length = nodes.size();
-	unsigned this_width,repeats,start_dex;
-	unsigned end_depth = (logf(lowest_length)/logf(4));
-	for( depth=1 ; depth<=end_depth ; depth++){
-		this_width = lowest_length/pow(4,depth-1);
-		std::cout << "this width="<< this_width << "\n";
-		std::cout << "repeats="<< pow(4,depth-1) << "\n";
-		for(unsigned repeats=0; repeats<pow(4,depth-1) ; repeats++){
-			start_dex = repeats*this_width;
-			std::cout << "start_dex="<< start_dex << "\n";
-			for(unsigned j=0;j<4;j++){
-				unsigned width_by_four=this_width/4;
-				for( k = start_dex ; k < (start_dex+width_by_four) ; k=k+4 ){
-					this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
-					this_qnode.node.values[1] = nodes[ k+1 ].node.values[0];
-					this_qnode.node.values[2] = nodes[ k+2 ].node.values[0];
-					this_qnode.node.values[3] = nodes[ k+3 ].node.values[0];
-					this_qnode.node.values[4] = nodes[ k+3 ].node.values[4];  
-					this_qnode.node.leaves[0] = nodes[ k+0 ].cuda_pointer;  // set pointers as the cuda pointer of the children
-					this_qnode.node.leaves[1] = nodes[ k+1 ].cuda_pointer;
-					this_qnode.node.leaves[2] = nodes[ k+2 ].cuda_pointer;
-					this_qnode.node.leaves[3] = nodes[ k+3 ].cuda_pointer;
-					cudaMalloc(&cuda_qnode,sizeof(qnode));
-					cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
-					this_qnode.cuda_pointer = cuda_qnode;
-					nodes_next.push_back(this_qnode);
-				}
-				// do end node for the remining non-4divisible members
-				n=0;
-				for(k=width_by_four;k<this_width;k++){
-					this_qnode.node.values[n] = nodes[ k+0 ].node.values[0];
-					this_qnode.node.leaves[n] = nodes[ k+0 ].cuda_pointer;
-					n++;
-				}
-				//repeat the last values
-				for(k=n;k<4;k++){
-					this_qnode.node.values[k] = this_qnode.node.values[n-1];
-					this_qnode.node.leaves[k] = this_qnode.node.leaves[n-1];
-				}
-				this_qnode.node.values[4] = this_qnode.node.values[n-1];
-				// device allocate and add to vector
+	//now build it up!  length will *always* need to be a multiple of 4.  this routine pads the end nodes with 
+	unsigned this_width = nodes.size();
+	unsigned lowest_length = this_width;
+	unsigned mod4 		= this_width % 4;
+	unsigned end_depth=  (logf(lowest_length)/logf(4))+1;
+	std::cout << "end_depth="<<end_depth<<"\n";
+	for(unsigned depth=0;depth<end_depth;depth++){
+		for(unsigned copy_iteration=0;copy_iteration<4;copy_iteration++){
+			unsigned starting_index=0;
+			for( k=starting_index;k<(starting_index+this_width-mod4);k=k+4){
+				std::cout << "k=" << k << "\n";
+				this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
+				this_qnode.node.values[1] = nodes[ k+1 ].node.values[0];
+				this_qnode.node.values[2] = nodes[ k+2 ].node.values[0];
+				this_qnode.node.values[3] = nodes[ k+3 ].node.values[0];
+				this_qnode.node.values[4] = nodes[ k+3 ].node.values[4];  
+				this_qnode.node.leaves[0] = nodes[ k+0 ].cuda_pointer;  // set pointers as the cuda pointer of the children
+				this_qnode.node.leaves[1] = nodes[ k+1 ].cuda_pointer;
+				this_qnode.node.leaves[2] = nodes[ k+2 ].cuda_pointer;
+				this_qnode.node.leaves[3] = nodes[ k+3 ].cuda_pointer;
 				cudaMalloc(&cuda_qnode,sizeof(qnode));
 				cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
 				this_qnode.cuda_pointer = cuda_qnode;
-				nodes.push_back(this_qnode);
+				nodes_next.push_back(this_qnode);
+			}
+			if(mod4){
+				std::cout << "adding padded node at " << nodes_next.size()-1 << "\n";
+				unsigned n=0;
+				for( k=(starting_index+this_width-mod4) ; k<(starting_index+this_width) ; k++){
+					std::cout <<"n="<<n << " k="<<k<<"\n";
+					this_qnode.node.values[n] = nodes[ k ].node.values[0];
+					this_qnode.node.leaves[n] = nodes[ k ].cuda_pointer;
+					n++;
+				}
+				k=k-1;
+				std::cout <<"n="<<n << " k="<<k<<"\n";
+				this_qnode.node.values[n] = nodes[ k ].node.values[4];
+				this_qnode.node.leaves[n] = nodes[ k ].cuda_pointer;
+				n++;
+				for( n;n<4;n++){
+					std::cout <<"n="<<n << " k="<<k<<"\n";
+					this_qnode.node.values[n] = this_qnode.node.values[n-1];
+					this_qnode.node.leaves[n] = this_qnode.node.leaves[n-1];
+				}
+				this_qnode.node.values[4] = this_qnode.node.values[n-1];
+				cudaMalloc(&cuda_qnode,sizeof(qnode));
+				cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
+				this_qnode.cuda_pointer = cuda_qnode;
+				nodes_next.push_back(this_qnode);
 			}
 		}
+		if(mod4){
+			this_width=(this_width)/4+1;
+		}
+		else{
+			this_width=this_width/4;
+		}
+		mod4=this_width%4;
 		nodes=nodes_next;
-		std::cout << "nodes_next size = "<<nodes_next.size() << "\n";
-		for(int g=0;g<nodes_next.size();g++){ //node vector check
+		nodes_next.clear();
+		std::cout << "--------------------------------------\n";
+		for(int g=0;g<nodes.size();g++){ //node vector check
 			std::cout << "node " << g << " values " << nodes[g].node.values[0] << " " << nodes[g].node.values[1] << " "<< nodes[g].node.values[2] << " "<< nodes[g].node.values[3] << " "<< nodes[g].node.values[4] << " " <<"\n";
 			std::cout << "node " << g << " leaves " << nodes[g].node.leaves[0] << " " << nodes[g].node.leaves[1] << " "<< (long unsigned)nodes[g].node.leaves[2] << " "<< (long unsigned)nodes[g].node.leaves[3] << " " <<"\n";
 		}
-		nodes_next.clear();
 	}
+
+
 
 	//copy root nodes vector to object variable
 	n_qnodes = lowest_length;
@@ -2833,10 +2845,10 @@ void whistory::create_quad_tree(){
 	// make an copy device data, copy to object values
 	cudaMalloc(	&d_qnodes,				n_qnodes*sizeof(qnode)	);
 	cudaMemcpy(	 d_qnodes,	qnodes,		n_qnodes*sizeof(qnode),	cudaMemcpyHostToDevice); 
-	qnodes_depth = depth;
+	qnodes_depth = end_depth;
 	qnodes_width = lowest_length;
 
-	std::cout << "  Complete.  Depth of tree is "<< depth << ", width is "<< lowest_length <<".\n";
+	std::cout << "  Complete.  Depth of tree is "<< end_depth << ", width is "<< lowest_length <<".\n";
 
 }
 
