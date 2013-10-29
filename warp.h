@@ -2763,10 +2763,13 @@ void whistory::create_quad_tree(){
 	unsigned lowest_length = this_width;
 	unsigned mod4 		= this_width % 4;
 	unsigned end_depth=  (logf(lowest_length)/logf(4))+1;
+	unsigned num_repeats = 1;
+	unsigned starting_index = 0;
 	std::cout << "end_depth="<<end_depth<<"\n";
 	for(unsigned depth=0;depth<end_depth;depth++){
+		for(unsigned copy_repeats=0;copy_repeats<num_repeats;copy_repeats++){
+			starting_index=copy_repeats*this_width;
 		for(unsigned copy_iteration=0;copy_iteration<4;copy_iteration++){
-			unsigned starting_index=0;
 			for( k=starting_index;k<(starting_index+this_width-mod4);k=k+4){
 				std::cout << "k=" << k << "\n";
 				this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
@@ -2809,6 +2812,7 @@ void whistory::create_quad_tree(){
 				nodes_next.push_back(this_qnode);
 			}
 		}
+	}
 		if(mod4){
 			this_width=(this_width)/4+1;
 		}
@@ -2818,10 +2822,11 @@ void whistory::create_quad_tree(){
 		mod4=this_width%4;
 		nodes=nodes_next;
 		nodes_next.clear();
+		num_repeats=num_repeats*4;
 		std::cout << "--------------------------------------\n";
 		for(int g=0;g<nodes.size();g++){ //node vector check
 			std::cout << "node " << g << " values " << nodes[g].node.values[0] << " " << nodes[g].node.values[1] << " "<< nodes[g].node.values[2] << " "<< nodes[g].node.values[3] << " "<< nodes[g].node.values[4] << " " <<"\n";
-			std::cout << "node " << g << " leaves " << nodes[g].node.leaves[0] << " " << nodes[g].node.leaves[1] << " "<< (long unsigned)nodes[g].node.leaves[2] << " "<< (long unsigned)nodes[g].node.leaves[3] << " " <<"\n";
+			std::cout << "node " << g << " leaves " << nodes[g].node.leaves[0] << " " << nodes[g].node.leaves[1] << " "<< nodes[g].node.leaves[2] << " "<< nodes[g].node.leaves[3] << " " <<"\n";
 		}
 	}
 
