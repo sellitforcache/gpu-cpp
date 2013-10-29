@@ -2600,8 +2600,8 @@ void whistory::run(unsigned num_cycles){
 		while(completed_hist<N){
 	
 			//find the main E grid index
-			//find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
-			find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
+			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
+			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// find what material we are in
 			trace(2);
@@ -2823,19 +2823,21 @@ void whistory::create_quad_tree(){
 		nodes=nodes_next;
 		nodes_next.clear();
 		num_repeats=num_repeats*4;
-		std::cout << "--------------------------------------\n";
-		for(int g=0;g<nodes.size();g++){ //node vector check
-			std::cout << "node " << g << " values " << nodes[g].node.values[0] << " " << nodes[g].node.values[1] << " "<< nodes[g].node.values[2] << " "<< nodes[g].node.values[3] << " "<< nodes[g].node.values[4] << " " <<"\n";
-			std::cout << "node " << g << " leaves " << nodes[g].node.leaves[0] << " " << nodes[g].node.leaves[1] << " "<< nodes[g].node.leaves[2] << " "<< nodes[g].node.leaves[3] << " " <<"\n";
-		}
+		//std::cout << "--------------------------------------\n";
+		//for(int g=0;g<nodes.size();g++){ //node vector check
+		//	std::cout << "node " << g << " values " << nodes[g].node.values[0] << " " << nodes[g].node.values[1] << " "<< nodes[g].node.values[2] << " "<< nodes[g].node.values[3] << " "<< nodes[g].node.values[4] << " " <<"\n";
+		//	std::cout << "node " << g << " leaves " << nodes[g].node.leaves[0] << " " << nodes[g].node.leaves[1] << " "<< nodes[g].node.leaves[2] << " "<< nodes[g].node.leaves[3] << " " <<"\n";
+		//}
 	}
 
 
+	// copy size to object vars
+	qnodes_depth = end_depth;
+	qnodes_width = nodes.size();
 
 	//copy root nodes vector to object variable
-	n_qnodes = lowest_length;
-	qnodes = new qnode[n_qnodes];
-	for(k=0;k<n_qnodes;k++){   //only need to copy heads, they have pointers to the rest in them
+	qnodes = new qnode[qnodes_width];
+	for(k=0;k<qnodes_width;k++){   //only need to copy heads, they have pointers to the rest in them
 			qnodes[k].values[0] = nodes[k].node.values[0];
 			qnodes[k].values[1] = nodes[k].node.values[1];
 			qnodes[k].values[2] = nodes[k].node.values[2];
@@ -2847,13 +2849,11 @@ void whistory::create_quad_tree(){
 			qnodes[k].leaves[3] = nodes[k].node.leaves[3];
 	}
 
-	// make an copy device data, copy to object values
-	cudaMalloc(	&d_qnodes,				n_qnodes*sizeof(qnode)	);
-	cudaMemcpy(	 d_qnodes,	qnodes,		n_qnodes*sizeof(qnode),	cudaMemcpyHostToDevice); 
-	qnodes_depth = end_depth;
-	qnodes_width = lowest_length;
+	// make and copy device data
+	cudaMalloc(	&d_qnodes,				qnodes_width*sizeof(qnode)	);
+	cudaMemcpy(	 d_qnodes,	qnodes,		qnodes_width*sizeof(qnode),	cudaMemcpyHostToDevice); 
 
-	std::cout << "  Complete.  Depth of tree is "<< end_depth << ", width is "<< lowest_length <<".\n";
+	std::cout << "  Complete.  Depth of tree is "<< qnodes_depth << ", width is "<< qnodes_width <<".\n";
 
 }
 
