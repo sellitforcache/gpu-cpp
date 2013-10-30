@@ -2577,7 +2577,7 @@ void whistory::reset_fixed(){
 }
 void whistory::run(unsigned num_cycles){
 
-	std::cout << "\e[1;32m" << "--- Running "<< num_cycles << " ACTIVE CYCLES --- " << "\e[m \n";
+	std::cout << "\e[1;32m" << "--- Running "<< num_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
 
 	float keff = 0.0;
 	float keff_cycle = 0.0;
@@ -2765,13 +2765,13 @@ void whistory::create_quad_tree(){
 	unsigned end_depth=  (logf(lowest_length)/logf(4))+1;
 	unsigned num_repeats = 1;
 	unsigned starting_index = 0;
-	std::cout << "end_depth="<<end_depth<<"\n";
+	//std::cout << "end_depth="<<end_depth<<"\n";
 	for(unsigned depth=0;depth<end_depth;depth++){
 		for(unsigned copy_repeats=0;copy_repeats<num_repeats;copy_repeats++){
 			starting_index=copy_repeats*this_width;
 		for(unsigned copy_iteration=0;copy_iteration<4;copy_iteration++){
 			for( k=starting_index;k<(starting_index+this_width-mod4);k=k+4){
-				std::cout << "k=" << k << "\n";
+				//std::cout << "k=" << k << "\n";
 				this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
 				this_qnode.node.values[1] = nodes[ k+1 ].node.values[0];
 				this_qnode.node.values[2] = nodes[ k+2 ].node.values[0];
@@ -2787,21 +2787,21 @@ void whistory::create_quad_tree(){
 				nodes_next.push_back(this_qnode);
 			}
 			if(mod4){
-				std::cout << "adding padded node at " << nodes_next.size()-1 << "\n";
+				//std::cout << "adding padded node at " << nodes_next.size()-1 << "\n";
 				unsigned n=0;
 				for( k=(starting_index+this_width-mod4) ; k<(starting_index+this_width) ; k++){
-					std::cout <<"n="<<n << " k="<<k<<"\n";
+					//std::cout <<"n="<<n << " k="<<k<<"\n";
 					this_qnode.node.values[n] = nodes[ k ].node.values[0];
 					this_qnode.node.leaves[n] = nodes[ k ].cuda_pointer;
 					n++;
 				}
 				k=k-1;
-				std::cout <<"n="<<n << " k="<<k<<"\n";
+				//std::cout <<"n="<<n << " k="<<k<<"\n";
 				this_qnode.node.values[n] = nodes[ k ].node.values[4];
 				this_qnode.node.leaves[n] = nodes[ k ].cuda_pointer;
 				n++;
 				for( n;n<4;n++){
-					std::cout <<"n="<<n << " k="<<k<<"\n";
+					//std::cout <<"n="<<n << " k="<<k<<"\n";
 					this_qnode.node.values[n] = this_qnode.node.values[n-1];
 					this_qnode.node.leaves[n] = this_qnode.node.leaves[n-1];
 				}

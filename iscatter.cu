@@ -70,7 +70,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	//transform neutron velocity into CM frame
 	v_n_cm = v_n_lf - v_cm;
 
-	// get mu_cm
+	// sample new phi, mu_cm
+	phi = 2.0*pi*rn7;
 	offset=1;
 	if(this_array == 0x0){
 		mu= 2*rn6-1; //MT=91 doesn't have angular tables for whatever reason
@@ -91,9 +92,14 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	}
 
 	// transform hats to CM, sample phi and rotate
-	hats_old = v_n_cm / v_n_cm.norm2();
-	phi = 2.0*pi*rn7;
+	hats_old = v_n_cm / v_n_cm.norm2();	
+	
+	//do jaakko rotation
 	hats_new = hats_old.rotate(phi,mu);
+	hats_new = hats_new/hats_new.norm2();
+	//hats_new.x = sqrtf(1.0-mu*mu)*cosf(phi);
+	//hats_new.y = sqrtf(1.0-mu*mu)*sinf(phi); 
+	//hats_new.z = mu;
 
 	//calculate final velocity in CM
 	v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + 2.0 * a * this_Q / m_n );
@@ -107,12 +113,10 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 
 	// check cutoff
 	if (E_new <= E_cutoff){
-		//E_new = 1.5*E_cutoff;
 		done[tid]=1;
 		//printf("enforcing E_min in escatter");
 	}
 	if (E_new > E_max){
-		//E_new = 0.9*E_max;
 		done[tid]=1;
 		//printf("enforcing E_max in escatter");
 	}

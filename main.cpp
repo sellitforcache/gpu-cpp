@@ -83,6 +83,15 @@ int main(){
 	//geom.add_material(3,0,1,dens,topes,fracs);
 	//tallyname = "hydrogen2.tally";
 
+	// hydrogen1
+	//unsigned topes[1]={1001};
+	//float    fracs[1]={1};
+	//float    dens = 1.0;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "hydrogen1.tally";
+
 	// assembly geom
 	//geom.add_primitive();
 	//geom.primitives[0].type=1;
@@ -186,7 +195,7 @@ int main(){
 
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.run(10);
+	hist.run(40);
 	hist.write_tally(0,tallyname);
 
 
