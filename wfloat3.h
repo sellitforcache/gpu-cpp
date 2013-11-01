@@ -57,25 +57,22 @@ __device__ wfloat3 wfloat3::cross(wfloat3 arg){
 	return result;
 };
 __device__ float wfloat3::dot(wfloat3 arg){
-	float result;
-	result = x*arg.x + y*arg.y + z*arg.z;
-	return result;
+	return x*arg.x + y*arg.y + z*arg.z;
 };
 __device__ void wfloat3::rodrigues_rotation(wfloat3 k, float theta){
-	*this = (*this)*cosf(theta) + (k.cross(*this))*sinf(theta) + k*(k.dot(*this))*(1.0-cosf(theta));
+	*this = (*this)*cosf(theta) - (k.cross(*this))*sinf(theta) + k*(k.dot(*this))*(1.0-cosf(theta));
 };
 __device__ float wfloat3::norm2(){
-	float result = sqrtf(x*x+y*y+z*z);
-	return result;
+	return sqrtf( x*x + y*y + z*z );
 };
 __device__ wfloat3 wfloat3::rotate(float phi, float mu){
 	wfloat3 out;
 	float alpha, beta;
 	alpha = sqrtf(1.0 - this[0].z*this[0].z);
-	//if(alpha<1e-12){
-	//	alpha=1e-12;
-	//	printf("alpha=%10.8E\n",alpha);
-	//}
+	if(alpha<1e-12){
+		alpha=1e-12;
+		//printf("alpha=%10.8E\n",alpha);
+	}
 	out.z = this[0].z*mu + alpha*cosf(phi);
 	beta  = mu - this[0].z*(out.z);
 	out.y = 1.0/(alpha*alpha) * (this[0].y*beta + this[0].x*alpha*sinf(phi));

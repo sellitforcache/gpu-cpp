@@ -11,7 +11,7 @@ int main(){
 	std::string tallyname = "tally";
 
 	//get inputs?
-	int N=1e5;
+	int N=1e4;
 
 	//print banner
 	print_banner();
@@ -30,13 +30,13 @@ int main(){
 	//geom.add_material(3,0,5,dens_water,topes,fracs_water);
 
 	// water
-	unsigned topes[2]={8016,1001};
-	float    fracs[2]={1,2};
-	float    dens = 1.00;
-	geom.add_material(1,1,2,dens,topes,fracs);
-	geom.add_material(2,0,2,dens,topes,fracs);
-	geom.add_material(3,0,2,dens,topes,fracs);
-	tallyname = "water.tally";
+	//unsigned topes[2]={8016,1001};
+	//float    fracs[2]={1,2};
+	//float    dens = 1.00;
+	//geom.add_material(1,1,2,dens,topes,fracs);
+	//geom.add_material(2,0,2,dens,topes,fracs);
+	//geom.add_material(3,0,2,dens,topes,fracs);
+	//tallyname = "water.tally";
 
 	// lead
 	//unsigned topes[1]={82208};
@@ -66,13 +66,13 @@ int main(){
 	//tallyname = "lithium.tally";
 
 	// u235
-	//unsigned topes[1]={92235};
-	//float    fracs[1]={1};
-	//float    dens = 10.424;
-	//geom.add_material(1,1,1,dens,topes,fracs);
-	//geom.add_material(2,0,1,dens,topes,fracs);
-	//geom.add_material(3,0,1,dens,topes,fracs);
-	//tallyname = "u235.tally";
+	unsigned topes[1]={92235};
+	float    fracs[1]={1};
+	float    dens = 10.424;
+	geom.add_material(1,1,1,dens,topes,fracs);
+	geom.add_material(2,0,1,dens,topes,fracs);
+	geom.add_material(3,0,1,dens,topes,fracs);
+	tallyname = "u235.tally";
 
 	// hydrogen2
 	//unsigned topes[1]={1002};
@@ -186,7 +186,7 @@ int main(){
 	hist.copy_to_device();
 	hist.write_xs_data("xsdata");
 	hist.print_materials_table();
-	hist.create_quad_tree();
+	//hist.create_quad_tree();
 
 
 	/////////////////////////////////////
@@ -195,7 +195,7 @@ int main(){
 
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.run(40);
+	hist.run(20);
 	hist.write_tally(0,tallyname);
 
 

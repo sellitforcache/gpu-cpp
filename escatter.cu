@@ -35,7 +35,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		rn5 		= rn_bank[ tid*RNUM_PER_THREAD + 7];
 	float 		rn6 		= rn_bank[ tid*RNUM_PER_THREAD + 8];
 	float 		rn7 		= rn_bank[ tid*RNUM_PER_THREAD + 9];
-	float 		rn8 		= rn_bank[ tid*RNUM_PER_THREAD + 10];
+	//float 		rn8 		= rn_bank[ tid*RNUM_PER_THREAD + 10];
 
 	// internal kernel variables
 	float 		mu, phi;
@@ -75,47 +75,48 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	}
 	else{
 		memcpy(&vlen, &this_array[0], sizeof(float));
-		for(unsigned k=0;k<vlen;k++){
+		for(unsigned k=0;k<vlen-1;k++){
 			if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
 				//in this bin, linearly interpolate 
-				mu0=this_array [offset+k+1];
-				mu1=this_array [offset+k];
-				cdf0=this_array[offset+vlen+k+1];
-				cdf1=this_array[offset+vlen+k];
-				mu = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0;
+				mu0 	= this_array[offset     +k  ];
+				mu1  	= this_array[offset     +k+1];
+				cdf0 	= this_array[offset+vlen+k  ];
+				cdf1 	= this_array[offset+vlen+k+1];
+				mu 		= (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0;
 				break;
 			}
 		}
+		//if(this_E >= 1.03  & this_E < 1.04){
+		//	printf("%d %10.8E %u %10.8E %10.8E\n",tid,this_E,vlen,rn6,mu);
+		//}
 	}
 
 	// create CM hats
 	hats_old = v_n_cm / v_n_cm.norm2();
 
 	//  create a perpendicular roation vector - can use the target velocity since it's random anyway, just normalize it's cross product
-	//wfloat3 rotation_hat = hats_target / hats_target.norm2();
-	//rotation_hat = rotation_hat.cross( hats_old );
-	//rotation_hat = rotation_hat/rotation_hat.norm2();
-	//hats_new = v_n_cm / v_n_cm.norm2();
-//
+	wfloat3 rotation_hat = hats_target / hats_target.norm2();
+	rotation_hat = rotation_hat.cross( hats_old );
+	rotation_hat = rotation_hat/rotation_hat.norm2();
+	hats_new = v_n_cm / v_n_cm.norm2();
+
 	////  do rotations, polar first, then azimuthal
-	//hats_new.rodrigues_rotation(rotation_hat,acosf(mu));
-	//hats_new.rodrigues_rotation(hats_old,phi);
+	hats_new.rodrigues_rotation(rotation_hat,acosf(mu));
+	hats_new.rodrigues_rotation(hats_old,phi);
 	//printf("mu=%6.4E, cos(theta)=%6.4E\n", mu, hats_new.dot(hats_old) );
 
 	//do jaakko rotation
-	//hats_new = hats_old.rotate(phi,mu);
-	//hats_new = hats_new/hats_new.norm2();
+//	hats_new = hats_old.rotate(phi,mu);
+//	hats_new = hats_new/hats_new.norm2();
 
 	//isotropic 
-	mu = 2.0*rn8-1;
-	hats_new.x = sqrtf(1.0-(mu*mu))*cosf(phi);
-	hats_new.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
-	hats_new.z = mu;
-
-
+	//mu = 2.0*rn8-1;
+	//hats_new.x = sqrtf(1.0-(mu*mu))*cosf(phi);
+	//hats_new.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
+	//hats_new.z = mu;
 
 	//calculate final velocity in CM
-	v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) + 2.0 * a * this_Q / m_n );
+	v_n_cm = hats_new * sqrtf( v_n_cm.dot(v_n_cm) ); //+ 2.0 * a * this_Q / m_n );
 
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
@@ -124,13 +125,9 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
-	if (E_new <= E_cutoff){
+	// enforce limits
+	if ( E_new <= E_cutoff | E_new > E_max ){
 		done[tid]=1;
-		//printf("enforcing E_min in escatter");
-	}
-	else if (E_new > E_max){
-		done[tid]=1;
-		//printf("enforcing E_max in escatter");
 	}
 
 	//printf("speed target = %6.4E, speed=%6.4E, Eold,Enew = %10.8E %10.8E\n",speed_target, speed_n,this_E,E_new);

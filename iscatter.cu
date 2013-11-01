@@ -78,17 +78,20 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	}
 	else{
 		memcpy(&vlen, &this_array[0], sizeof(float));
-		for(unsigned k=0;k<vlen;k++){
+		for(unsigned k=0;k<vlen-1;k++){
 			if(rn6 <= this_array[1+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
 				//in this bin, linearly interpolate 
-				mu0=this_array [offset+k+1];
-				mu1=this_array [offset+k];
-				cdf0=this_array[offset+vlen+k+1];
-				cdf1=this_array[offset+vlen+k];
-				mu = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0;
+				mu0 	= this_array[offset     +k  ];
+				mu1  	= this_array[offset     +k+1];
+				cdf0 	= this_array[offset+vlen+k  ];
+				cdf1 	= this_array[offset+vlen+k+1];
+				mu 		= (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0;
 				break;
 			}
 		}
+		//if(this_E >= 1.03  & this_E < 1.04){
+		//	printf("%d %10.8E %u %10.8E %10.8E\n",tid,this_E,vlen,rn6,mu);
+		//}
 	}
 
 	// transform hats to CM, sample phi and rotate
