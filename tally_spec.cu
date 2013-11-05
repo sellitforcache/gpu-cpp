@@ -23,11 +23,11 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 	//printf("%u %10.8E %12.10E %10.8E \n",Ntally,log_spacing,multiplier,my_E);
 
 	// determine bin number
-	if     ( my_E <= Emin ){ my_bin_index = 0;        }
-	else if( my_E >  Emax ){ my_bin_index = Ntally-1; }
-	else{
+	//if     ( my_E <= Emin ){ my_bin_index = 0;        }
+	//else if( my_E >  Emax ){ my_bin_index = Ntally-1; }
+	//else{
 		this_bin=Emin;
-		for(k=0;k<Ntally;k++){
+		for(k=0;k<Ntally-1;k++){
 			next_bin=multiplier*this_bin;
 			if(my_E>this_bin & my_E<=next_bin){
 				my_bin_index=k;
@@ -35,7 +35,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 			}
 			this_bin=next_bin;
 		}
-	}
+	//}
 
 	//printf("my_bin_index=%u: score there = %10.8E, count there = %u \n",my_bin_index,tally_score[my_bin_index],tally_count[my_bin_index]);
 

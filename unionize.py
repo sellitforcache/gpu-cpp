@@ -39,7 +39,7 @@ class cross_section_data:
 		for lib in self.libraries:
 			lib.read()
 			iname=lib.tables.keys()[0][0:-4]   #strip off temp to get isotope name
-			print "Loading "+iname+self.temp_extension
+			print "  loading "+iname+self.temp_extension
 			self.tables.append(lib.find_table(iname+self.temp_extension))
 
 		self.num_isotopes=self.libraries.__len__()
@@ -81,8 +81,8 @@ class cross_section_data:
 				self.num_reactions += 1
 
 		#print self.num_reactions
-		print self.reaction_numbers
-		print self.Q
+		#print self.reaction_numbers
+		#print self.Q
 		#print self.reaction_numbers_total
 
 	def _allocate_arrays(self):
@@ -211,14 +211,14 @@ class cross_section_data:
 				# return interpolated nu values
 				interped_nu = numpy.interp( self.MT_E_grid, table.nu_t_energy, table.nu_t_value )   #
 				interped_nu = numpy.ascontiguousarray(interped_nu, dtype=numpy.float32)
-				print interped_nu
+				#print interped_nu
 				return [-1,-1,interped_nu,interped_nu]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
 				return [nextDex,0,numpy.array([0]),numpy.array([0])]
 		else:
-			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no angular tables"
+			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no angular tables"
 			nextE   = self.MT_E_grid[self.num_main_E-1]
 			nextDex = self.MT_E_grid.__len__()
 			return [nextDex,0,numpy.array([0]),numpy.array([0])]

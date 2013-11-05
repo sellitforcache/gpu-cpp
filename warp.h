@@ -1124,8 +1124,8 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 }
 void optix_stuff::print(){
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
-	std::cout << "stack  size = " << context->getStackSize() << " bytes\n";
-	std::cout << "printf size = " << context->getPrintBufferSize() << " bytes\n";
+	std::cout << "  stack  size = " << context->getStackSize() << " bytes\n";
+	std::cout << "  printf size = " << context->getPrintBufferSize() << " bytes\n";
 }
 void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned max){
 	// red linear blue linear green sin colormap
@@ -1458,7 +1458,7 @@ void whistory::init_CUDPP(){
 	res = cudppCreate(&theCudpp);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error initializing CUDPP Library.\n");}
 	
-	std::cout << "configuring sort..." << "\n";
+	std::cout << "  configuring sort..." << "\n";
 	// sort stuff
 	compact_config.op = CUDPP_ADD;
 	compact_config.datatype = CUDPP_INT;
@@ -1468,7 +1468,7 @@ void whistory::init_CUDPP(){
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for compact\n");exit(-1);}
 	
 
-	std::cout << "configuring reduction..." << "\n";
+	std::cout << "  configuring reduction..." << "\n";
 	// int reduction stuff
 	redu_int_config.op = CUDPP_ADD;
 	redu_int_config.datatype = CUDPP_INT;
@@ -1539,7 +1539,7 @@ void whistory::copy_to_device(){
 	std::cout << "\e[1;32m" << "Copying data to device (number?)..." << "\e[m \n";
 
 	// copy history data
-	std::cout << "History data... ";
+	std::cout << "  History data... ";
     cudaMemcpy( d_space,		space,		N*sizeof(source_point),	cudaMemcpyHostToDevice );
     cudaMemcpy( d_E,			E,			N*sizeof(float),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
@@ -1551,7 +1551,7 @@ void whistory::copy_to_device(){
     cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     cudaMemcpy( d_remap, 		remap,    	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
     std::cout << "Done.\n";
-    std::cout << "Unionized cross sections... ";
+    std::cout << "  Unionized cross sections... ";
     // copy xs_data,  0=isotopes, 1=main E points, 2=total numer of reaction channels
     cudaMemcpy( d_xs_length_numbers, 	xs_length_numbers,		6 																*sizeof(unsigned), 	cudaMemcpyHostToDevice );
     cudaMemcpy( d_xs_MT_numbers_total, 	xs_MT_numbers_total,	xs_length_numbers[0]											*sizeof(unsigned), 	cudaMemcpyHostToDevice );
@@ -1565,12 +1565,12 @@ void whistory::copy_to_device(){
 	cudaMemcpy( d_xs_data_Q,			xs_data_Q, 				(xs_length_numbers[2]+xs_length_numbers[0])						*sizeof(float), 	cudaMemcpyHostToDevice );
 	std::cout << "Done.\n";
 	// copy device pointer array to device array
-	std::cout << "Pointer arrays... ";
+	std::cout << "  Linked pointer arrays... ";
 	cudaMemcpy( d_xs_data_scatter, 	xs_data_scatter_host,	MT_rows*MT_columns*sizeof(float*), cudaMemcpyHostToDevice); 	
 	cudaMemcpy( d_xs_data_energy, 	xs_data_energy_host,	MT_rows*MT_columns*sizeof(float*), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
 	// copy scattering data to device array pointers
-	std::cout << "Scattering data... ";
+	std::cout << "  Scattering data... ";
 	for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
 		for (int k=0 ; k < MT_rows ; k++){
 			// scatter
@@ -1587,7 +1587,7 @@ void whistory::copy_to_device(){
 	}
 	std::cout << " Done.\n";
 	// zero out tally arrays
-	std::cout << "Zeroing tally arrays... ";
+	std::cout << "  Zeroing tally arrays... ";
 	cudaMemcpy( d_tally_score, 	zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
 	cudaMemcpy( d_tally_count,	zeros,	n_tally*sizeof(unsigned), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
@@ -1595,7 +1595,7 @@ void whistory::copy_to_device(){
 }
 void whistory::load_cross_sections(){
 	
-	printf("\e[1;32m%-6s\e[m \n","Loading cross sections and unionizing...");
+	std::cout << "\e[1;32m" << "Loading cross sections and unionizing..." << "\e[m \n";
 
 	// set the string, make ints list
 	std::istringstream ss(xs_isotope_string);
@@ -1938,7 +1938,7 @@ void whistory::load_cross_sections(){
 
 
 
-
+	std::cout << "\e[1;32m" << "Loading scattering data and linking..." << "\e[m \n";
 
 
     ////////////////////////////////////
@@ -2109,6 +2109,8 @@ void whistory::load_cross_sections(){
 	}
 
 
+	std::cout << "\e[1;32m" << "Loading energy distribution data and linking..." << "\e[m \n";
+
 
     ////////////////////////////////////
     // do energy stuff
@@ -2156,43 +2158,6 @@ void whistory::load_cross_sections(){
 				xs_data_energy_host[k*MT_columns + j] = NULL;
 				PyErr_Print();
 			}
-			//else if (vector_length==-1){
-			//	// this nu, not scatter, copy the entire column.
-			//	// get data buffer from numpy array
-			//	if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
-			//		PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
-			//		PyErr_Print();
-			//	}
-			//	else{
-			//		PyErr_Print();
-			//	    fprintf(stderr, "Returned object does not support buffer interface\n");
-			//	    return;
-			//	}
-			//
-			//	// shape info
-			//	muRows     =  muBuff.shape[0];
-			//	muColumns  =  muBuff.shape[1];
-			//	muBytes    =  muBuff.len;
-			//
-			//	//make sure every is ok
-			//	assert(muRows==MT_rows);
-			//
-			//	// copy to regular array
-			//	memcpy(nuBuff, muBuff.buf , MT_rows*sizeof(float));
-			//
-			//	//write the returned values into the array, byte-copy into 64bit pointer
-			//	for(k;k<MT_rows;k++){
-			//		//std::cout << "copying nu value "<< nuBuff[k] <<" at energy "<< xs_data_main_E_grid[k]<< " MeV\n";
-			//		memcpy( &xs_data_scatter_host[ k*MT_columns + j ] , &nuBuff[k] , 1*sizeof(float) );
-			//		memcpy( &nu_test , &xs_data_scatter_host[ k*MT_columns + j ], 1*sizeof(float) );
-			//		//std::cout << "copying nu value "<< nu_test <<" at energy "<< xs_data_main_E_grid[k]<< " MeV\n";
-			//	}
-			//
-			//	PyErr_Print();
-			//
-			//	break;
-			//
-			//}
 			else{
 				// get data buffer from numpy array
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
@@ -2258,6 +2223,8 @@ void whistory::load_cross_sections(){
     Py_Finalize();
 
 
+	std::cout << "\e[1;32m" << "Making material table..." << "\e[m \n";
+
 
     //pass awr pointer to geometry object, make the number density table, copy pointers back
     problem_geom.awr_list = awr_list;
@@ -2281,8 +2248,8 @@ void whistory::print_xs_data(){  // 0=isotopes, 1=main E points, 2=total numer o
 	std::cout << "  xs_MT_numbers:            " << (xs_length_numbers[2]+xs_length_numbers[0])					*sizeof(unsigned) 		<< "\n";  dsum += (xs_length_numbers[2]											*sizeof(unsigned) );
 	std::cout << "  xs_data_main_E_grid:      " << xs_length_numbers[1]											*sizeof(float)	  		<< "\n";  dsum += (xs_length_numbers[1]											*sizeof(float)	  );
 	std::cout << "  xs_data_MT:               " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
-	std::cout << "  xs_data_scatter_pointers: " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
-	std::cout << "  xs_data_energy_pointers:  " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
+	std::cout << "  xs_data_scatter_pointers: " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float*);
+	std::cout << "  xs_data_energy_pointers:  " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float*);
 	std::cout << "  scatter data:             " << total_bytes_scatter																	<< "\n";  dsum += (total_bytes_scatter);
 	std::cout << "  energy data:              " << total_bytes_energy																	<< "\n";  dsum += (total_bytes_energy);
 	std::cout << "  TOTAL:                    " << dsum << " bytes \n";
@@ -2594,6 +2561,7 @@ void whistory::run(unsigned num_cycles){
 			
 			// run tally kernel to compute spectra
 			make_mask(blks, NUM_THREADS, N, d_mask, d_cellnum, tally_cell, tally_cell);
+			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
 			tally_spec( blks,  NUM_THREADS,   N,  n_tally,  d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
 	
 			// run optix to detect the nearest surface and move particle there

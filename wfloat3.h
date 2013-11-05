@@ -57,7 +57,7 @@ __device__ wfloat3 wfloat3::cross(wfloat3 arg){
 	return result;
 };
 __device__ float wfloat3::dot(wfloat3 arg){
-	return x*arg.x + y*arg.y + z*arg.z;
+	return (x*arg.x + y*arg.y + z*arg.z);
 };
 __device__ void wfloat3::rodrigues_rotation(wfloat3 k, float theta){
 	*this = (*this)*cosf(theta) - (k.cross(*this))*sinf(theta) + k*(k.dot(*this))*(1.0-cosf(theta));

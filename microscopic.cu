@@ -47,7 +47,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 	// determine the reaction for this isotope
 	for(k=tope_beginning; k<tope_ending; k++){
-		//lienarly interpolate
+		//linearly interpolate
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
 		cum_prob += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) / xs_total;

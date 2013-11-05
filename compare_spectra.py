@@ -49,13 +49,20 @@ elif case== 'hydrogen2':
 	tally      = numpy.loadtxt('hydrogen2.tally')
 	tallybins  = numpy.loadtxt('hydrogen2.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/hydrogen2_mono2_det0.m')
+elif case== 'oxygen16':
+	tally      = numpy.loadtxt('o16.tally')
+	tallybins  = numpy.loadtxt('o16.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/oxygen16_mono2_det0.m')
 
 
 widths=numpy.diff(tallybins);
 avg=(tallybins[:-1]+tallybins[1:])/2;
-newflux=numpy.divide(tally[:-1,0],widths)
+#newflux = numpy.multiply(tally[:-1,1],tally[:-1,0])
+#newflux = numpy.divide(newflux,numpy.add(tally[:-1,1],1.0))
+newflux=tally[:-1,0]
+newflux=numpy.divide(newflux,widths)
 newflux=numpy.multiply(newflux,avg)
-newflux=numpy.divide(newflux,40e5)
+#newflux=numpy.divide(newflux,40e5)
 newflux=numpy.divide(newflux,numpy.max(newflux))
 
 serpE=serpdata['DETfluxlogE'][:,2]
