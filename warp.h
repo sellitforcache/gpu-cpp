@@ -1499,7 +1499,7 @@ void whistory::init_CUDPP(){
 	scan_int_config.op = CUDPP_ADD;
 	scan_int_config.datatype = CUDPP_INT;
 	scan_int_config.algorithm = CUDPP_SCAN;
-	scan_int_config.options = 0;
+	scan_int_config.options = CUDPP_OPTION_EXCLUSIVE;
 	res = cudppPlan(theCudpp, &scanplan_int, scan_int_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for scan\n");exit(-1);}
 	
@@ -1571,7 +1571,7 @@ void whistory::copy_to_device(){
     std::cout << "Done.\n";
     std::cout << "  Unionized cross sections... ";
     // copy xs_data,  0=isotopes, 1=main E points, 2=total numer of reaction channels
-    cudaMemcpy( d_xs_length_numbers, 	xs_length_numbers,		6 																*sizeof(unsigned), 	cudaMemcpyHostToDevice );
+    cudaMemcpy( d_xs_length_numbers, 	xs_length_numbers,		3 																*sizeof(unsigned), 	cudaMemcpyHostToDevice );
     cudaMemcpy( d_xs_MT_numbers_total, 	xs_MT_numbers_total,	xs_length_numbers[0]											*sizeof(unsigned), 	cudaMemcpyHostToDevice );
     cudaMemcpy( d_xs_MT_numbers,		xs_MT_numbers,			(xs_length_numbers[2]+xs_length_numbers[0])						*sizeof(unsigned), 	cudaMemcpyHostToDevice );
     cudaMemcpy(	d_xs_data_MT,			xs_data_MT,				MT_rows*MT_columns 												*sizeof(float), 	cudaMemcpyHostToDevice );
@@ -1611,6 +1611,7 @@ void whistory::copy_to_device(){
 	cudaMemcpy( d_tally_score, 	zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
 	cudaMemcpy( d_tally_count,	zeros,	n_tally*sizeof(unsigned), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
+
 
 }
 void whistory::load_cross_sections(){
@@ -2039,13 +2040,13 @@ void whistory::load_cross_sections(){
 
 			// set this pointer
 			if(vector_length==0){   // EMPTY
-				printf("(%u,%u) empty\n",k,j);
+				//printf("(%u,%u) empty\n",k,j);
 				xs_data_scatter     [k*MT_columns + j] = NULL;
 				xs_data_scatter_host[k*MT_columns + j] = NULL;
 				PyErr_Print();
 			}
 			else if (vector_length==-1){  // NU!!!!!!!
-				printf("(%u,%u) nu\n",k,j);
+				//printf("(%u,%u) nu\n",k,j);
 				// this nu, not scatter, copy the entire column.
 				// get data buffer from numpy array
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
@@ -2138,7 +2139,7 @@ void whistory::load_cross_sections(){
 				memcpy(&this_pointer[4+ 2*muRows+next_muRows],	cdfBuff.buf, 	next_cdfRows*sizeof(float));
 				PyErr_Print();
 
-				printf("(%u,%u) cpu=%p gpu=%p\n",k,j,this_pointer,cuda_pointer);
+				//printf("(%u,%u) cpu=%p gpu=%p\n",k,j,this_pointer,cuda_pointer);
 
 				cudaMemcpy(cuda_pointer,this_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+4)*sizeof(float),cudaMemcpyHostToDevice);
 
@@ -2249,6 +2250,8 @@ void whistory::load_cross_sections(){
 				memcpy(&this_pointer[1], 		&law,   		     sizeof(unsigned));  // to second position
 				memcpy(&this_pointer[2],		muBuff.buf,  	 muRows*sizeof(float));     // to len bytes after
 				memcpy(&this_pointer[2+muRows],	cdfBuff.buf, 	cdfRows*sizeof(float));     // to len bytes after that
+
+				cudaMemcpy(cuda_pointer,this_pointer,(muRows*2 + 2)*sizeof(float),cudaMemcpyHostToDevice);
 
 				PyErr_Print();
 
@@ -2600,6 +2603,7 @@ void whistory::run(unsigned num_cycles){
 	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
 
 		while(completed_hist<N){
+			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	
 			//find the main E grid index
 			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
@@ -2630,15 +2634,25 @@ void whistory::run(unsigned num_cycles){
 
 			// pop secondaries back in, can't do this for criticality
 			prep_secondaries();
+
+
+			unsigned * tmp1 = new unsigned [N];
+			unsigned * tmp2 = new unsigned [N];
+			cudaMemcpy(tmp1,d_yield,N*sizeof(unsigned),cudaMemcpyDeviceToHost);
+			cudaMemcpy(tmp2,d_scanned,N*sizeof(unsigned),cudaMemcpyDeviceToHost);
+			for(unsigned b=0;b<N;b++){printf("%u yield=%u scan=%u\n",b,tmp1[b],tmp2[b]);}
+
 			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
+
+			exit(0);
 
 			// update RNGs
 			update_RNG();
-
+			
 			// get how many histories are complete
 			completed_hist = reduce_done();
 
-			//std::cout << completed_hist << "/" << N << " histories complete\n";
+			std::cout << completed_hist << "/" << N << " histories complete\n";
 			//if((N-completed_hist)<=150){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 		}
 
@@ -2866,11 +2880,11 @@ void whistory::create_quad_tree(){
 void whistory::prep_secondaries(){
 
 	// compact the done data to know where to write
-	res = cudppCompact( compactplan, d_completed , (size_t*)d_num_completed , d_remap , d_done , N);
+	res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , N);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
 
 	// scan the yields to determine where the individual threads write into the done data
-	res = cudppScan(	  scanplan_int, d_scanned,  d_yield,  N );
+	res = cudppScan( scanplan_int, d_scanned,  d_yield,  N );
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}	
 
 }

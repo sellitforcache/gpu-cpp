@@ -26,7 +26,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	float 		this_Q 		= Q[tid];
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
-	float * 	this_array 	= scatterdat[this_dex+1];
+	float * 	this_array 	= scatterdat[this_dex];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
 	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
@@ -77,7 +77,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 		mu= 2*rn6-1; //MT=91 doesn't have angular tables for whatever reason
 	}
 	else{  // 
-		//printf("dex=%u %p %6.4E\n",this_dex,this_array,this_E);
+		//printf("rxn=%u dex=%u %p %6.4E\n",rxn[tid],this_dex,this_array,this_E);
 		memcpy(&last_E, 	&this_array[0], sizeof(float));
 		memcpy(&next_E, 	&this_array[1], sizeof(float));
 		memcpy(&vlen, 		&this_array[2], sizeof(float));

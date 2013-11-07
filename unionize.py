@@ -176,8 +176,8 @@ class cross_section_data:
 		rxn   = table.reactions[MTnum]
 		# get the energy from this index
 		this_E = self.MT_E_grid[row]
-		print isotope,MTnum,row,col
-		print "energy="+str(self.MT_E_grid[row])
+		#print isotope,MTnum,row,col
+		#print "energy="+str(self.MT_E_grid[row])
 		if hasattr(rxn,"ang_energy_in"):
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
 			scatterE   = rxn.ang_energy_in
@@ -218,7 +218,7 @@ class cross_section_data:
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-				print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
+				#print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 				return [nextDex,this_E,next_E,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		elif hasattr(table,"nu_t_energy"):
 			# return interpolated nu values
@@ -250,7 +250,8 @@ class cross_section_data:
 		table = self.tables[isotope]
 		MTnum = self.reaction_numbers[col]
 		rxn   = table.reactions[MTnum]
-		#print "here now"
+		# get the energy from this index
+		this_E = self.MT_E_grid[row]
 		if hasattr(rxn,"energy_dist"):
 			#print "LAW="+str(rxn.energy_dist.law)+" MT="+str(MTnum)
 			if rxn.energy_dist.law == 3:
@@ -263,8 +264,6 @@ class cross_section_data:
 				law        = rxn.energy_dist.law
 				# check length
 				assert scatterE.__len__() > 0
-				# get the energy from this index
-				this_E = self.MT_E_grid[row]
 				# find the index of the scattering table energy
 				if this_E >= scatterE[0]:
 					scatter_dex = numpy.where( scatterE >= this_E )[0][0]
@@ -295,9 +294,10 @@ class cross_section_data:
 					nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
 					return [nextDex,0,0,numpy.array([0]),numpy.array([0])]
 		else:
-			#print "no energy tables"
-			nextE = self.MT_E_grid[self.num_main_E-1]
-			return [nextE,0,0,numpy.array([0]),numpy.array([0])]
+			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no energy tables"
+			next_E   = self.MT_E_grid[self.num_main_E-1]
+			nextDex = self.MT_E_grid.__len__()
+			return [nextDex,this_E,next_E,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 
 
 
