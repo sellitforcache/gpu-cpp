@@ -9,7 +9,7 @@ NVCC_FLAGS = -m64
 CURAND_LIBS = -lcurand
 OPTIX_FLAGS = -I$(OPTIX)/include -L$(OPTIX)/lib64 
 OPTIX_LIBS = -loptix 
-CUDPP_PATH = /usr/local/cudpp-2.0/
+CUDPP_PATH = /usr/local/cudpp-2.1/
 CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
 PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers
@@ -36,6 +36,7 @@ COBJS =	mt19937ar.o \
 		absorb.o \
 		make_mask.o \
 		print_histories.o \
+		pop_secondaries.o \
 		main.o
 
 ptx_objects = 	camera.ptx \
@@ -123,6 +124,9 @@ make_mask.o:
 
 print_histories.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c print_histories.cu
+
+pop_secondaries.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c pop_secondaries.cu
 
 gpu: $(ptx_objects) $(COBJS)
 	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 

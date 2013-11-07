@@ -40,7 +40,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	// internal kernel variables
 	float 		mu, phi, next_E, last_E;
-    unsigned 	vlen, next_vlen, offset; 
+    unsigned 	vlen, next_vlen, offset, k; 
     unsigned  	isdone = 0;
 	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
 	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
@@ -86,33 +86,34 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&next_vlen, 	&this_array[3], sizeof(float));
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
 		if(  rn8 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
-			for(unsigned k=0;k<vlen-1;k++){
-				if(rn6 <= this_array[offset+vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
-					//in this bin, linearly interpolate 
-					mu0 	= this_array[offset       + k  ];
-					mu1  	= this_array[offset       + k+1];
-					cdf0 	= this_array[offset+vlen  + k  ];
-					cdf1 	= this_array[offset+vlen  + k+1];
-					mu 		= (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0;
+			for ( k=0 ; k<vlen-1 ; k++ ){
+				if( rn6 >= this_array[ (offset+vlen) +k] & rn6 < this_array[ (offset+vlen) +k+1] ){
+					cdf0 = this_array[ (offset+vlen) +k  ];
+					cdf1 = this_array[ (offset+vlen) +k+1];
+					mu0  = this_array[ (offset)      +k  ];
+					mu1  = this_array[ (offset)      +k+1];
+					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 					break;
 				}
 			}
 		}
 		else{   // sample E+1
-			for(unsigned k=0;k<next_vlen-1;k++){
-				if(rn6 <= this_array[offset+(2*vlen)+next_vlen+(k+1)] ){  //look at CDF one ahead sicne first is 0
-					//in this bin, linearly interpolate 
-					mu0 	= this_array[offset+(2*vlen)            + k  ];
-					mu1  	= this_array[offset+(2*vlen)            + k+1];
-					cdf0 	= this_array[offset+(2*vlen)+next_vlen  + k  ];
-					cdf1 	= this_array[offset+(2*vlen)+next_vlen  + k+1];
-					mu 		= (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0;
+			for ( k=0 ; k<next_vlen-1 ; k++ ){
+				if( rn6 >= this_array[ (offset+2*vlen+next_vlen) +k] & rn6 < this_array[ (offset+2*vlen+next_vlen) +k+1] ){
+					cdf0 = this_array[ (offset+2*vlen+next_vlen) +k  ];
+					cdf1 = this_array[ (offset+2*vlen+next_vlen) +k+1];
+					mu0  = this_array[ (offset+2*vlen)           +k  ];
+					mu1  = this_array[ (offset+2*vlen)           +k+1];
+					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 					break;
 				}
 			}
 		}
-		//if(this_E >= 1.03  & this_E < 1.04){
-		//	printf("%d %10.8E %u %10.8E %10.8E\n",tid,this_E,vlen,rn6,mu);
+		//if(this_E > 0.99  & this_E < 1.00){
+		//	//if (mu> -0.484 & mu < -0.453){
+		//		//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E \n",this_array[(offset+vlen)+0],this_array[(offset+vlen)+1],this_array[(offset+vlen)+2],this_array[(offset+vlen)+3],this_array[(offset+vlen)+4],this_array[(offset+vlen)+5],this_array[(offset+vlen)+6],this_array[(offset+vlen)+7],this_array[(offset+vlen)+8],this_array[(offset+vlen)+9],this_array[(offset+vlen)+10],this_array[(offset+vlen)+11],this_array[(offset+vlen)+12],this_array[(offset+vlen)+13],this_array[(offset+vlen)+14],this_array[(offset+vlen)+15],this_array[(offset+vlen)+16],this_array[(offset+vlen)+17],this_array[(offset+vlen)+18],this_array[(offset+vlen)+19]);
+		//		//printf("%u %u %p %10.8E %10.8E %10.8E % 10.8E % 10.8E %10.8E % 10.8E\n",vlen,next_vlen,this_array,this_E,cdf0,cdf1,mu0,mu1,rn6,mu);
+		//	//}
 		//}
 	}
 

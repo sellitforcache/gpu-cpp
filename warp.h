@@ -38,6 +38,7 @@ void find_E_grid_index(unsigned , unsigned , unsigned , unsigned , float * , flo
 void find_E_grid_index_quad(unsigned, unsigned, unsigned,  unsigned,  unsigned, qnode*, float*, unsigned*, unsigned*);
 void make_mask(unsigned, unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
 void print_histories(unsigned, unsigned, unsigned, unsigned *, unsigned*, source_point*, float*, unsigned*);
+void pop_secondaries(unsigned, unsigned, unsigned, unsigned, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, source_point* , float* , float* , float** );
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -1158,10 +1159,12 @@ class whistory {
 	CUDPPHandle            theCudpp;
 	CUDPPHashTableConfig   hash_config;
 	CUDPPConfiguration     compact_config;
+	CUDPPConfiguration     scan_int_config;
 	CUDPPConfiguration     redu_int_config;
 	CUDPPConfiguration     redu_float_config;
 	CUDPPHandle            mate_hash_table_handle;
 	CUDPPHandle            fiss_hash_table_handle;
+	CUDPPHandle            scanplan_int;
 	CUDPPHandle            reduplan_int;
 	CUDPPHandle            reduplan_float;
 	CUDPPHandle            compactplan;
@@ -1246,6 +1249,9 @@ class whistory {
     source_point * 	d_fissile_points;
     unsigned * 		d_mask;
     qnode *			d_qnodes;
+    unsigned * 		d_completed;
+ 	unsigned *  	d_scanned;
+ 	unsigned * 		d_num_completed;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1282,6 +1288,7 @@ public:
     void write_tally(unsigned, std::string);
     void set_tally_cell(unsigned);
     void create_quad_tree();
+    void prep_secondaries();
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
@@ -1295,7 +1302,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
 	N=Nin;
 	NUM_THREADS = 256;
-	RNUM_PER_THREAD = 15;
+	RNUM_PER_THREAD = 30;
 	blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
 	// set tally vector length
@@ -1324,6 +1331,9 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc(	&d_remap				, N*sizeof(unsigned));
 	cudaMalloc(	&d_fissile_points		, N*sizeof(source_point));
 	cudaMalloc( &d_mask 				, N*sizeof(unsigned));
+	cudaMalloc( &d_completed 			, N*sizeof(unsigned));	
+	cudaMalloc( &d_scanned 				, N*sizeof(unsigned));
+	cudaMalloc( &d_num_completed 		, 1*sizeof(unsigned));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point [N];
@@ -1466,7 +1476,6 @@ void whistory::init_CUDPP(){
 	compact_config.options = CUDPP_OPTION_FORWARD;
 	res = cudppPlan(theCudpp, &compactplan, compact_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for compact\n");exit(-1);}
-	
 
 	std::cout << "  configuring reduction..." << "\n";
 	// int reduction stuff
@@ -1484,6 +1493,15 @@ void whistory::init_CUDPP(){
 	redu_float_config.options = 0;
 	res = cudppPlan(theCudpp, &reduplan_float, redu_float_config, N, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for reduction\n");exit(-1);}
+
+	std::cout << "  configuring scan..." << "\n";
+	// int reduction stuff
+	scan_int_config.op = CUDPP_ADD;
+	scan_int_config.datatype = CUDPP_INT;
+	scan_int_config.algorithm = CUDPP_SCAN;
+	scan_int_config.options = 0;
+	res = cudppPlan(theCudpp, &scanplan_int, scan_int_config, N, 1, 0);
+	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for scan\n");exit(-1);}
 	
 	//std::cout << "configuring hashes..." << "\n";
 	// hash config stuff
@@ -1570,23 +1588,24 @@ void whistory::copy_to_device(){
 	cudaMemcpy( d_xs_data_energy, 	xs_data_energy_host,	MT_rows*MT_columns*sizeof(float*), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
 	// copy scattering data to device array pointers
-	std::cout << "  Scattering data... ";
-	for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
-		for (int k=0 ; k < MT_rows ; k++){
-			// scatter
-			this_pointer =   xs_data_scatter     [k*MT_columns + j];
-			cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
-			if (this_pointer != NULL & k<MT_rows-1) {
-				memcpy(&vlen,     &this_pointer[2],1*sizeof(int));
-				memcpy(&next_vlen,&this_pointer[3],1*sizeof(int));
-				while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
-					k++; //push k to the end of the copies so don't try to free it twice
-				}
-				cudaMemcpy(cuda_pointer,this_pointer,(2*vlen+2*next_vlen+4)*sizeof(float),cudaMemcpyHostToDevice);
-			}
-		}
-	}
-	std::cout << " Done.\n";
+	//std::cout << "  Scattering data... ";
+	//for (int j=0 ; j < MT_columns ; j++){  //start after the total xs and total abs vectors
+	//	for (int k=0 ; k < MT_rows ; k++){
+	//		// scatter
+	//		this_pointer =   xs_data_scatter     [k*MT_columns + j];
+	//		cuda_pointer =   xs_data_scatter_host[k*MT_columns + j];
+	//		printf("cpu=%p gpu=%p\n",this_pointer,cuda_pointer);
+	//		if (this_pointer != NULL & k<MT_rows-1) {
+	//			memcpy(&vlen,     &this_pointer[2],1*sizeof(int));
+	//			memcpy(&next_vlen,&this_pointer[3],1*sizeof(int));
+	//			while(xs_data_scatter[(k+1)*MT_columns + j ]==this_pointer){
+	//				k++; //push k to the end of the copies so don't try to free it twice
+	//			}
+	//			cudaMemcpy(cuda_pointer,this_pointer,(2*vlen+2*next_vlen+4)*sizeof(float),cudaMemcpyHostToDevice);
+	//		}
+	//	}
+	//}
+	//std::cout << " Done.\n";
 	// zero out tally arrays
 	std::cout << "  Zeroing tally arrays... ";
 	cudaMemcpy( d_tally_score, 	zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
@@ -1981,8 +2000,8 @@ void whistory::load_cross_sections(){
     //set total cross sections to NULL
     for (int j=0 ; j<1*xs_length_numbers[0] ; j++){  //start after the total xs vectors
     	for (int k=0 ; k<MT_rows ; k++){
-    		xs_data_scatter     [k*MT_columns + j] = NULL;
-			xs_data_scatter_host[k*MT_columns + j] = NULL;
+    		xs_data_scatter     [k*MT_columns + j] = 0;//NULL;
+			xs_data_scatter_host[k*MT_columns + j] = 0;//NULL;
 		}
 	}
 
@@ -2020,11 +2039,13 @@ void whistory::load_cross_sections(){
 
 			// set this pointer
 			if(vector_length==0){   // EMPTY
+				printf("(%u,%u) empty\n",k,j);
 				xs_data_scatter     [k*MT_columns + j] = NULL;
 				xs_data_scatter_host[k*MT_columns + j] = NULL;
 				PyErr_Print();
 			}
 			else if (vector_length==-1){  // NU!!!!!!!
+				printf("(%u,%u) nu\n",k,j);
 				// this nu, not scatter, copy the entire column.
 				// get data buffer from numpy array
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
@@ -2116,6 +2137,10 @@ void whistory::load_cross_sections(){
 				memcpy(&this_pointer[4+ 2*muRows],				muBuff.buf,  	 next_muRows*sizeof(float));
 				memcpy(&this_pointer[4+ 2*muRows+next_muRows],	cdfBuff.buf, 	next_cdfRows*sizeof(float));
 				PyErr_Print();
+
+				printf("(%u,%u) cpu=%p gpu=%p\n",k,j,this_pointer,cuda_pointer);
+
+				cudaMemcpy(cuda_pointer,this_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+4)*sizeof(float),cudaMemcpyHostToDevice);
 
 			}
 
@@ -2600,8 +2625,12 @@ void whistory::run(unsigned num_cycles){
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 			absorb(   blks,  NUM_THREADS,   N, d_rxn , d_done);
+			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+
+			// pop secondaries back in, can't do this for criticality
+			prep_secondaries();
+			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
 			// update RNGs
 			update_RNG();
@@ -2834,8 +2863,17 @@ void whistory::create_quad_tree(){
 	std::cout << "  Complete.  Depth of tree is "<< qnodes_depth << ", width is "<< qnodes_width <<".\n";
 
 }
+void whistory::prep_secondaries(){
 
+	// compact the done data to know where to write
+	res = cudppCompact( compactplan, d_completed , (size_t*)d_num_completed , d_remap , d_done , N);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
 
+	// scan the yields to determine where the individual threads write into the done data
+	res = cudppScan(	  scanplan_int, d_scanned,  d_yield,  N );
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}	
+
+}
 
 
 

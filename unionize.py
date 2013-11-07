@@ -105,14 +105,16 @@ class cross_section_data:
 			this_array = numpy.interp( self.MT_E_grid, table.energy, table.sigma_t , left=0.0 )
 			self.MT_array[:,tope_index]=this_array
 
-			#do abs and higher, start at reaction block
-			#this_array    = numpy.interp( self.MT_E_grid, table.energy, table.sigma_a ) #total abs vector
-			#self.MT_array[:,MT_array_dex] = this_array
-			#MT_array_dex = MT_array_dex + 1  #increment MT array index
-
 			for MT in table.reactions:
 				rxn        = table.reactions[MT]
-				IE         = rxn.IE - 1       #convert to python/C indexing 
+				IE         = rxn.IE-1       #convert to python/C indexing 
+				#print table.energy[IE:]
+				#print rxn.sigma
+				#if hasattr(rxn,'ang_energy_in'): 
+				#	print rxn.ang_energy_in
+				#else:
+				#	print "no angular"
+				#print rxn.threshold()
 				this_array = numpy.interp( self.MT_E_grid, table.energy[IE:], rxn.sigma , left=0.0 )  #interpolate MT cross section
 				self.MT_array[:,MT_array_dex] = this_array  # insert into the MT array
 
@@ -174,7 +176,8 @@ class cross_section_data:
 		rxn   = table.reactions[MTnum]
 		# get the energy from this index
 		this_E = self.MT_E_grid[row]
-		#print "here now"
+		print isotope,MTnum,row,col
+		print "energy="+str(self.MT_E_grid[row])
 		if hasattr(rxn,"ang_energy_in"):
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
 			scatterE   = rxn.ang_energy_in
@@ -212,16 +215,17 @@ class cross_section_data:
 				assert vlen == mu.__len__()
 				# return
 				return [nextDex,this_E,next_E,vlen,nextvlen,mu,cdf,nextmu,nextcdf]
-			elif hasattr(table,"nu_t_energy"):
-				# return interpolated nu values
-				interped_nu = numpy.interp( self.MT_E_grid, table.nu_t_energy, table.nu_t_value )   #
-				interped_nu = numpy.ascontiguousarray(interped_nu, dtype=numpy.float32)
-				#print interped_nu
-				return [-1,-1,-1,-1,-1,interped_nu,interped_nu]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
+				print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 				return [nextDex,this_E,next_E,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
+		elif hasattr(table,"nu_t_energy"):
+			# return interpolated nu values
+			interped_nu = numpy.interp( self.MT_E_grid, table.nu_t_energy, table.nu_t_value )   #
+			interped_nu = numpy.ascontiguousarray(interped_nu, dtype=numpy.float32)
+			#print interped_nu
+			return [-1,-1,-1,-1,-1,interped_nu,interped_nu,interped_nu,interped_nu]
 		else:
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no angular tables"
 			next_E   = self.MT_E_grid[self.num_main_E-1]

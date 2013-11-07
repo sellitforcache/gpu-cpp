@@ -73,14 +73,15 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 				// reactions happen in reaction k
 				this_rxn = xs_MT_numbers[k];
 				this_Q   = xs_data_Q[k];
-				this_dex = n_columns* dex + k;
+				this_dex = n_columns * dex + k;
 				break;
 			}
 		}
 	}
 
+
 	// write results out
-	//if(this_rxn>=50){printf("this_rxn(%d,(1:3))=[%u,%u,%u];\n",tid+1,this_rxn,this_tope,k);}
+	//if(this_rxn>=50){printf("this_rxn(%d,(1:5))=[%u,%u,%u,%u,%u];\n",tid+1,xs_MT_numbers[k],this_dex,this_rxn,this_tope,k);}
 	rxn[tid] = this_rxn;
 	Q[tid] 	 = this_Q;
 	//also write MT array index to dex instead of energy vector index

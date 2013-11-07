@@ -53,6 +53,14 @@ elif case== 'oxygen16':
 	tally      = numpy.loadtxt('o16.tally')
 	tallybins  = numpy.loadtxt('o16.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/oxygen16_mono2_det0.m')
+elif case== 'aluminum':
+	tally      = numpy.loadtxt('aluminum.tally')
+	tallybins  = numpy.loadtxt('aluminum.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/aluminum_mono2_det0.m')
+elif case== 'u235':
+	tally      = numpy.loadtxt('u235.tally')
+	tallybins  = numpy.loadtxt('u235.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/u235_mono2_det0.m')
 
 
 widths=numpy.diff(tallybins);
