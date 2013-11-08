@@ -35,7 +35,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * 
 
 	// write output and terminate history
 	yield[tid] = this_yield;
-	done[tid]  = 1;
+	//done[tid]  = 1;  // this is done in pop
 
 }
 

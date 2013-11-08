@@ -2181,7 +2181,7 @@ void whistory::load_cross_sections(){
 
     // do the rest of the MT numbers
     for (int j=1*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs vectors
-
+    	std::cout << "  at energy column " << j "of" << MT_columns<< "\n";
     	for (int k=0 ; k<MT_rows ; k++){
 
     		// call cross_section_data instance to get buffer
@@ -2634,17 +2634,7 @@ void whistory::run(unsigned num_cycles){
 
 			// pop secondaries back in, can't do this for criticality
 			prep_secondaries();
-
-
-			unsigned * tmp1 = new unsigned [N];
-			unsigned * tmp2 = new unsigned [N];
-			cudaMemcpy(tmp1,d_yield,N*sizeof(unsigned),cudaMemcpyDeviceToHost);
-			cudaMemcpy(tmp2,d_scanned,N*sizeof(unsigned),cudaMemcpyDeviceToHost);
-			for(unsigned b=0;b<N;b++){printf("%u yield=%u scan=%u\n",b,tmp1[b],tmp2[b]);}
-
 			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
-
-			exit(0);
 
 			// update RNGs
 			update_RNG();
