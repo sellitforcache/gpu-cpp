@@ -2181,7 +2181,7 @@ void whistory::load_cross_sections(){
 
     // do the rest of the MT numbers
     for (int j=1*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs vectors
-    	std::cout << "  at energy column " << j "of" << MT_columns<< "\n";
+    	std::cout << "  at energy column " << j << " of " << MT_columns<< "\n";
     	for (int k=0 ; k<MT_rows ; k++){
 
     		// call cross_section_data instance to get buffer
@@ -2303,8 +2303,8 @@ void whistory::print_xs_data(){  // 0=isotopes, 1=main E points, 2=total numer o
 	std::cout << "  xs_MT_numbers:            " << (xs_length_numbers[2]+xs_length_numbers[0])					*sizeof(unsigned) 		<< "\n";  dsum += (xs_length_numbers[2]											*sizeof(unsigned) );
 	std::cout << "  xs_data_main_E_grid:      " << xs_length_numbers[1]											*sizeof(float)	  		<< "\n";  dsum += (xs_length_numbers[1]											*sizeof(float)	  );
 	std::cout << "  xs_data_MT:               " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float);
-	std::cout << "  xs_data_scatter_pointers: " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float*);
-	std::cout << "  xs_data_energy_pointers:  " << MT_rows*MT_columns*sizeof(float)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float*);
+	std::cout << "  xs_data_scatter_pointers: " << MT_rows*MT_columns*sizeof(float*)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float*);
+	std::cout << "  xs_data_energy_pointers:  " << MT_rows*MT_columns*sizeof(float*)		<< "\n";  dsum += (MT_rows*MT_columns)*sizeof(float*);
 	std::cout << "  scatter data:             " << total_bytes_scatter																	<< "\n";  dsum += (total_bytes_scatter);
 	std::cout << "  energy data:              " << total_bytes_energy																	<< "\n";  dsum += (total_bytes_energy);
 	std::cout << "  TOTAL:                    " << dsum << " bytes \n";
@@ -2633,8 +2633,8 @@ void whistory::run(unsigned num_cycles){
 			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 
 			// pop secondaries back in, can't do this for criticality
-			prep_secondaries();
-			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			//prep_secondaries();
+			//pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
 			// update RNGs
 			update_RNG();
@@ -2642,7 +2642,7 @@ void whistory::run(unsigned num_cycles){
 			// get how many histories are complete
 			completed_hist = reduce_done();
 
-			std::cout << completed_hist << "/" << N << " histories complete\n";
+			//std::cout << completed_hist << "/" << N << " histories complete\n";
 			//if((N-completed_hist)<=150){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 		}
 
@@ -2701,7 +2701,7 @@ void whistory::write_tally(unsigned tallynum, std::string filename){
 	filename=filename+"bins";
 	tfile = fopen(filename.c_str(),"w");
 	edge=Emin;
-	for (int k=0;k<n_tally;k++){
+	for (int k=0;k<n_tally+1;k++){
 		fprintf(tfile,"%10.8E\n",edge);
 		edge = edge*multiplier;
 	}

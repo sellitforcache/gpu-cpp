@@ -164,29 +164,25 @@ class cross_section_data:
 
 		#find the isotope we are in
 		numbers = numpy.cumsum(self.reaction_numbers_total)
-		isotope = 0
-		for n in numbers:
-			if (col - self.num_isotopes) <= n:
-				break
-			else:
-				isotope = isotope + 1
-
+		isotope = numpy.argmax( (col - self.num_isotopes) < numbers )
 		table = self.tables[isotope]
 		MTnum = self.reaction_numbers[col]
 		rxn   = table.reactions[MTnum]
 		# get the energy from this index
 		this_E = self.MT_E_grid[row]
-		#print isotope,MTnum,row,col
+		#print "isotope = "+ str(isotope)+" MT = "+str(MTnum)+" row="+str(row)+" col="+str(col)
 		#print "energy="+str(self.MT_E_grid[row])
 		if hasattr(rxn,"ang_energy_in"):
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
 			scatterE   = rxn.ang_energy_in
 			scatterMu  = rxn.ang_cos 
-			scatterCDF = rxn.ang_cdf
+			scatterCDF = rxn.ang_cdf 
 			# check length
 			assert scatterE.__len__() > 0
 			# find the index of the scattering table energy
-			if this_E >= scatterE[0]:
+			if this_E >= scatterE[0] and this_E <= scatterE[-1]:
+				#print numpy.where( scatterE >= this_E )
+				#print scatterE
 				scatter_dex = numpy.where( scatterE >= this_E )[0][0]
 				#get energy of next bin
 				if scatter_dex == scatterE.__len__()-1:
@@ -197,7 +193,6 @@ class cross_section_data:
 					plusone = 1
 				# find main E grid indext of next energy
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-				#print "isotope = "+ str(isotope)+" MT = "+str(MTnum)
 				#print row,col
 				#print this_E,next_E
 				#print scatter_dex
@@ -214,6 +209,7 @@ class cross_section_data:
 				#check to make sure the same lengths
 				assert vlen == mu.__len__()
 				# return
+				print "vlen="+str(vlen)
 				return [nextDex,this_E,next_E,vlen,nextvlen,mu,cdf,nextmu,nextcdf]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]

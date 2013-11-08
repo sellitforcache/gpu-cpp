@@ -110,13 +110,9 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 			}
 		}
 		//if(this_E > 0.99  & this_E < 1.00){
-		//	//if (mu> -0.484 & mu < -0.453){
-		//		//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E \n",this_array[(offset+vlen)+0],this_array[(offset+vlen)+1],this_array[(offset+vlen)+2],this_array[(offset+vlen)+3],this_array[(offset+vlen)+4],this_array[(offset+vlen)+5],this_array[(offset+vlen)+6],this_array[(offset+vlen)+7],this_array[(offset+vlen)+8],this_array[(offset+vlen)+9],this_array[(offset+vlen)+10],this_array[(offset+vlen)+11],this_array[(offset+vlen)+12],this_array[(offset+vlen)+13],this_array[(offset+vlen)+14],this_array[(offset+vlen)+15],this_array[(offset+vlen)+16],this_array[(offset+vlen)+17],this_array[(offset+vlen)+18],this_array[(offset+vlen)+19]);
-		//		//printf("%u %u %p %10.8E %10.8E %10.8E % 10.8E % 10.8E %10.8E % 10.8E\n",vlen,next_vlen,this_array,this_E,cdf0,cdf1,mu0,mu1,rn6,mu);
-		//	//}
+		//	printf("%u %u %u %p %10.8E %u % 10.8E\n",this_tope,vlen,next_vlen,this_array,this_E,this_dex,mu);
 		//}
 	}
-
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();

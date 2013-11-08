@@ -20,26 +20,20 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 	float multiplier  	= powf(10,log_spacing);
 	float this_bin,next_bin;
 
-	//printf("%u %10.8E %12.10E %10.8E \n",Ntally,log_spacing,multiplier,my_E);
-
 	// determine bin number
-	//if     ( my_E <= Emin ){ my_bin_index = 0;        }
-	//else if( my_E >  Emax ){ my_bin_index = Ntally-1; }
-	//else{
-		this_bin=Emin;
-		for(k=0;k<Ntally-1;k++){
-			next_bin=multiplier*this_bin;
-			if(my_E>this_bin & my_E<=next_bin){
-				my_bin_index=k;
-				break;
-			}
-			this_bin=next_bin;
+	this_bin=Emin;
+	for(k=0;k<Ntally;k++){
+		next_bin=multiplier*this_bin;
+		if(my_E>this_bin & my_E<=next_bin){
+			my_bin_index=k;
+			break;
 		}
-	//}
+		this_bin=next_bin;
+	}
 
 	//printf("my_bin_index=%u: score there = %10.8E, count there = %u \n",my_bin_index,tally_score[my_bin_index],tally_count[my_bin_index]);
 
-	//score the bins atomically, could be bad if many neutrons are in a single bin since this will serialize their operations
+	//score the bins atomicly, could be bad if many neutrons are in a single bin since this will serialize their operations
 	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
 	atomicInc(&tally_count[my_bin_index], 4294967295);
 
