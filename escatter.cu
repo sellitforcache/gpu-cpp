@@ -114,6 +114,8 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		//}
 	}
 
+	//mu=2.0*rn6-1.0;
+
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
 	//  create a perpendicular roation vector 
@@ -129,9 +131,9 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
-	//if (this_E>=0.4){
-	//	E_new = this_E*(     (1.0 + this_awr*this_awr + 2.0*this_awr*mu) / ( (1.0+this_awr)*(1.0+this_awr) )      );
-	//}
+	if (this_E>=0.4){
+		E_new = this_E*(     (1.0 + this_awr*this_awr + 2.0*this_awr*mu) / ( (1.0+this_awr)*(1.0+this_awr) )      );
+	}
 
 	// enforce limits
 	if ( E_new <= E_cutoff | E_new > E_max ){

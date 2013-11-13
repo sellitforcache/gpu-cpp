@@ -1299,7 +1299,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	optix_obj.init(problem_geom);
 	optix_obj.print();
 	// CUDA stuff
-	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
+	std::cout << "\e[1;32m" << "Dataset size is "<< Nin << "\e[m \n";
 	N=Nin;
 	NUM_THREADS = 256;
 	RNUM_PER_THREAD = 30;
@@ -2633,8 +2633,8 @@ void whistory::run(unsigned num_cycles){
 			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 
 			// pop secondaries back in, can't do this for criticality
-			//prep_secondaries();
-			//pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			prep_secondaries();
+			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
 			// update RNGs
 			update_RNG();

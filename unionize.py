@@ -209,7 +209,7 @@ class cross_section_data:
 				#check to make sure the same lengths
 				assert vlen == mu.__len__()
 				# return
-				print "vlen="+str(vlen)
+				#print "vlen="+str(vlen)
 				return [nextDex,this_E,next_E,vlen,nextvlen,mu,cdf,nextmu,nextcdf]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]

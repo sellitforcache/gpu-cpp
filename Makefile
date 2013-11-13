@@ -5,7 +5,7 @@ OPTIX = /Developer/OptiX
 NVCC = nvcc -ccbin=/usr/local/Cellar/gcc46/4.6.4/bin
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64
-NVCC_FLAGS = -m64  
+NVCC_FLAGS = -m64  -use_fast_math
 CURAND_LIBS = -lcurand
 OPTIX_FLAGS = -I$(OPTIX)/include -L$(OPTIX)/lib64 
 OPTIX_LIBS = -loptix 

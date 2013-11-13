@@ -61,6 +61,15 @@ elif case== 'u235':
 	tally      = numpy.loadtxt('u235.tally')
 	tallybins  = numpy.loadtxt('u235.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/u235_mono2_det0.m')
+elif case== 'isou235':
+	tally      = numpy.loadtxt('isou235.tally')
+	tallybins  = numpy.loadtxt('isou235.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/u235_mono2_iso_det0.m')
+elif case== '1ku235':
+	tally      = numpy.loadtxt('1ku235.tally')
+	tallybins  = numpy.loadtxt('1ku235.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/u235_mono1k_det0.m')
+
 
 
 widths=numpy.diff(tallybins);

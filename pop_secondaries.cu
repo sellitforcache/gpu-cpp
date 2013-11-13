@@ -13,7 +13,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	unsigned 		this_yield 	= yield[tid];
 	unsigned 		dex  		= index[tid];
 	float * 		this_array 	= energydata[dex];
-	unsigned 		data_dex 	= completed[position];
+	unsigned 		data_dex 	= 0;
 	source_point 	this_space 	= space[tid];
 
 	// internal data
@@ -56,7 +56,10 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	done [ tid ] 		= 0;
 	yield[ tid ] 		= 0; 
 
-	for(k=1 ; k < this_yield ; k++ ){
+	for(k=0 ; k < this_yield-1 ; k++ ){
+		data_dex=completed[position+k];
+		//make sure data is done
+		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
 		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*3];
 		memcpy(&vlen, 		&this_array[0], sizeof(float));
@@ -88,15 +91,15 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		__syncthreads();
 
 		// set data
-		E    [ data_dex +k ] 		= sampled_E;
-		space[ data_dex +k ].x 		= this_space.x;
-		space[ data_dex +k ].y 		= this_space.y;
-		space[ data_dex +k ].z 		= this_space.z;
-		space[ data_dex +k ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
-		space[ data_dex +k ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
-		space[ data_dex +k ].zhat 	= mu;
-		done [ data_dex +k ] 		= 0;
-		yield[ data_dex +k ] 		= 0; 
+		E    [ data_dex ] 		= sampled_E;
+		space[ data_dex ].x 		= this_space.x;
+		space[ data_dex ].y 		= this_space.y;
+		space[ data_dex ].z 		= this_space.z;
+		space[ data_dex ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
+		space[ data_dex ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
+		space[ data_dex ].zhat 	= mu;
+		done [ data_dex ] 		= 0;
+		yield[ data_dex ] 		= 0; 
 
 	}
 

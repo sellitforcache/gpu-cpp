@@ -26,7 +26,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	float 		this_Q 		= Q[tid];
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
-	float * 	this_array 	= scatterdat[this_dex];
+	float * 	this_Sarray = scatterdat[this_dex];
+	float * 	this_Earray =  energydat[this_dex];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
 	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
@@ -73,23 +74,23 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 	// sample new phi, mu_cm
 	phi = 2.0*pi*rn7;
 	offset=4;
-	if(this_array == 0x0){
+	if(this_Sarray == 0x0){
 		mu= 2*rn6-1; //MT=91 doesn't have angular tables for whatever reason
 	}
 	else{  // 
 		//printf("rxn=%u dex=%u %p %6.4E\n",rxn[tid],this_dex,this_array,this_E);
-		memcpy(&last_E, 	&this_array[0], sizeof(float));
-		memcpy(&next_E, 	&this_array[1], sizeof(float));
-		memcpy(&vlen, 		&this_array[2], sizeof(float));
-		memcpy(&next_vlen, 	&this_array[3], sizeof(float));
+		memcpy(&last_E, 	&this_Sarray[0], sizeof(float));
+		memcpy(&next_E, 	&this_Sarray[1], sizeof(float));
+		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
+		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
 		if(  rn8 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
 			for ( k=0 ; k<vlen-1 ; k++ ){
-				if( rn6 >= this_array[ (offset+vlen) +k] & rn6 < this_array[ (offset+vlen) +k+1] ){
-					cdf0 = this_array[ (offset+vlen) +k  ];
-					cdf1 = this_array[ (offset+vlen) +k+1];
-					mu0  = this_array[ (offset)      +k  ];
-					mu1  = this_array[ (offset)      +k+1];
+				if( rn6 >= this_Sarray[ (offset+vlen) +k] & rn6 < this_Sarray[ (offset+vlen) +k+1] ){
+					cdf0 = this_Sarray[ (offset+vlen) +k  ];
+					cdf1 = this_Sarray[ (offset+vlen) +k+1];
+					mu0  = this_Sarray[ (offset)      +k  ];
+					mu1  = this_Sarray[ (offset)      +k+1];
 					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 					break;
 				}
@@ -97,23 +98,19 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD,  unsigned*
 		}
 		else{   // sample E+1
 			for ( k=0 ; k<next_vlen-1 ; k++ ){
-				if( rn6 >= this_array[ (offset+2*vlen+next_vlen) +k] & rn6 < this_array[ (offset+2*vlen+next_vlen) +k+1] ){
-					cdf0 = this_array[ (offset+2*vlen+next_vlen) +k  ];
-					cdf1 = this_array[ (offset+2*vlen+next_vlen) +k+1];
-					mu0  = this_array[ (offset+2*vlen)           +k  ];
-					mu1  = this_array[ (offset+2*vlen)           +k+1];
+				if( rn6 >= this_Sarray[ (offset+2*vlen+next_vlen) +k] & rn6 < this_Sarray[ (offset+2*vlen+next_vlen) +k+1] ){
+					cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
+					cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
+					mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
+					mu1  = this_Sarray[ (offset+2*vlen)           +k+1];
 					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 					break;
 				}
 			}
 		}
-		//if(this_E > 0.99  & this_E < 1.00){
-		//	//if (mu> -0.484 & mu < -0.453){
-		//		//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E \n",this_array[(offset+vlen)+0],this_array[(offset+vlen)+1],this_array[(offset+vlen)+2],this_array[(offset+vlen)+3],this_array[(offset+vlen)+4],this_array[(offset+vlen)+5],this_array[(offset+vlen)+6],this_array[(offset+vlen)+7],this_array[(offset+vlen)+8],this_array[(offset+vlen)+9],this_array[(offset+vlen)+10],this_array[(offset+vlen)+11],this_array[(offset+vlen)+12],this_array[(offset+vlen)+13],this_array[(offset+vlen)+14],this_array[(offset+vlen)+15],this_array[(offset+vlen)+16],this_array[(offset+vlen)+17],this_array[(offset+vlen)+18],this_array[(offset+vlen)+19]);
-		//		//printf("%u %u %p %10.8E %10.8E %10.8E % 10.8E % 10.8E %10.8E % 10.8E\n",vlen,next_vlen,this_array,this_E,cdf0,cdf1,mu0,mu1,rn6,mu);
-		//	//}
-		//}
 	}
+
+	//mu=2.0*rn6-1.0;
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
