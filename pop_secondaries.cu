@@ -57,7 +57,9 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	yield[ tid ] 		= 0; 
 
 	for(k=0 ; k < this_yield-1 ; k++ ){
+		//get proper data index
 		data_dex=completed[position+k];
+		//printf("position %u k %u data_dex %u\n",position,k,data_dex);
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
@@ -92,9 +94,9 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 		// set data
 		E    [ data_dex ] 		= sampled_E;
-		space[ data_dex ].x 		= this_space.x;
-		space[ data_dex ].y 		= this_space.y;
-		space[ data_dex ].z 		= this_space.z;
+		space[ data_dex ].x 	= this_space.x;
+		space[ data_dex ].y 	= this_space.y;
+		space[ data_dex ].z 	= this_space.z;
 		space[ data_dex ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
 		space[ data_dex ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
 		space[ data_dex ].zhat 	= mu;

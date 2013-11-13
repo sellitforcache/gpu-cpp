@@ -39,7 +39,7 @@ void find_E_grid_index_quad(unsigned, unsigned, unsigned,  unsigned,  unsigned, 
 void make_mask(unsigned, unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
 void print_histories(unsigned, unsigned, unsigned, unsigned *, unsigned*, source_point*, float*, unsigned*);
 void pop_secondaries(unsigned, unsigned, unsigned, unsigned, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, source_point* , float* , float* , float** );
-
+void flip_done(unsigned , unsigned , unsigned* );
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -1176,6 +1176,7 @@ class whistory {
 	curandGenerator_t rand_gen;
 	// cuda parameters
 	unsigned 	N;
+	unsigned 	Ndataset;
 	unsigned    RNUM_PER_THREAD;
 	unsigned 	NUM_THREADS;
 	unsigned 	blks;
@@ -1251,7 +1252,9 @@ class whistory {
     qnode *			d_qnodes;
     unsigned * 		d_completed;
  	unsigned *  	d_scanned;
+ 	unsigned * 		d_active;
  	unsigned * 		d_num_completed;
+ 	unsigned * 		d_num_active;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1309,6 +1312,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	n_tally = 1024;
 	// device data stuff
 	N = Nin;
+	Ndataset = Nin * 3;
 	n_qnodes = 0;
 				 d_space 	= (source_point*) optix_obj.positions_ptr;
 				 d_cellnum 	= (unsigned*)     optix_obj.cellnum_ptr;
@@ -1316,42 +1320,44 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
 				 d_done 	= (unsigned*)     optix_obj.done_ptr;
 	cudaMalloc( &d_xs_length_numbers	, 6*sizeof(unsigned) );		 
-	cudaMalloc( &d_E 					, N*sizeof(float)    );
-	cudaMalloc( &d_Q 					, N*sizeof(float)    );
+	cudaMalloc( &d_E 					, Ndataset*sizeof(float)    );
+	cudaMalloc( &d_Q 					, Ndataset*sizeof(float)    );
 	cudaMalloc( &d_rn_bank  			, N*RNUM_PER_THREAD*sizeof(float)    );
-	cudaMalloc( &d_isonum   			, N*sizeof(unsigned) );
-	cudaMalloc( &d_yield				, N*sizeof(unsigned) );
-	cudaMalloc( &d_index				, N*sizeof(unsigned) );
+	cudaMalloc( &d_isonum   			, Ndataset*sizeof(unsigned) );
+	cudaMalloc( &d_yield				, Ndataset*sizeof(unsigned) );
+	cudaMalloc( &d_index				, Ndataset*sizeof(unsigned) );
 	cudaMalloc( &d_tally_score  		, n_tally*sizeof(float));
 	cudaMalloc( &d_tally_count  		, n_tally*sizeof(unsigned));
 	cudaMalloc( &d_reduced_yields 		, 1*sizeof(unsigned));
 	cudaMalloc( &d_reduced_done 		, 1*sizeof(unsigned));
-	cudaMalloc(	&d_valid_result			, N*sizeof(unsigned));
+	cudaMalloc(	&d_valid_result			, Ndataset*sizeof(unsigned));
 	cudaMalloc(	&d_valid_N				, 1*sizeof(unsigned));
-	cudaMalloc(	&d_remap				, N*sizeof(unsigned));
-	cudaMalloc(	&d_fissile_points		, N*sizeof(source_point));
-	cudaMalloc( &d_mask 				, N*sizeof(unsigned));
-	cudaMalloc( &d_completed 			, N*sizeof(unsigned));	
-	cudaMalloc( &d_scanned 				, N*sizeof(unsigned));
+	cudaMalloc(	&d_remap				, Ndataset*sizeof(unsigned));
+	cudaMalloc(	&d_fissile_points		, Ndataset*sizeof(source_point));
+	cudaMalloc( &d_mask 				, Ndataset*sizeof(unsigned));
+	cudaMalloc( &d_completed 			, Ndataset*sizeof(unsigned));	
+	cudaMalloc( &d_scanned 				, Ndataset*sizeof(unsigned));
 	cudaMalloc( &d_num_completed 		, 1*sizeof(unsigned));
+	cudaMalloc( &d_active 				, Ndataset*sizeof(unsigned));
+	cudaMalloc( &d_num_active 			, 1*sizeof(unsigned));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
-	space 				= new source_point [N];
-	E 					= new float [N];
-	Q 					= new float [N];
+	space 				= new source_point [Ndataset];
+	E 					= new float [Ndataset];
+	Q 					= new float [Ndataset];
 	rn_bank  			= new float [N*RNUM_PER_THREAD];
 	tally_score 		= new float [n_tally];
 	tally_count 		= new unsigned [n_tally];
-	index     			= new unsigned [N];
-	cellnum 			= new unsigned [N];
-	matnum 				= new unsigned [N];
-	rxn 				= new unsigned [N];
-	done 				= new unsigned [N];
-	isonum   			= new unsigned [N];
-	yield	   			= new unsigned [N];
-	remap 				= new unsigned [N];
-	zeros 				= new unsigned [N];
-	ones 				= new unsigned [N];
+	index     			= new unsigned [Ndataset];
+	cellnum 			= new unsigned [Ndataset];
+	matnum 				= new unsigned [Ndataset];
+	rxn 				= new unsigned [Ndataset];
+	done 				= new unsigned [Ndataset];
+	isonum   			= new unsigned [Ndataset];
+	yield	   			= new unsigned [Ndataset];
+	remap 				= new unsigned [Ndataset];
+	zeros 				= new unsigned [Ndataset];
+	ones 				= new unsigned [Ndataset];
 	// init counters to 0
 	total_bytes_scatter = 0;
 	total_bytes_energy  = 0;
@@ -1447,6 +1453,24 @@ void whistory::init_host(){
 		isonum[k]			= 0;
 		yield[k]			= 0;
 	}
+	for(int k=N;k<Ndataset;k++){
+		space[k].x 			= 0.0;
+		space[k].y 			= 0.0;
+		space[k].z 			= 0.0;
+		space[k].xhat 		= 0.0;
+		space[k].yhat 		= 0.0;
+		space[k].zhat 		= 0.0;
+		space[k].samp_dist 	= 10000.0;
+		space[k].macro_t 	= 0.0;
+		E[k]				= 0.0;
+		Q[k]				= 0.0;
+		cellnum[k]			= 0;
+		matnum[k]			= 0;
+		rxn[k]				= 0;
+		done[k]				= 1;
+		isonum[k]			= 0;
+		yield[k]			= 0;
+	}
 
 }
 void whistory::init_RNG(){
@@ -1526,7 +1550,7 @@ void whistory::init_CUDPP(){
 }
 float whistory::reduce_yield(){
 
-	res = cudppReduce(reduplan_int, d_reduced_yields, d_yield, N);
+	res = cudppReduce(reduplan_int, d_reduced_yields, d_yield, Ndataset);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing yield values\n");exit(-1);}
 	cudaMemcpy(&reduced_yields, d_reduced_yields, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
@@ -1539,7 +1563,7 @@ unsigned whistory::reduce_done(){
 
 	unsigned reduced_done = 0;
 
-	res = cudppReduce(reduplan_int, d_reduced_done, d_done, N);
+	res = cudppReduce(reduplan_int, d_reduced_done, d_done, Ndataset);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing done values\n");exit(-1);}
 	cudaMemcpy(&reduced_done, d_reduced_done, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
@@ -1558,16 +1582,16 @@ void whistory::copy_to_device(){
 
 	// copy history data
 	std::cout << "  History data... ";
-    cudaMemcpy( d_space,		space,		N*sizeof(source_point),	cudaMemcpyHostToDevice );
-    cudaMemcpy( d_E,			E,			N*sizeof(float),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_done,			done,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_matnum,		matnum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-    cudaMemcpy( d_remap, 		remap,    	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_space,		space,		Ndataset*sizeof(source_point),	cudaMemcpyHostToDevice );
+    cudaMemcpy( d_E,			E,			Ndataset*sizeof(float),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_isonum,		isonum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_yield,		yield,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+    cudaMemcpy( d_remap, 		remap,    	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
     std::cout << "Done.\n";
     std::cout << "  Unionized cross sections... ";
     // copy xs_data,  0=isotopes, 1=main E points, 2=total numer of reaction channels
@@ -2561,14 +2585,14 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 void whistory::reset_fixed(){
 
 	// rest run arrays
-	cudaMemcpy( d_space,		space,		N*sizeof(source_point),	cudaMemcpyHostToDevice );
-	cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_done,			done,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_matnum,		matnum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_space,		space,		Ndataset*sizeof(source_point),	cudaMemcpyHostToDevice );
+	cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_isonum,		isonum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_yield,		yield,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
 	//set fission spectra
 	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
@@ -2589,6 +2613,7 @@ void whistory::run(unsigned num_cycles){
 	float it = 0.0;
 	unsigned completed_hist = 0;
 	unsigned current_fission_index = 0;
+	int iteration = 0;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -2600,7 +2625,7 @@ void whistory::run(unsigned num_cycles){
 	//make directions isotropic
 	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
 
-	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
+	for(iteration = 0 ; iteration<num_cycles ; iteration++){
 
 		while(completed_hist<N){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -2869,13 +2894,23 @@ void whistory::create_quad_tree(){
 }
 void whistory::prep_secondaries(){
 
+	// scan the yields to determine where the individual threads write into the done data
+	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
+
 	// compact the done data to know where to write
-	res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , N);
+	res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , Ndataset);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
 
-	// scan the yields to determine where the individual threads write into the done data
-	res = cudppScan( scanplan_int, d_scanned,  d_yield,  N );
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}	
+	// flip done flag
+	flip_done(NUM_THREADS, Ndataset, d_done);
+
+	// remap to active
+	res = cudppCompact( compactplan, d_active , (size_t*) d_num_active , d_remap , d_done , Ndataset);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
+
+	// flip done flag back	
+	flip_done(NUM_THREADS, Ndataset, d_done);
 
 }
 

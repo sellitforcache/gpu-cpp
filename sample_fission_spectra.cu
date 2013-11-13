@@ -8,7 +8,7 @@ __global__ void sample_fission_spectra_kernel (unsigned N, float* rn_bank , floa
 	if (tid >= N){return;}
 
 	//monoenergetic for now
-	E[tid]=0.001;
+	E[tid]=2.0;
 
 }
 
