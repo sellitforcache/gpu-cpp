@@ -28,7 +28,9 @@ __global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD,
 
 }
 
-void set_positions_rand(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, source_point * d_space , float * d_rn_bank, float * outer_cell_dims){
+void set_positions_rand( unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, source_point * d_space , float * d_rn_bank, float * outer_cell_dims){
+
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	set_positions_rand_kernel <<<  blks, NUM_THREADS >>> ( N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims[0], outer_cell_dims[1], outer_cell_dims[2], outer_cell_dims[3], outer_cell_dims[4], outer_cell_dims[5]);
 	cudaThreadSynchronize();

@@ -2,14 +2,17 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
+__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
 
 	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
 	
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
-	if (done[tid]){return;}      // return if done, duh
+	
+	//remap to active
+	tid=active[tid];
+
 	if (rxn[tid] < 3 | rxn[tid] > 50 ){return;}  //return if no secondary neutron
 
 	//printf("in fission\n");
@@ -39,9 +42,11 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned * 
 
 }
 
-void fission(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
+void fission( unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
-	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD,  rxn , index, yield , rn_bank, done, scatterdat);
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
+
+	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, active, rxn , index, yield , rn_bank, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

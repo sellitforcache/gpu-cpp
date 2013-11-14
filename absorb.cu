@@ -2,14 +2,17 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void absorb_kernel(unsigned N, unsigned * rxn , unsigned* done){
+__global__ void absorb_kernel(unsigned N, unsigned* active, unsigned * rxn , unsigned* done){
 
 
 	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
 	
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}         //return if out of bounds
-	if (done[tid]){return;}        // return if done, duh
+	
+	//remap to active
+	tid=active[tid];
+
 	if (rxn[tid] < 102 ){return;}  //return if not some sort of absorption, ie (n,not-n)
 
 	//printf("in abs, rxn=%u\n",rxn[tid]);
@@ -18,9 +21,11 @@ __global__ void absorb_kernel(unsigned N, unsigned * rxn , unsigned* done){
 
 }
 
-void absorb(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned * rxn , unsigned* done){
+void absorb( unsigned NUM_THREADS, unsigned N, unsigned* active, unsigned * rxn , unsigned* done){
 
-	absorb_kernel <<< blks, NUM_THREADS >>> (  N,  rxn , done);
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
+	
+	absorb_kernel <<< blks, NUM_THREADS >>> (  N, active, rxn , done);
 	cudaThreadSynchronize();
 
 }

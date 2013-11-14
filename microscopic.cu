@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
-	if (done[tid]){return;}
+	
+	//remap to active
+	tid=active[tid];
 
 	// load from array
 	unsigned  	RNUM_PER_THREAD = 15;
@@ -90,9 +92,11 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 }
 
-void microscopic(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+void microscopic( unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active,unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
-	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, n_isotopes, n_columns, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, xs_data_Q, rxn, Q, done);
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
+
+	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, n_isotopes, n_columns, active, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, xs_data_Q, rxn, Q, done);
 	cudaThreadSynchronize();
 
 }

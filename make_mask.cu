@@ -18,7 +18,9 @@ __global__ void make_mask_kernel(unsigned N, unsigned * mask, unsigned * rxn,  u
 
 }
 
-void make_mask(unsigned blks, unsigned NUM_THREADS, unsigned N, unsigned * mask, unsigned * rxn, unsigned begin, unsigned end){
+void make_mask( unsigned NUM_THREADS, unsigned N, unsigned * mask, unsigned * rxn, unsigned begin, unsigned end){
+
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	make_mask_kernel <<< blks, NUM_THREADS >>> (  N, mask, rxn, begin,  end);
 	cudaThreadSynchronize();

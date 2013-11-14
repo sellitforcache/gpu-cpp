@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* mask){
+__global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active, source_point* space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* mask){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
+	tid=active[tid];
 	if (done[tid]){return;}
 	if (!mask[tid]){return;}
 
@@ -40,9 +41,11 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, source_point* spa
 
 }
 
-void tally_spec(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned Ntally, source_point * space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* mask){
+void tally_spec(unsigned NUM_THREADS,  unsigned N, unsigned Ntally, unsigned* active, source_point * space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* mask){
+	
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	tally_spec_kernel <<< blks, NUM_THREADS >>> ( N, Ntally, space, E, tally_score, tally_count, done, mask);
+	tally_spec_kernel <<< blks, NUM_THREADS >>> ( N, Ntally, active, space, E, tally_score, tally_count, done, mask);
 	cudaThreadSynchronize();
 
 }
