@@ -11,7 +11,7 @@ int main(){
 	std::string tallyname = "tally";
 
 	//get inputs?
-	int N=1e5;
+	int N=1e2;
 
 	//print banner
 	print_banner();

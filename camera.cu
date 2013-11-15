@@ -19,7 +19,7 @@ rtDeclareVariable(unsigned,  boundary_condition, , );
 RT_PROGRAM void camera()
 {
 
-  if(done_buffer[launch_index]==1){return;}
+  if(done_buffer[launch_index]){return;}
 
   // declare important stuff
   int                 cnt;
@@ -52,7 +52,7 @@ RT_PROGRAM void camera()
 
    if (trace_type==1){   // transport trace type
       dist_to_surf = payload.surf_dist;
-      if ( (dist_to_surf- 1.5*epsilon) >= samp_dist ){
+      if ( (dist_to_surf - 1.75*epsilon) >= samp_dist ){  // interaction is closer
          x = positions_buffer[launch_index].x + samp_dist*positions_buffer[launch_index].xhat;
          y = positions_buffer[launch_index].y + samp_dist*positions_buffer[launch_index].yhat;
          z = positions_buffer[launch_index].z + samp_dist*positions_buffer[launch_index].zhat;
@@ -63,7 +63,7 @@ RT_PROGRAM void camera()
       else{ // surface is closer 
          if (payload.cell_first==outer_cell){ // first check if BC
             if(boundary_condition == 0){
-              rxn  = 88;  //  set leak code
+              rxn  = 888;  //  set leak code
               done = 1;   // set done flag
               // move out of geometry to "interaction point"
               cellnum = payload.cell_first;
@@ -89,7 +89,7 @@ RT_PROGRAM void camera()
          }
       }
    //write positions to buffers
-   //rtPrintf("launch_index = %d rxn %u done %u cellnum %u xyz_o % 10.8E % 10.8E % 10.8E xyz % 10.8E % 10.8E % 10.8E samp %10.8E surf %10.8E \n",launch_index,rxn,done,cellnum,xo,yo,zo,x,y,z,samp_dist,dist_to_surf);
+   rtPrintf("launch_index = %d rxn %u done %u cellnum %u xyz_o % 10.8E % 10.8E % 10.8E xyz % 10.8E % 10.8E % 10.8E samp %10.8E surf %10.8E \n",launch_index,rxn,done,cellnum,positions_buffer[launch_index].x,positions_buffer[launch_index].y,positions_buffer[launch_index].z,x,y,z,samp_dist,dist_to_surf);
    rxn_buffer[launch_index]  = rxn;
    done_buffer[launch_index] = done;
    cellnum_buffer[launch_index] = cellnum;

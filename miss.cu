@@ -11,11 +11,11 @@ rtBuffer<unsigned,1>          rxn_buffer;
 
 RT_PROGRAM void miss()
 {
-	rtPrintf("!!!MISS!!! outer_cell = %d launch_index = %d trace %d done %u (x,y,z,dist)= % 10.8E % 10.8E % 10.8E %10.8E (xhat,yhat,zhat)=% 10.8E % 10.8E %10.8E\n",outer_cell, launch_index, trace_type, done_buffer[launch_index], payload.x,payload.y,payload.z,payload.surf_dist,ray.direction.x,ray.direction.y,ray.direction.z);
+	rtPrintf("!!!MISS!!! rxn = %u outer_cell = %d launch_index = %d trace %d done %u (x,y,z,dist)= % 10.8E % 10.8E % 10.8E %10.8E (xhat,yhat,zhat)=% 10.8E % 10.8E %10.8E\n",rxn_buffer[launch_index], outer_cell, launch_index, trace_type, done_buffer[launch_index], payload.x,payload.y,payload.z,payload.surf_dist,ray.direction.x,ray.direction.y,ray.direction.z);
 	payload.x = -1;
 	payload.y = -1;
 	payload.z = -1;
 	payload.cont = 0;
 	done_buffer[launch_index]=1;
-	rxn_buffer[launch_index]=123; //miss code
+	rxn_buffer[launch_index]=99999; //miss code
 }

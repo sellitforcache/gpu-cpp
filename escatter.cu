@@ -15,7 +15,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	if (rxn[tid] != 2){return;}  //return if not elastic scatter
 
-	//printf("in escatter\n");
+	printf("in escatter - tid %u Nrun %u \n",tid,N);
 
 	//constants
 	const float  pi           =   3.14159265359 ;
