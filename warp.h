@@ -2614,16 +2614,15 @@ void whistory::run(unsigned num_cycles){
 	for(iteration = 0 ; iteration<num_cycles ; iteration++){
 
 		while(completed_hist<Ndataset){
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	
 			//find the main E grid index
 			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
 			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// find what material we are in
 			trace(2);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 			
@@ -2634,23 +2633,19 @@ void whistory::run(unsigned num_cycles){
 	
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			absorb(   NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
 			fission(  NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// run optix to detect the nearest surface and move particle there
 			trace(1);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// pop secondaries back in, can't do this for criticality
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			num_active = prep_secondaries();
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-			//pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
 			if(num_active>N){Nrun=N;}
 			else{Nrun=num_active;}
@@ -2661,7 +2656,7 @@ void whistory::run(unsigned num_cycles){
 			// get how many histories are complete
 			completed_hist = reduce_done();
 
-			std::cout << completed_hist - ( Ndataset - N ) << "/" << N << " histories complete\n";
+			//std::cout << completed_hist - ( Ndataset - N ) << "/" << N << " histories complete\n";
 			//if((N-completed_hist)<=150){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 		}
 
@@ -2681,6 +2676,7 @@ void whistory::run(unsigned num_cycles){
 		//current_fission_index = reset_cycle(current_fission_index);
 		reset_fixed();
 		completed_hist = 0;
+		Nrun=N;
 
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();

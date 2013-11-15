@@ -89,7 +89,7 @@ RT_PROGRAM void camera()
          }
       }
    //write positions to buffers
-   rtPrintf("launch_index = %d rxn %u done %u cellnum %u xyz_o % 10.8E % 10.8E % 10.8E xyz % 10.8E % 10.8E % 10.8E samp %10.8E surf %10.8E \n",launch_index,rxn,done,cellnum,positions_buffer[launch_index].x,positions_buffer[launch_index].y,positions_buffer[launch_index].z,x,y,z,samp_dist,dist_to_surf);
+   //rtPrintf("launch_index = %d rxn %u done %u cellnum %u xyz_o % 10.8E % 10.8E % 10.8E xyz % 10.8E % 10.8E % 10.8E samp %10.8E surf %10.8E \n",launch_index,rxn,done,cellnum,positions_buffer[launch_index].x,positions_buffer[launch_index].y,positions_buffer[launch_index].z,x,y,z,samp_dist,dist_to_surf);
    rxn_buffer[launch_index]  = rxn;
    done_buffer[launch_index] = done;
    cellnum_buffer[launch_index] = cellnum;
