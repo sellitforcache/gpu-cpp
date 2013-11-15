@@ -59,7 +59,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	for(k=0 ; k < this_yield-1 ; k++ ){
 		//get proper data index
 		data_dex=completed[position+k];
-		//printf("position %u k %u data_dex %u\n",position,k,data_dex);
+		//printf("tid %u position %u k %u data_dex %u done %u (xyz) % 6.4E % 6.4E % 6.4E\n",tid,position,k,data_dex,done[data_dex],this_space.x,this_space.y,this_space.z);
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
@@ -108,7 +108,9 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 }
 
-void pop_secondaries(unsigned blks, unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
+void pop_secondaries( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
+
+	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	pop_secondaries_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank, energydata);
 	cudaThreadSynchronize();

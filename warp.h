@@ -1346,10 +1346,6 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	//copy any info needed
 	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
 	xs_isotope_string = problem_geom.isotope_list;
-	// init remapping stuff for compaction
-	for(int k =0;k<N;k++){remap[k]=k;}
-	// zero out the zeros vector
-	for(int k =0;k<N;k++){zeros[k]=0;ones[k]=1;}
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -1418,6 +1414,9 @@ whistory::~whistory(){
 void whistory::init_host(){
 
 	for(int k=0;k<N;k++){
+		remap[k]			=k;
+		zeros[k]			=0;
+		ones[k]				=1;
 		space[k].x 			= 0.0;
 		space[k].y 			= 0.0;
 		space[k].z 			= 0.0;
@@ -1436,6 +1435,9 @@ void whistory::init_host(){
 		yield[k]			= 0;
 	}
 	for(int k=N;k<Ndataset;k++){
+		remap[k]			=k;
+		zeros[k]			=0;
+		ones[k]				=1;
 		space[k].x 			= 0.0;
 		space[k].y 			= 0.0;
 		space[k].z 			= 0.0;
@@ -1474,7 +1476,7 @@ void whistory::init_CUDPP(){
 	res = cudppCreate(&theCudpp);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error initializing CUDPP Library.\n");}
 	
-	std::cout << "  configuring sort..." << "\n";
+	std::cout << "  configuring compact..." << "\n";
 	// sort stuff
 	compact_config.op = CUDPP_ADD;
 	compact_config.datatype = CUDPP_INT;
@@ -2634,18 +2636,18 @@ void whistory::run(unsigned num_cycles){
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
 
+			// run optix to detect the nearest surface and move particle there, sets rxn to 888 if leaked!
+			trace(1);
+
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			absorb(   NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
 			fission(  NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 
-			// run optix to detect the nearest surface and move particle there
-			trace(1);
-
 			// pop secondaries back in, can't do this for criticality
 			num_active = prep_secondaries();
-			pop_secondaries( blks, NUM_THREADS, N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
 			if(num_active>N){Nrun=N;}
 			else{Nrun=num_active;}
@@ -2904,6 +2906,16 @@ unsigned whistory::prep_secondaries(){
 
 	// flip done flag back	
 	flip_done(NUM_THREADS, Ndataset, d_done);
+
+	//unsigned * tmp1 = new unsigned [Ndataset];
+	//unsigned * tmp2 = new unsigned [Ndataset];
+	//unsigned * tmp3 = new unsigned [Ndataset];
+	//unsigned * tmp4 = new unsigned [Ndataset];
+	//cudaMemcpy(tmp1,d_scanned,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp2,d_completed,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp3,d_done,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp4,d_yield,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//for(int k=0; k<Ndataset ; k++ ){printf("(tid,done,scanned,completed,yield) %u %u %u %u %u\n",k,tmp3[k],tmp1[k],tmp2[k],tmp4[k]);}
 
 	return num_active;
 
