@@ -251,8 +251,8 @@ class cross_section_data:
 		if hasattr(rxn,"energy_dist"):
 			#print "LAW="+str(rxn.energy_dist.law)+" MT="+str(MTnum)
 			if rxn.energy_dist.law == 3:
-				nextE = self.MT_E_grid[self.num_main_E-1]
-				return [nextE,0,3,numpy.array([0]),numpy.array([0])]
+				next_E = self.MT_E_grid[self.num_main_E-1]
+				return [(self.MT_E_grid.__len__()-1),this_E,next_E,0,0,3,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 			else:
 				scatterE   = rxn.energy_dist.energy_in
 				scatterMu  = rxn.energy_dist.energy_out
@@ -289,7 +289,7 @@ class cross_section_data:
 					#check to make sure the same length
 					assert vlen == mu.__len__()
 					# return
-					return [nextDex,this_E,next_E,vlen,law,nextvlen,mu,cdf,nextmu,nextcdf]
+					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,nextmu,nextcdf]
 				else:  # return 0 if below the first energy]
 					next_E = scatterE[0]
 					nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]

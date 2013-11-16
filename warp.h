@@ -2201,18 +2201,25 @@ void whistory::load_cross_sections(){
 			PyErr_Print();
 
 			// get objects in the returned list
-			nextDex_obj  		= PyList_GetItem(obj_list,0);
-			vector_length_obj 	= PyList_GetItem(obj_list,1);
-			law_obj 			= PyList_GetItem(obj_list,2);
-			mu_vector_obj 		= PyList_GetItem(obj_list,3);
-			cdf_vector_obj 		= PyList_GetItem(obj_list,4);
+			nextDex_obj  			= PyList_GetItem(obj_list,0);
+			lastE_obj  				= PyList_GetItem(obj_list,1);
+			nextE_obj 				= PyList_GetItem(obj_list,2);
+			vector_length_obj 		= PyList_GetItem(obj_list,3);
+			next_vector_length_obj 	= PyList_GetItem(obj_list,4);
+			law_obj					= PyList_GetItem(obj_list,5);
+			mu_vector_obj 			= PyList_GetItem(obj_list,6);
+			cdf_vector_obj 			= PyList_GetItem(obj_list,7);
+			next_mu_vector_obj 		= PyList_GetItem(obj_list,8);
+			next_cdf_vector_obj 	= PyList_GetItem(obj_list,9);
 			PyErr_Print();
 
 			// expand list to c variables
-			nextDex 	  = PyInt_AsLong 	(nextDex_obj);
-			vector_length = PyInt_AsLong    (vector_length_obj);
-			law 		  = PyInt_AsLong    (law_obj);
-			PyErr_Print();
+			nextDex 	  		= PyInt_AsLong 	  (nextDex_obj);
+			lastE 		  		= PyFloat_AsDouble(lastE_obj);
+			nextE 		  		= PyFloat_AsDouble(nextE_obj);
+			vector_length 		= PyInt_AsLong    (vector_length_obj);
+			next_vector_length 	= PyInt_AsLong    (next_vector_length_obj);
+			law 				= PyInt_AsLong    (law_obj);
 
 			// set this pointer
 			if(vector_length==0){
@@ -2240,27 +2247,41 @@ void whistory::load_cross_sections(){
 				cdfRows    = cdfBuff.shape[0];
 				cdfColumns = cdfBuff.shape[1];
 				cdfBytes   = cdfBuff.len;
+				next_muRows     = next_muBuff.shape[0];
+				next_muColumns  = next_muBuff.shape[1];
+				next_muBytes    = next_muBuff.len;
+				next_cdfRows    = next_cdfBuff.shape[0];
+				next_cdfColumns = next_cdfBuff.shape[1];
+				next_cdfBytes   = next_cdfBuff.len;
 	
 				//make sure every is ok
-				assert(muRows==cdfRows);
+				assert(muRows==   cdfRows);
 				assert(muColumns==cdfColumns);
-				assert(muBytes==cdfBytes);
+				assert(muBytes==  cdfBytes);
+				assert(next_muRows==   next_cdfRows);
+				assert(next_muColumns==next_cdfColumns);
+				assert(next_muBytes==  next_cdfBytes);
 	
 				//allocate pointer, write into array
 				//for cuda too
-				this_pointer = new float [muRows+cdfRows+1];
-				cudaMalloc(&cuda_pointer,(muRows+cdfRows+2)*sizeof(float));
-				total_bytes_energy += (muRows+cdfRows+2)*sizeof(float);  // add to total count
+				this_pointer = new float [muRows+cdfRows+next_muRows+next_cdfRows+5];
+				cudaMalloc(&cuda_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+5)*sizeof(float));
+				total_bytes_energy += (muRows+cdfRows+next_muRows+next_cdfRows  +5)*sizeof(float);    // add to total count
 				xs_data_energy     [k*MT_columns + j] = this_pointer;
 				xs_data_energy_host[k*MT_columns + j] = cuda_pointer;
 	
 				//copy data from python buffer to pointer in array
-				memcpy(this_pointer, 			&muRows,   		     sizeof(unsigned));  // to first position
-				memcpy(&this_pointer[1], 		&law,   		     sizeof(unsigned));  // to second position
-				memcpy(&this_pointer[2],		muBuff.buf,  	 muRows*sizeof(float));     // to len bytes after
-				memcpy(&this_pointer[2+muRows],	cdfBuff.buf, 	cdfRows*sizeof(float));     // to len bytes after that
+				memcpy(&this_pointer[0], 						&lastE,   		    sizeof(float));
+				memcpy(&this_pointer[1], 						&nextE,   		    sizeof(float));    // nextE   to first position
+				memcpy(&this_pointer[2], 						&muRows,   		    sizeof(unsigned)); // len to third position
+				memcpy(&this_pointer[3], 						&next_muRows, 		sizeof(unsigned));
+				memcpy(&this_pointer[4], 						&law, 				sizeof(unsigned));
+				memcpy(&this_pointer[5],						muBuff.buf,  	 muRows*sizeof(float));     // mu  to len bytes after
+				memcpy(&this_pointer[5+  muRows],				cdfBuff.buf, 	cdfRows*sizeof(float));     // cdf to len bytes after that
+				memcpy(&this_pointer[5+ 2*muRows],				muBuff.buf,  	 next_muRows*sizeof(float));
+				memcpy(&this_pointer[5+ 2*muRows+next_muRows],	cdfBuff.buf, 	next_cdfRows*sizeof(float));
 
-				cudaMemcpy(cuda_pointer,this_pointer,(muRows*2 + 2)*sizeof(float),cudaMemcpyHostToDevice);
+				cudaMemcpy(cuda_pointer,this_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+5)*sizeof(float),cudaMemcpyHostToDevice);
 
 				PyErr_Print();
 

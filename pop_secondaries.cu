@@ -12,6 +12,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	unsigned 		position 	= scanned[tid];
 	unsigned 		this_yield 	= yield[tid];
 	unsigned 		dex  		= index[tid];
+	float 			this_E 		= E[tid];
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;
 	source_point 	this_space 	= space[tid];
@@ -19,35 +20,53 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	// internal data
 	float 		Emin=1e-11;
 	float 		Emax=20.0;
-	unsigned 	k, n, offset, vlen, law;
-	float 		sampled_E, phi, mu, rn1, rn2;
+	unsigned 	k, n, offset, vlen, next_vlen, law;
+	float 		sampled_E, phi, mu, rn1, rn2, last_E, next_E;
 	float 		cdf0, cdf1, e0, e1;
 	const float  pi           =   3.14159265359 ;
-	offset = 2;
+	offset = 5;
 
 	// sample spectrum, set data.  
 	// reset self then write elsewhere
 
 	//read in values
 	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 ];
-	memcpy(&vlen, 		&this_array[0], sizeof(float));
-	memcpy(&law, 		&this_array[1], sizeof(float));
+	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 ];
+	memcpy(&last_E,   	&this_array[0], sizeof(float));
+	memcpy(&next_E,   	&this_array[1], sizeof(float));
+	memcpy(&vlen,   	&this_array[2], sizeof(float));
+	memcpy(&next_vlen,	&this_array[3], sizeof(float));
+	memcpy(&law, 		&this_array[4], sizeof(float));
 	//printf("law=%u\n",law);
 	//sample energy dist
-	for ( n=0 ; n<vlen-1 ; n++ ){
-		if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
-			cdf0 		= this_array[ (offset+vlen) +n  ];
-			cdf1 		= this_array[ (offset+vlen) +n+1];
-			e0   		= this_array[ (offset)      +n  ];
-			e1   		= this_array[ (offset)      +n+1];
-			sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
-			break;
+	if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
+		for ( n=0 ; n<vlen-1 ; n++ ){
+			if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
+				cdf0 		= this_array[ (offset+vlen) +n  ];
+				cdf1 		= this_array[ (offset+vlen) +n+1];
+				e0   		= this_array[ (offset)      +n  ];
+				e1   		= this_array[ (offset)      +n+1];
+				sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
+				break;
+			}
+		}
+	}
+	else{
+		for ( n=0 ; n<vlen-1 ; n++ ){
+			if( rn1 >= this_array[ (offset+2*vlen+next_vlen) +n] & rn1 < this_array[ (offset+2*vlen+next_vlen) +n+1] ){
+				cdf0 		= this_array[ (offset+2*vlen+next_vlen) +n  ];
+				cdf1 		= this_array[ (offset+2*vlen+next_vlen) +n+1];
+				e0   		= this_array[ (offset+2*vlen)      		+n  ];
+				e1   		= this_array[ (offset+2*vlen)      		+n+1];
+				sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
+				break;
+			}
 		}
 	}
 
 	//sample isotropic directions
-	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 12 ];
-	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 13 ];
+	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 ];
+	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 ];
 	mu  = 2.0*rn1-1.0; 
 	phi = 2.0*pi*rn2;
 
@@ -67,24 +86,37 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
 		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*3];
-		memcpy(&vlen, 		&this_array[0], sizeof(float));
-		memcpy(&law, 		&this_array[1], sizeof(float));
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*3];
 		//sample energy dist
-		for ( n=0 ; n<vlen-1 ; n++ ){
-			if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
-				cdf0 		= this_array[ (offset+vlen) +n  ];
-				cdf1 		= this_array[ (offset+vlen) +n+1];
-				e0   		= this_array[ (offset)      +n  ];
-				e1   		= this_array[ (offset)      +n+1];
-				sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
-				break;
+		if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
+			for ( n=0 ; n<vlen-1 ; n++ ){
+				if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
+					cdf0 		= this_array[ (offset+vlen) +n  ];
+					cdf1 		= this_array[ (offset+vlen) +n+1];
+					e0   		= this_array[ (offset)      +n  ];
+					e1   		= this_array[ (offset)      +n+1];
+					sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
+					break;
+				}
+			}
+		}
+		else{
+			for ( n=0 ; n<vlen-1 ; n++ ){
+				if( rn1 >= this_array[ (offset+2*vlen+next_vlen) +n] & rn1 < this_array[ (offset+2*vlen+next_vlen) +n+1] ){
+					cdf0 		= this_array[ (offset+2*vlen+next_vlen) +n  ];
+					cdf1 		= this_array[ (offset+2*vlen+next_vlen) +n+1];
+					e0   		= this_array[ (offset+2*vlen)      		+n  ];
+					e1   		= this_array[ (offset+2*vlen)      		+n+1];
+					sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
+					break;
+				}
 			}
 		}
 		//printf("%6.4E\n",sampled_E);
 
 		//sample isotropic directions
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*3];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
+		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*3];
 		mu  = 2.0*rn1-1.0; 
 		phi = 2.0*pi*rn2;
 
