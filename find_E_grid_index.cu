@@ -29,7 +29,7 @@ __global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies, unsign
 
 		if(cnt>30){
 			donesearching=1;
-			printf("binary search iteration overflow! %p %d % 10.8f\n",main_E_grid,N_energies,value);
+			printf("binary search iteration overflow! %p %d % 10.8f tid=%u\n",main_E_grid,N_energies,value,tid);
 			dex=0;
 		}
 

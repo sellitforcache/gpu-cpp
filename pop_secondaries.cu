@@ -17,6 +17,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	source_point 	this_space 	= space[tid];
 
 	// internal data
+	float 		Emin=1e-11;
+	float 		Emax=20.0;
 	unsigned 	k, n, offset, vlen, law;
 	float 		sampled_E, phi, mu, rn1, rn2;
 	float 		cdf0, cdf1, e0, e1;
@@ -30,6 +32,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 ];
 	memcpy(&vlen, 		&this_array[0], sizeof(float));
 	memcpy(&law, 		&this_array[1], sizeof(float));
+	//printf("law=%u\n",law);
 	//sample energy dist
 	for ( n=0 ; n<vlen-1 ; n++ ){
 		if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
@@ -40,7 +43,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 			sampled_E 	= (e1-e0)/(cdf1-cdf0)*(rn1-cdf0)+e0; 
 			break;
 		}
-	};
+	}
 
 	//sample isotropic directions
 	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 12 ];
@@ -90,6 +93,11 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		//check data
 		//printf("done? %u\n",done[ data_dex ]);
 
+		//check limits
+		if (sampled_E >= Emax){sampled_E = Emax * 0.9;printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
+		if (sampled_E <= Emin){sampled_E = Emin * 1.1;printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
+
+		// sync before writes
 		__syncthreads();
 
 		// set data

@@ -2190,7 +2190,7 @@ void whistory::load_cross_sections(){
 
     // do the rest of the MT numbers
     for (int j=1*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs vectors
-    	std::cout << "  at energy column " << j << " of " << MT_columns<< "\n";
+    	std::cout << "  at energy column " << j+1 << " of " << MT_columns<< "\n";
     	for (int k=0 ; k<MT_rows ; k++){
 
     		// call cross_section_data instance to get buffer
@@ -2649,6 +2649,7 @@ void whistory::run(unsigned num_cycles){
 			num_active = prep_secondaries();
 			pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
+			// set N to min(N,Nactive)
 			if(num_active>N){Nrun=N;}
 			else{Nrun=num_active;}
 
