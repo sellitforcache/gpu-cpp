@@ -1968,7 +1968,7 @@ void whistory::load_cross_sections(){
 
 
 
-	std::cout << "\e[1;32m" << "Loading scattering data and linking..." << "\e[m \n";
+	std::cout << "\e[1;32m" << "Loading/copying scattering data and linking..." << "\e[m \n";
 
 
     ////////////////////////////////////
@@ -2171,7 +2171,7 @@ void whistory::load_cross_sections(){
 	}
 
 
-	std::cout << "\e[1;32m" << "Loading energy distribution data and linking..." << "\e[m \n";
+	std::cout << "\e[1;32m" << "Loading/copying energy distribution data and linking..." << "\e[m \n";
 
 
     ////////////////////////////////////
@@ -2232,6 +2232,8 @@ void whistory::load_cross_sections(){
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
 					PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
 					PyObject_GetBuffer(cdf_vector_obj, &cdfBuff, PyBUF_ND);
+					PyObject_GetBuffer( next_mu_vector_obj,  &next_muBuff, PyBUF_ND);
+					PyObject_GetBuffer(next_cdf_vector_obj, &next_cdfBuff, PyBUF_ND);
 					PyErr_Print();
 				}
 				else{
@@ -2276,10 +2278,10 @@ void whistory::load_cross_sections(){
 				memcpy(&this_pointer[2], 						&muRows,   		    sizeof(unsigned)); // len to third position
 				memcpy(&this_pointer[3], 						&next_muRows, 		sizeof(unsigned));
 				memcpy(&this_pointer[4], 						&law, 				sizeof(unsigned));
-				memcpy(&this_pointer[5],						muBuff.buf,  	 muRows*sizeof(float));     // mu  to len bytes after
-				memcpy(&this_pointer[5+  muRows],				cdfBuff.buf, 	cdfRows*sizeof(float));     // cdf to len bytes after that
-				memcpy(&this_pointer[5+ 2*muRows],				muBuff.buf,  	 next_muRows*sizeof(float));
-				memcpy(&this_pointer[5+ 2*muRows+next_muRows],	cdfBuff.buf, 	next_cdfRows*sizeof(float));
+				memcpy(&this_pointer[5],						muBuff.buf,  	 	muRows*sizeof(float));     // mu  to len bytes after
+				memcpy(&this_pointer[5+   muRows],				cdfBuff.buf, 		cdfRows*sizeof(float));     // cdf to len bytes after that
+				memcpy(&this_pointer[5+ 2*muRows],				next_muBuff.buf,  	next_muRows*sizeof(float));
+				memcpy(&this_pointer[5+ 2*muRows + next_muRows],next_cdfBuff.buf, 	next_cdfRows*sizeof(float));
 
 				cudaMemcpy(cuda_pointer,this_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+5)*sizeof(float),cudaMemcpyHostToDevice);
 

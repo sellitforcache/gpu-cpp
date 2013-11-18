@@ -288,6 +288,7 @@ class cross_section_data:
 					nextmu   	= numpy.ascontiguousarray(scatterMu[scatter_dex + plusone], dtype=numpy.float32)
 					#check to make sure the same length
 					assert vlen == mu.__len__()
+					#print "vlen,next "+str(vlen)+" "+str(nextvlen)
 					# return
 					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,nextmu,nextcdf]
 				else:  # return 0 if below the first energy]
