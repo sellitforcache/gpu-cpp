@@ -252,11 +252,12 @@ class cross_section_data:
 			#print "LAW="+str(rxn.energy_dist.law)+" MT="+str(MTnum)
 			if rxn.energy_dist.law == 3:
 				next_E = self.MT_E_grid[self.num_main_E-1]
-				return [(self.MT_E_grid.__len__()-1),this_E,next_E,0,0,3,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
+				return [(self.MT_E_grid.__len__()-1),this_E,next_E,0,0,3,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 			else:
 				scatterE   = rxn.energy_dist.energy_in
 				scatterMu  = rxn.energy_dist.energy_out
 				scatterCDF = rxn.energy_dist.cdf
+				scatterPDF = rxn.energy_dist.pdf
 				law        = rxn.energy_dist.law
 				# check length
 				assert scatterE.__len__() > 0
@@ -282,24 +283,26 @@ class cross_section_data:
 					# construct vector
 					vlen  		= scatterCDF[scatter_dex].__len__()
 					cdf   		= numpy.ascontiguousarray(scatterCDF[scatter_dex],dtype=numpy.float32)  # C/F order doesn't matter for 1d arrays
+					pdf   		= numpy.ascontiguousarray(scatterPDF[scatter_dex],dtype=numpy.float32)
 					mu    		= numpy.ascontiguousarray(scatterMu[scatter_dex], dtype=numpy.float32)
 					nextvlen 	= scatterCDF[scatter_dex+plusone].__len__()
 					nextcdf  	= numpy.ascontiguousarray(scatterCDF[scatter_dex+ plusone],dtype=numpy.float32) 
+					nextpdf  	= numpy.ascontiguousarray(scatterPDF[scatter_dex+ plusone],dtype=numpy.float32) 
 					nextmu   	= numpy.ascontiguousarray(scatterMu[scatter_dex + plusone], dtype=numpy.float32)
 					#check to make sure the same length
 					assert vlen == mu.__len__()
-					#print "vlen,next "+str(vlen)+" "+str(nextvlen)
+					print "vlen,next "+str(vlen)+" "+str(nextvlen)
 					# return
-					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,nextmu,nextcdf]
+					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,pdf,nextmu,nextcdf,nextpdf]
 				else:  # return 0 if below the first energy]
 					next_E = scatterE[0]
 					nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-					return [nextDex,0,0,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
+					return [nextDex,0,0,0,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		else:
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no energy tables"
 			next_E   = self.MT_E_grid[self.num_main_E-1]
 			nextDex = self.MT_E_grid.__len__()
-			return [nextDex,this_E,next_E,0,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
+			return [nextDex,this_E,next_E,0,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 
 
 

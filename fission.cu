@@ -13,7 +13,9 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* a
 	//remap to active
 	tid=active[tid];
 
-	if (rxn[tid] < 3 | rxn[tid] > 50 ){return;}  //return if no secondary neutron
+	//if (rxn[tid] < 3 | rxn[tid] > 50 ){return;}  //return if no secondary neutron
+	//only do fission for now...
+	if (rxn[tid] != 18 ){return;} 
 
 	//printf("in fission\n");
 

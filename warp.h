@@ -2177,7 +2177,8 @@ void whistory::load_cross_sections(){
     ////////////////////////////////////
     // do energy stuff
     ////////////////////////////////////
-	PyObject 	*law_obj,*MT_obj,*tope_obj;
+	PyObject 	*law_obj,*MT_obj,*tope_obj,*pdf_vector_obj,*next_pdf_vector_obj;
+	Py_buffer 	pdfBuff, next_pdfBuff;
 	unsigned 	law=0;
 
      //set total cross sections to NULL
@@ -2209,8 +2210,10 @@ void whistory::load_cross_sections(){
 			law_obj					= PyList_GetItem(obj_list,5);
 			mu_vector_obj 			= PyList_GetItem(obj_list,6);
 			cdf_vector_obj 			= PyList_GetItem(obj_list,7);
-			next_mu_vector_obj 		= PyList_GetItem(obj_list,8);
-			next_cdf_vector_obj 	= PyList_GetItem(obj_list,9);
+			pdf_vector_obj 			= PyList_GetItem(obj_list,8);
+			next_mu_vector_obj 		= PyList_GetItem(obj_list,9);
+			next_cdf_vector_obj 	= PyList_GetItem(obj_list,10);
+			next_pdf_vector_obj 	= PyList_GetItem(obj_list,11);
 			PyErr_Print();
 
 			// expand list to c variables
@@ -2232,8 +2235,10 @@ void whistory::load_cross_sections(){
 				if (PyObject_CheckBuffer(mu_vector_obj) & PyObject_CheckBuffer(cdf_vector_obj)){
 					PyObject_GetBuffer( mu_vector_obj,  &muBuff, PyBUF_ND);
 					PyObject_GetBuffer(cdf_vector_obj, &cdfBuff, PyBUF_ND);
-					PyObject_GetBuffer( next_mu_vector_obj,  &next_muBuff, PyBUF_ND);
-					PyObject_GetBuffer(next_cdf_vector_obj, &next_cdfBuff, PyBUF_ND);
+					PyObject_GetBuffer(pdf_vector_obj, &pdfBuff, PyBUF_ND);
+					PyObject_GetBuffer( next_mu_vector_obj,    &next_muBuff, PyBUF_ND);
+					PyObject_GetBuffer( next_cdf_vector_obj,  &next_cdfBuff, PyBUF_ND);
+					PyObject_GetBuffer( next_pdf_vector_obj,  &next_pdfBuff, PyBUF_ND);
 					PyErr_Print();
 				}
 				else{
@@ -2255,6 +2260,8 @@ void whistory::load_cross_sections(){
 				next_cdfRows    = next_cdfBuff.shape[0];
 				next_cdfColumns = next_cdfBuff.shape[1];
 				next_cdfBytes   = next_cdfBuff.len;
+
+				std::cout << "C++ vlen/next " << muRows << " " << next_muRows << "\n";
 	
 				//make sure every is ok
 				assert(muRows==   cdfRows);
@@ -2266,24 +2273,31 @@ void whistory::load_cross_sections(){
 	
 				//allocate pointer, write into array
 				//for cuda too
-				this_pointer = new float [muRows+cdfRows+next_muRows+next_cdfRows+5];
-				cudaMalloc(&cuda_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+5)*sizeof(float));
-				total_bytes_energy += (muRows+cdfRows+next_muRows+next_cdfRows  +5)*sizeof(float);    // add to total count
+				this_pointer = new float [muRows + 2*cdfRows + next_muRows + 2*next_cdfRows + 5];
+				cudaMalloc(&cuda_pointer,(muRows + 2*cdfRows + next_muRows + 2*next_cdfRows + 5)*sizeof(float));
+				total_bytes_energy +=    (muRows + 2*cdfRows + next_muRows + 2*next_cdfRows + 5)*sizeof(float);    // add to total count
 				xs_data_energy     [k*MT_columns + j] = this_pointer;
 				xs_data_energy_host[k*MT_columns + j] = cuda_pointer;
 	
 				//copy data from python buffer to pointer in array
-				memcpy(&this_pointer[0], 						&lastE,   		    sizeof(float));
-				memcpy(&this_pointer[1], 						&nextE,   		    sizeof(float));    // nextE   to first position
-				memcpy(&this_pointer[2], 						&muRows,   		    sizeof(unsigned)); // len to third position
-				memcpy(&this_pointer[3], 						&next_muRows, 		sizeof(unsigned));
-				memcpy(&this_pointer[4], 						&law, 				sizeof(unsigned));
-				memcpy(&this_pointer[5],						muBuff.buf,  	 	muRows*sizeof(float));     // mu  to len bytes after
-				memcpy(&this_pointer[5+   muRows],				cdfBuff.buf, 		cdfRows*sizeof(float));     // cdf to len bytes after that
-				memcpy(&this_pointer[5+ 2*muRows],				next_muBuff.buf,  	next_muRows*sizeof(float));
-				memcpy(&this_pointer[5+ 2*muRows + next_muRows],next_cdfBuff.buf, 	next_cdfRows*sizeof(float));
+				memcpy(&this_pointer[0], 							&lastE,   		    sizeof(float));
+				memcpy(&this_pointer[1], 							&nextE,   		    sizeof(float));    // nextE   to first position
+				memcpy(&this_pointer[2], 							&muRows,   		    sizeof(unsigned)); // len to third position
+				memcpy(&this_pointer[3], 							&next_muRows, 		sizeof(unsigned));
+				memcpy(&this_pointer[4], 							&law, 				sizeof(unsigned));
+				memcpy(&this_pointer[5],							muBuff.buf,  	 	muRows*sizeof(float));     // mu  to len bytes after
+				memcpy(&this_pointer[5+   muRows],					cdfBuff.buf, 		cdfRows*sizeof(float));
+				memcpy(&this_pointer[5+ 2*muRows],					pdfBuff.buf, 		cdfRows*sizeof(float));
+				memcpy(&this_pointer[5+ 3*muRows],					next_muBuff.buf,  	next_muRows*sizeof(float));
+				memcpy(&this_pointer[5+ 3*muRows +   next_muRows],	next_cdfBuff.buf, 	next_cdfRows*sizeof(float));
+				memcpy(&this_pointer[5+ 3*muRows + 2*next_muRows],	next_pdfBuff.buf, 	next_cdfRows*sizeof(float));
 
-				cudaMemcpy(cuda_pointer,this_pointer,(muRows+cdfRows+next_muRows+next_cdfRows+5)*sizeof(float),cudaMemcpyHostToDevice);
+				cudaMemcpy(cuda_pointer,this_pointer,(muRows+2*cdfRows+next_muRows+2*next_cdfRows+5)*sizeof(float),cudaMemcpyHostToDevice);
+
+				for(unsigned n=0;n<(muRows+2*cdfRows+next_muRows+2*next_cdfRows+5);n++){
+					printf("%6.4E\n",this_pointer[n]);
+				}
+
 
 				PyErr_Print();
 

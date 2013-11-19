@@ -20,9 +20,9 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	// internal data
 	float 		Emin=1e-11;
 	float 		Emax=20.0;
-	unsigned 	k, n, offset, vlen, next_vlen, law;
+	unsigned 	k, n, offset, vlen, next_vlen, law, fork;
 	float 		sampled_E, phi, mu, rn1, rn2, last_E, next_E;
-	float 		cdf0, cdf1, cdf2, e0, e1, e2, m, plk, plk1;
+	float 		cdf0, cdf1, e0, e1, m, pdf0, pdf1;
 	const float  pi           =   3.14159265359 ;
 	offset = 5;
 
@@ -41,38 +41,38 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	//sample energy dist
 	sampled_E = 0.0;
 	if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
+		fork=0;
 		for ( n=0 ; n<vlen-1 ; n++ ){
-			if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
-				cdf0 		= this_array[ (offset+vlen) +n-1];
-				cdf1 		= this_array[ (offset+vlen) +n+0];
-				cdf2 		= this_array[ (offset+vlen) +n+1];
-				e0   		= this_array[ (offset)      +n-1];
-				e1   		= this_array[ (offset)      +n+0];
-				e2   		= this_array[ (offset)      +n+1]; 
+			cdf0 		= this_array[ (offset +   vlen ) + n+0];
+			cdf1 		= this_array[ (offset +   vlen ) + n+1];
+			pdf0		= this_array[ (offset + 2*vlen ) + n+0];
+			pdf1		= this_array[ (offset + 2*vlen ) + n+1];
+			e0  		= this_array[ (offset          ) + n+0];
+			e1  		= this_array[ (offset          ) + n+1]; 
+			if( rn1 >= cdf0 & rn1 < cdf1 ){
 				break;
 			}
 		}
 	}
 	else{
+		fork=1;
 		for ( n=0 ; n<next_vlen-1 ; n++ ){
-			if( rn1 >= this_array[ (offset+2*vlen+next_vlen) +n] & rn1 < this_array[ (offset+2*vlen+next_vlen) +n+1] ){
-				cdf0 		= this_array[ (offset+2*vlen+next_vlen) +n-1];
-				cdf1 		= this_array[ (offset+2*vlen+next_vlen) +n+0];
-				cdf2  		= this_array[ (offset+2*vlen+next_vlen) +n+1];
-				e0   		= this_array[ (offset+2*vlen)      		+n-1];
-				e1   		= this_array[ (offset+2*vlen)      		+n+0];
-				e2   		= this_array[ (offset+2*vlen)      		+n+1];
+			cdf0 		= this_array[ (offset + 3*vlen +   next_vlen ) + n+0];
+			cdf1  		= this_array[ (offset + 3*vlen +   next_vlen ) + n+1];
+			pdf0		= this_array[ (offset + 3*vlen + 2*next_vlen ) + n+0];
+			pdf1		= this_array[ (offset + 3*vlen + 2*next_vlen ) + n+1];
+			e0   		= this_array[ (offset + 3*vlen               ) + n+0];
+			e1   		= this_array[ (offset + 3*vlen               ) + n+1];
+			if( rn1 >= cdf0 & rn1 < cdf1 ){
 				break;
 			}
 		}
 	}
 
 	// interpolate the values
-	plk  = (cdf1 - cdf0) / ( e1 - e0 );
-	plk1 = (cdf2 - cdf1) / ( e2 - e1 );
-	m 			= (plk1 - plk)/(e2-e1);
-	sampled_E 	= e0 + (  sqrtf(plk*plk + 2.0 * m * (rn1-cdf2)) - plk) / m;
-	printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",e0,e1,cdf0,cdf1,cdf2,plk,plk1,m,sampled_E);
+	m 			= (pdf1 - pdf0)/(e1-e0);
+	sampled_E 	= e0 + (  sqrtf(pdf0*pdf0 + 2.0 * m * (rn1-cdf1)) - pdf0) / m ;
+	//printf("%u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,sampled_E);
 
 	//sample isotropic directions
 	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 ];
@@ -100,38 +100,39 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		//sample energy dist
 		sampled_E = 0.0;
 		if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
+			fork=0;
 			for ( n=0 ; n<vlen-1 ; n++ ){
-				if( rn1 >= this_array[ (offset+vlen) +n] & rn1 < this_array[ (offset+vlen) +n+1] ){
-					cdf0 		= this_array[ (offset+vlen) +n-1];
-					cdf1 		= this_array[ (offset+vlen) +n+0];
-					cdf2 		= this_array[ (offset+vlen) +n+1];
-					e0   		= this_array[ (offset)      +n-1];
-					e1   		= this_array[ (offset)      +n+0]; 
-					e2   		= this_array[ (offset)      +n+1]; 
+				cdf0 		= this_array[ (offset +   vlen ) + n+0];
+				cdf1 		= this_array[ (offset +   vlen ) + n+1];
+				pdf0		= this_array[ (offset + 2*vlen ) + n+0];
+				pdf1		= this_array[ (offset + 2*vlen ) + n+1];
+				e0  		= this_array[ (offset          ) + n+0];
+				e1  		= this_array[ (offset          ) + n+1]; 
+				if( rn1 >= cdf0 & rn1 < cdf1 ){
 					break;
 				}
 			}
 		}
 		else{
+			fork=1;
 			for ( n=0 ; n<next_vlen-1 ; n++ ){
-				if( rn1 >= this_array[ (offset+2*vlen+next_vlen) +n] & rn1 < this_array[ (offset+2*vlen+next_vlen) +n+1] ){
-					cdf0 		= this_array[ (offset+2*vlen+next_vlen) +n-1];
-					cdf1 		= this_array[ (offset+2*vlen+next_vlen) +n+0];
-					cdf2 		= this_array[ (offset+2*vlen+next_vlen) +n+1];
-					e0   		= this_array[ (offset+2*vlen)      		+n-1];
-					e1   		= this_array[ (offset+2*vlen)      		+n+0];
-					e2			= this_array[ (offset+2*vlen)      		+n+1];
+				cdf0 		= this_array[ (offset + 3*vlen +   next_vlen ) + n+0];
+				cdf1  		= this_array[ (offset + 3*vlen +   next_vlen ) + n+1];
+				pdf0		= this_array[ (offset + 3*vlen + 2*next_vlen ) + n+0];
+				pdf1		= this_array[ (offset + 3*vlen + 2*next_vlen ) + n+1];
+				e0   		= this_array[ (offset + 3*vlen               ) + n+0];
+				e1   		= this_array[ (offset + 3*vlen               ) + n+1];
+				if( rn1 >= cdf0 & rn1 < cdf1 ){
+					
 					break;
 				}
 			}
 		}
 
 		// interpolate the values
-		plk  = (cdf1 - cdf0) / ( e1 - e0 );
-		plk1 = (cdf2 - cdf1) / ( e2 - e1 );
-		m 			= (plk1 - plk)/(e2-e1);
-		sampled_E 	= e0 + (  sqrtf(plk*plk + 2.0 * m * (rn1-cdf2)) - plk) / m;
-		printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",e0,e1,cdf0,cdf1,cdf2,plk,plk1,m,sampled_E);
+		m 			= (pdf1 - pdf0)/(e1-e0);
+		sampled_E 	= e0 + (  sqrtf(pdf0*pdf0 + 2.0 * m * (rn1-cdf1)) - pdf0) / m;
+		//printf("%u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,sampled_E);
 
 		//sample isotropic directions
 		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
