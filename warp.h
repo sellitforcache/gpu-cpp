@@ -2261,7 +2261,7 @@ void whistory::load_cross_sections(){
 				next_cdfColumns = next_cdfBuff.shape[1];
 				next_cdfBytes   = next_cdfBuff.len;
 
-				std::cout << "C++ vlen/next " << muRows << " " << next_muRows << "\n";
+				//std::cout << "C++ vlen/next " << muRows << " " << next_muRows << "\n";
 	
 				//make sure every is ok
 				assert(muRows==   cdfRows);
@@ -2294,9 +2294,9 @@ void whistory::load_cross_sections(){
 
 				cudaMemcpy(cuda_pointer,this_pointer,(muRows+2*cdfRows+next_muRows+2*next_cdfRows+5)*sizeof(float),cudaMemcpyHostToDevice);
 
-				for(unsigned n=0;n<(muRows+2*cdfRows+next_muRows+2*next_cdfRows+5);n++){
-					printf("%6.4E\n",this_pointer[n]);
-				}
+				//for(unsigned n=0;n<(muRows+2*cdfRows+next_muRows+2*next_cdfRows+5);n++){
+				//	printf("%6.4E\n",this_pointer[n]);
+				//}
 
 
 				PyErr_Print();

@@ -43,11 +43,11 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
 		fork=0;
 		for ( n=0 ; n<vlen-1 ; n++ ){
-			cdf0 		= this_array[ (offset +   vlen ) + n+0];
+			cdf0 		= this_array[ (offset +   vlen ) + n  ];
 			cdf1 		= this_array[ (offset +   vlen ) + n+1];
-			pdf0		= this_array[ (offset + 2*vlen ) + n+0];
+			pdf0		= this_array[ (offset + 2*vlen ) + n  ];
 			pdf1		= this_array[ (offset + 2*vlen ) + n+1];
-			e0  		= this_array[ (offset          ) + n+0];
+			e0  		= this_array[ (offset          ) + n  ];
 			e1  		= this_array[ (offset          ) + n+1]; 
 			if( rn1 >= cdf0 & rn1 < cdf1 ){
 				break;
@@ -71,7 +71,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 	// interpolate the values
 	m 			= (pdf1 - pdf0)/(e1-e0);
-	sampled_E 	= e0 + (  sqrtf(pdf0*pdf0 + 2.0 * m * (rn1-cdf1)) - pdf0) / m ;
+	sampled_E 	= e0 + (  sqrtf(  pdf0*pdf0 + 2.0 * m * (rn1-cdf0)) - pdf0) / m ;
 	//printf("%u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,sampled_E);
 
 	//sample isotropic directions
@@ -95,8 +95,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*3];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*3];
+		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + (k+1)*3];
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + (k+1)*3];
 		//sample energy dist
 		sampled_E = 0.0;
 		if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
@@ -123,7 +123,6 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 				e0   		= this_array[ (offset + 3*vlen               ) + n+0];
 				e1   		= this_array[ (offset + 3*vlen               ) + n+1];
 				if( rn1 >= cdf0 & rn1 < cdf1 ){
-					
 					break;
 				}
 			}
@@ -131,12 +130,12 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 		// interpolate the values
 		m 			= (pdf1 - pdf0)/(e1-e0);
-		sampled_E 	= e0 + (  sqrtf(pdf0*pdf0 + 2.0 * m * (rn1-cdf1)) - pdf0) / m;
+		sampled_E 	= e0 + (  sqrtf(pdf0*pdf0 + 2.0 * m * (rn1-cdf0)) - pdf0) / m;
 		//printf("%u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,sampled_E);
 
 		//sample isotropic directions
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*3];
+		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + (k+1)*3];
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + (k+1)*3];
 		mu  = 2.0*rn1-1.0; 
 		phi = 2.0*pi*rn2;
 
