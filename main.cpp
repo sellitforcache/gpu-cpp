@@ -92,6 +92,15 @@ int main(){
 	geom.add_material(3,0,1,dens,topes,fracs);
 	tallyname = "1ku235.tally";
 
+	// pu239
+	//unsigned topes[1]={94239};
+	//float    fracs[1]={1};
+	//float    dens = 1;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "1kpu239.tally";
+
 	// hydrogen2
 	//unsigned topes[1]={1002};
 	//float    fracs[1]={1};

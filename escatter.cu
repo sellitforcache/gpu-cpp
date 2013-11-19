@@ -70,17 +70,14 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	//transform neutron velocity into CM frame
 	v_n_cm = v_n_lf - v_cm;
-	v_t_cm = v_t_lf - v_cm;
-	//printf("cm=(% 6.4E % 6.4E % 6.4E)\n",v_n_cm.x,v_n_cm.y,v_n_cm.z);
-	//wfloat3 crossit = v_n_cm.cross(v_t_cm);
-	//printf("crossmag=% 6.4E\n",crossit.norm2());
-	
+	v_t_cm = v_t_lf - v_cm;	
 
 	// sample new phi, mu_cm
 	phi = 2.0*pi*rn7;
 	offset=4;
 	if(this_array == 0x0){
-		mu= 2*rn6-1; //MT=91 doesn't have angular tables for whatever reason
+		mu= 2*rn6-1; 
+		printf("null pointer in escatter!\n");
 	}
 	else{  // 
 		memcpy(&last_E, 	&this_array[0], sizeof(float));
@@ -112,12 +109,8 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 				}
 			}
 		}
-		//if(this_E > 0.99  & this_E < 1.00){
-		//	printf("%u %u %u %p %10.8E %u % 10.8E\n",this_tope,vlen,next_vlen,this_array,this_E,this_dex,mu);
-		//}
 	}
 
-	//mu=2.0*rn6-1.0;
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
@@ -133,10 +126,6 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	hats_new = v_n_lf / v_n_lf.norm2();
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
-
-	//if (this_E>=0.4){
-	//	E_new = this_E*(     (1.0 + this_awr*this_awr + 2.0*this_awr*mu) / ( (1.0+this_awr)*(1.0+this_awr) )      );
-	//}
 
 	// enforce limits
 	if ( E_new <= E_cutoff | E_new > E_max ){

@@ -43,11 +43,11 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
 		fork=0;
 		for ( n=0 ; n<vlen-1 ; n++ ){
-			cdf0 		= this_array[ (offset +   vlen ) + n  ];
+			cdf0 		= this_array[ (offset +   vlen ) + n+0];
 			cdf1 		= this_array[ (offset +   vlen ) + n+1];
-			pdf0		= this_array[ (offset + 2*vlen ) + n  ];
+			pdf0		= this_array[ (offset + 2*vlen ) + n+0];
 			pdf1		= this_array[ (offset + 2*vlen ) + n+1];
-			e0  		= this_array[ (offset          ) + n  ];
+			e0  		= this_array[ (offset          ) + n+0];
 			e1  		= this_array[ (offset          ) + n+1]; 
 			if( rn1 >= cdf0 & rn1 < cdf1 ){
 				break;
@@ -79,6 +79,13 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 ];
 	mu  = 2.0*rn1-1.0; 
 	phi = 2.0*pi*rn2;
+
+	//check limits
+	if (sampled_E >= Emax){sampled_E = Emax * 0.9;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
+	if (sampled_E <= Emin){sampled_E = Emin * 1.1;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
+
+	// sync before writes
+	__syncthreads();
 
 	// set self data
 	E    [ tid ] 		= sampled_E;

@@ -69,6 +69,10 @@ elif case== '1ku235':
 	tally      = numpy.loadtxt('1ku235.tally')
 	tallybins  = numpy.loadtxt('1ku235.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/u235_mono1k_det0.m')
+elif case== '1kpu239':
+	tally      = numpy.loadtxt('1kpu239.tally')
+	tallybins  = numpy.loadtxt('1kpu239.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/pu239_mono1k_det0.m')
 
 
 

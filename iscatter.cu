@@ -13,7 +13,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	tid=active[tid];
 
 	// return if not inelastic
-	if (rxn[tid] < 50 | rxn[tid] > 90 ){return;}  //return if not inelastic scatter, ignoring continuum for now!
+	if (rxn[tid] < 51 | rxn[tid] > 90 ){return;}  //return if not inelastic scatter, ignoring continuum for now!
 
 	//printf("in iscatter\n");
 
@@ -31,7 +31,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
-	float * 	this_Earray =  energydat[this_dex];
+	//float * 	this_Earray =  energydat[this_dex];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
 	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
@@ -71,15 +71,13 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//transform neutron velocity into CM frame
 	v_n_cm = v_n_lf - v_cm;
 	v_t_cm = v_t_lf - v_cm;
-	//printf("cm=(% 6.4E % 6.4E % 6.4E)\n",v_n_cm.x,v_n_cm.y,v_n_cm.z);
-	//wfloat3 crossit = v_n_cm.cross(v_t_cm);
-	//printf("crossmag=% 6.4E\n",crossit.norm2());
 	
 	// sample new phi, mu_cm
 	phi = 2.0*pi*rn7;
 	offset=4;
 	if(this_Sarray == 0x0){
-		mu= 2*rn6-1; //MT=91 doesn't have angular tables for whatever reason
+		mu= 2*rn6-1; 
+		printf("null pointer in iscatter!\n");
 	}
 	else{  // 
 		//printf("rxn=%u dex=%u %p %6.4E\n",rxn[tid],this_dex,this_array,this_E);
@@ -114,8 +112,6 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		}
 	}
 
-	//mu=2.0*rn6-1.0;
-
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
 	//  create a perpendicular roation vector 
@@ -133,16 +129,11 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
-	//if (this_E>=0.4){
-	//	E_new = this_E*(     (1.0 + this_awr*this_awr + 2.0*this_awr*mu) / ( (1.0+this_awr)*(1.0+this_awr) )      );
-	//}
-
 	// enforce limits
 	if ( E_new <= E_cutoff | E_new > E_max ){
 		isdone=1;
 	}
 
-	//printf("speed target = %6.4E, speed=%6.4E, Eold,Enew = %10.8E %10.8E\n",speed_target, speed_n,this_E,E_new);
 	// write results
 	done[tid]       = isdone;
 	E[tid]          = E_new;

@@ -83,7 +83,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 
 	// write results out
-	//if(this_rxn>=50){printf("this_rxn(%d,(1:5))=[%u,%u,%u,%u,%u];\n",tid+1,xs_MT_numbers[k],this_dex,this_rxn,this_tope,k);}
+	//if(this_rxn==91){printf("this_rxn(%d,(1:5))=[%u,%u,%u,%u,%u];\n",tid+1,xs_MT_numbers[k],this_dex,this_rxn,this_tope,k);}
 	rxn[tid] = this_rxn;
 	Q[tid] 	 = this_Q;
 	//also write MT array index to dex instead of energy vector index

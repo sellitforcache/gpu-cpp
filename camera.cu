@@ -63,6 +63,7 @@ RT_PROGRAM void camera()
       else{ // surface is closer 
          if (payload.cell_first==outer_cell){ // first check if BC
             if(boundary_condition == 0){
+              //rtPrintf("leaked - old rxn %u\n",rxn_buffer[launch_index]);
               rxn  = 888;  //  set leak code
               done = 1;   // set done flag
               // move out of geometry to "interaction point"

@@ -32,6 +32,7 @@ COBJS =	mt19937ar.o \
 		tally_spec.o \
 		escatter.o \
 		iscatter.o \
+		cscatter.o \
 		fission.o \
 		absorb.o \
 		make_mask.o \
@@ -113,6 +114,9 @@ escatter.o:
 
 iscatter.o: 
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c iscatter.cu
+
+cscatter.o: 
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c cscatter.cu
 
 fission.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c fission.cu
