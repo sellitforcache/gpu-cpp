@@ -73,6 +73,10 @@ elif case== '1kpu239':
 	tally      = numpy.loadtxt('1kpu239.tally')
 	tallybins  = numpy.loadtxt('1kpu239.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/pu239_mono1k_det0.m')
+elif case== 'pb':
+	tally      = numpy.loadtxt('lead.tally')
+	tallybins  = numpy.loadtxt('lead.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/pb208_15M_det0.m')
 
 
 
@@ -95,8 +99,8 @@ serpF = numpy.squeeze(numpy.asarray(serpF))
 p1=pylab.semilogx(serpE,serpF,'b',avg,newflux,'r',linestyle='steps-mid')
 pylab.xlabel('Energy (MeV)')
 pylab.ylabel('Normalized Flux/Lethary')
-pylab.title('Serpent2 (Serial) vs. WARP\n 4e6 histories, 2MeV point source at origin of 84x84x84cm water block')
-pylab.legend(p1,['Serpent 2.1.15 - 18.20 minutes','WARP              -  5.96 minutes'],loc=2)
+pylab.title('Serpent2 (Serial) vs. WARP\n 4e6 histories, 1 keV point source at origin of 84x84x84cm u235 block @ 1 g/cc')
+pylab.legend(p1,['Serpent 2.1.15 - keff=0.67359','WARP              -  keff=0.676359'],loc=2)
 pylab.ylim([0,.25])
 pylab.xlim([1e-11,20])
 pylab.grid(True)

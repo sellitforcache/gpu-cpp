@@ -9,7 +9,8 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	if (tid >= N){return;}
 	
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	// load from arrays
 	unsigned  	RNUM_PER_THREAD = 15;

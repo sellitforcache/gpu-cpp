@@ -6,9 +6,9 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active,
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
-	tid=active[tid];
+	//tid=active[tid];
 	if (done[tid]){return;}
-	if (!mask[tid]){return;}
+	//if (!mask[tid]){return;}
 
 	int k;
 	float 		my_E   			= E[tid];
@@ -37,6 +37,8 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active,
 	//score the bins atomicly, could be bad if many neutrons are in a single bin since this will serialize their operations
 	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
 	atomicInc(&tally_count[my_bin_index], 4294967295);
+
+	//printf("%6.4E\n",macro_t);
 
 
 }

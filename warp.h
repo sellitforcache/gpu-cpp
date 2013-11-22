@@ -1272,7 +1272,8 @@ public:
     void write_tally(unsigned, std::string);
     void set_tally_cell(unsigned);
     void create_quad_tree();
-    unsigned prep_secondaries();
+    void prep_secondaries();
+    unsigned map_active();
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
@@ -1281,7 +1282,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	n_tally = 1024;
 	// device data stuff
 	N = Nin;
-	Ndataset = Nin * 3;
+	Ndataset = Nin * 5;
 	n_qnodes = 0;
 	// init optix stuff second
 	optix_obj.N=Ndataset;
@@ -1304,7 +1305,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc( &d_xs_length_numbers	, 6*sizeof(unsigned) );		 
 	cudaMalloc( &d_E 					, Ndataset*sizeof(float)    );
 	cudaMalloc( &d_Q 					, Ndataset*sizeof(float)    );
-	cudaMalloc( &d_rn_bank  			, N*RNUM_PER_THREAD*sizeof(float)    );
+	cudaMalloc( &d_rn_bank  			, Ndataset*RNUM_PER_THREAD*sizeof(float)    );
 	cudaMalloc( &d_isonum   			, Ndataset*sizeof(unsigned) );
 	cudaMalloc( &d_yield				, Ndataset*sizeof(unsigned) );
 	cudaMalloc( &d_index				, Ndataset*sizeof(unsigned) );
@@ -1461,12 +1462,12 @@ void whistory::init_RNG(){
 	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
-	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
+	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
 void whistory::update_RNG(){
 
-	curandGenerateUniform( rand_gen , d_rn_bank , N * RNUM_PER_THREAD );
+	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 
 }
 void whistory::init_CUDPP(){
@@ -2650,7 +2651,12 @@ void whistory::run(unsigned num_cycles){
 
 	for(iteration = 0 ; iteration<num_cycles ; iteration++){
 
-		while(completed_hist<Ndataset){
+		//num_active = map_active();
+		Nrun=Ndataset;
+		num_active=Nrun;
+		keff_cycle = 0;
+
+		while(num_active>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	
 			//find the main E grid index
@@ -2662,45 +2668,55 @@ void whistory::run(unsigned num_cycles){
 
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
-			
-			// run tally kernel to compute spectra
-			make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
-			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
-			tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
-	
+
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
 
 			// run optix to detect the nearest surface and move particle there, sets rxn to 888 if leaked!
 			trace(1);
 
+			// run tally kernel to compute spectra
+			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
+			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+			tally_spec( NUM_THREADS,   Ndataset,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			absorb(   NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
-			fission(  NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+			absorb  ( NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
+			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+
+			//  collect yields
+			keff_cycle += reduce_yield();
 
 			// pop secondaries back in, can't do this for criticality
-			num_active = prep_secondaries();
-			pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			prep_secondaries();
+			pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy);
+
+			// map to still active data
+			//num_active = map_active();
 
 			// set N to min(N,Nactive)
-			if(num_active>N){Nrun=N;}
-			else{Nrun=num_active;}
+			//if(num_active>N){Nrun=N;}
+			//else{Nrun=num_active;}
+
+
+			Nrun=Ndataset;
+			it++;
+
+			num_active = Ndataset - reduce_done();
+			//printf("num_active=%u\n",num_active);
 
 			// update RNGs
 			update_RNG();
-			
-			// get how many histories are complete
-			completed_hist = reduce_done();
 
-			//std::cout << completed_hist - ( Ndataset - N ) << "/" << N << " histories complete\n";
-			//if((N-completed_hist)<=150){print_histories( blks,  NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
+			cudaMemcpy(d_rxn,rxn,Ndataset*sizeof(unsigned),cudaMemcpyHostToDevice);
+
 		}
 
 		//reduce yield
-		keff_cycle = reduce_yield();
+		keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);
 		if (iteration == 0){
 			keff  = keff_cycle;
 		}
@@ -2921,9 +2937,7 @@ void whistory::create_quad_tree(){
 	std::cout << "  Complete.  Depth of tree is "<< qnodes_depth << ", width is "<< qnodes_width <<".\n";
 
 }
-unsigned whistory::prep_secondaries(){
-
-	unsigned num_active=0;
+void whistory::prep_secondaries(){
 
 	// scan the yields to determine where the individual threads write into the done data
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
@@ -2932,6 +2946,21 @@ unsigned whistory::prep_secondaries(){
 	// compact the done data to know where to write
 	res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , Ndataset);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
+
+	//unsigned * tmp1 = new unsigned [Ndataset];
+	//unsigned * tmp2 = new unsigned [Ndataset];
+	//unsigned * tmp3 = new unsigned [Ndataset];
+	//unsigned * tmp4 = new unsigned [Ndataset];
+	//cudaMemcpy(tmp1,d_scanned,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp2,d_completed,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp3,d_done,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp4,d_yield,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//for(int k=0; k<Ndataset ; k++ ){printf("(tid,done,scanned,completed,yield) %u %u %u %u %u\n",k,tmp3[k],tmp1[k],tmp2[k],tmp4[k]);}
+
+}
+unsigned whistory::map_active(){
+
+	unsigned num_active=0;
 
 	// flip done flag
 	flip_done(NUM_THREADS, Ndataset, d_done);
@@ -2944,18 +2973,7 @@ unsigned whistory::prep_secondaries(){
 	// flip done flag back	
 	flip_done(NUM_THREADS, Ndataset, d_done);
 
-	//unsigned * tmp1 = new unsigned [Ndataset];
-	//unsigned * tmp2 = new unsigned [Ndataset];
-	//unsigned * tmp3 = new unsigned [Ndataset];
-	//unsigned * tmp4 = new unsigned [Ndataset];
-	//cudaMemcpy(tmp1,d_scanned,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//cudaMemcpy(tmp2,d_completed,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//cudaMemcpy(tmp3,d_done,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//cudaMemcpy(tmp4,d_yield,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//for(int k=0; k<Ndataset ; k++ ){printf("(tid,done,scanned,completed,yield) %u %u %u %u %u\n",k,tmp3[k],tmp1[k],tmp2[k],tmp4[k]);}
-
 	return num_active;
-
 }
 
 

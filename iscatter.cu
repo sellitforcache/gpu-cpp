@@ -10,7 +10,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	// return if not inelastic
 	if (rxn[tid] < 51 | rxn[tid] > 90 ){return;}  //return if not inelastic scatter, ignoring continuum for now!

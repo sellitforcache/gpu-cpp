@@ -6,9 +6,10 @@ __global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies, unsign
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
-	
+
 	// remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	// load data
 	float value = E[tid];

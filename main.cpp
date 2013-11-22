@@ -57,13 +57,13 @@ int main(){
 	//tallyname = "o16.tally";
 
 	// lead
-	//unsigned topes[1]={82208};
-	//float    fracs[1]={1};
-	//float    dens = 11.34;
-	//geom.add_material(1,1,1,dens,topes,fracs);
-	//geom.add_material(2,0,1,dens,topes,fracs);
-	//geom.add_material(3,0,1,dens,topes,fracs);
-	//tallyname = "lead.tally";
+	unsigned topes[1]={82208};
+	float    fracs[1]={1};
+	float    dens = 1.00;//11.34; fuck you density
+	geom.add_material(1,1,1,dens,topes,fracs);
+	geom.add_material(2,0,1,dens,topes,fracs);
+	geom.add_material(3,0,1,dens,topes,fracs);
+	tallyname = "lead.tally";
 
 	// carbon
 	//unsigned topes[1]={6000};
@@ -84,13 +84,13 @@ int main(){
 	//tallyname = "lithium.tally";
 
 	// u235
-	unsigned topes[1]={92235};
-	float    fracs[1]={1};
-	float    dens = 1;
-	geom.add_material(1,1,1,dens,topes,fracs);
-	geom.add_material(2,0,1,dens,topes,fracs);
-	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "1ku235.tally";
+	//unsigned topes[1]={92235};
+	//float    fracs[1]={1};
+	//float    dens = 1;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "1ku235.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};

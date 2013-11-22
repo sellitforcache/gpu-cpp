@@ -7,7 +7,7 @@ __global__ void sample_isotropic_directions_kernel(unsigned N , unsigned RNUM_PE
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid>=N){return;}
 
-	tid=active[tid];
+	//tid=active[tid];
 
 	const float rn1   =  rn_bank[ (tid * RNUM_PER_THREAD) + 4];
 	const float rn2   =  rn_bank[ (tid * RNUM_PER_THREAD) + 5];

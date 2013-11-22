@@ -11,7 +11,8 @@ __global__ void absorb_kernel(unsigned N, unsigned* active, unsigned * rxn , uns
 	if (tid >= N){return;}         //return if out of bounds
 	
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	if (rxn[tid] < 102 | rxn[tid] > 800 ){return;}  //return if not some sort of absorption, ie (n,not-n)
 

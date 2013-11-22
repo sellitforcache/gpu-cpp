@@ -11,7 +11,8 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	if (rxn[tid] != 2){return;}  //return if not elastic scatter
 

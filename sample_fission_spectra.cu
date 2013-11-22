@@ -8,10 +8,10 @@ __global__ void sample_fission_spectra_kernel (unsigned N, unsigned* active, flo
 	if (tid >= N){return;}
 
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
 
 	//monoenergetic for now
-	E[tid]=0.001;
+	E[tid]=15.0;
 
 }
 

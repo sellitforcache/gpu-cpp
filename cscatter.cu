@@ -10,12 +10,14 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	// return if not inelastic
-	if (rxn[tid] != 91 ){return;}  //return if not continuum inelastic scatter
+	if (rxn[tid] == 91 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 22 | rxn[tid] == 28 | rxn[tid] == 24 | rxn[tid] == 32 | rxn[tid] == 33 | rxn[tid] == 41 ){}
+	else {return;}  //return if not continuum inelastic scatter or n,Xn
 
-	//printf("in cscatter\n");
+	//printf("in cscatter, tid %u rxn %u\n",tid,rxn[tid]);
 
 	//constants
 	const float  pi           =   3.14159265359 ;
@@ -25,6 +27,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  E_max        =   20.0; //MeV
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
+	unsigned 	this_rxn 	= rxn[tid];
 	unsigned 	this_dex	= index[tid];
 	float 		this_E 		= E[tid];
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
@@ -40,6 +43,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		rn7 		= rn_bank[ tid*RNUM_PER_THREAD + 9];
 	float 		rn8 		= rn_bank[ tid*RNUM_PER_THREAD + 10];
 	float 		rn9 		= rn_bank[ tid*RNUM_PER_THREAD + 11];
+	float 		rn10 		= rn_bank[ tid*RNUM_PER_THREAD + 12];
 
 	// internal kernel variables
 	float 		mu, phi, next_E, last_E, sampled_E;
@@ -51,7 +55,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target;
-	float 		cdf0,cdf1,e0,e1,A,R;
+	float 		cdf0,cdf1,e0,e1,A,R,pdf0,pdf1;
 	//float 		v_rel,E_rel;
 
 	// make target isotropic
@@ -89,6 +93,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		for ( n=0 ; n<vlen-1 ; n++ ){
 			cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
 			cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
+			pdf0		= this_Earray[ (offset + 2*vlen ) + n+0];
+			pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
 			e0  		= this_Earray[ (offset          ) + n+0];
 			e1  		= this_Earray[ (offset          ) + n+1]; 
 			//printf("cdf0=%6.4E\n",cdf0);
@@ -108,6 +114,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		for ( n=0 ; n<next_vlen-1 ; n++ ){
 			cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
 			cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
+			pdf0		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+0];
+			pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
 			e0   		= this_Earray[ (offset + 3*vlen               ) + n+0];
 			e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
 			if( rn7 >= cdf0 & rn7 < cdf1 ){
@@ -124,7 +132,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	}
 
 	// histogram interpolation
-	sampled_E = e0 + (e1-e0)/(cdf1-cdf0)*(rn7-cdf0);
+	sampled_E = e0 + (rn7-cdf0)/pdf0;
+
 
 	// find mu
 	if(rn8>R){
@@ -134,6 +143,11 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	else{
 		mu = logf(rn9*expf(A)+(1.0-rn9)*expf(-A))/A;
 	}
+
+	//if(this_rxn==91){printf("%u % 6.4E % 6.4E % 6.4E\n",this_rxn,mu,sampled_E,this_E);}
+
+	// sample new phi
+	phi = 2.0*pi*rn10;
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
@@ -157,6 +171,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		isdone=1;
 	}
 
+	//if(this_rxn==91){printf("%6.4E %6.4E %6.4E\n",E_new,this_E,E_new/this_E);}
 	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,len,this_Sarray,this_Earray,E_new,sampled_E,A,R);
 
 	// write results

@@ -11,36 +11,48 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* a
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
-	//if (rxn[tid] < 3 | rxn[tid] > 50 ){return;}  //return if no secondary neutron
-	//only do fission for now...
-	if (rxn[tid] != 18 ){return;} 
-
-	//printf("in fission\n");
-
+	//load rxn number, init values
+	unsigned 	this_rxn 	= rxn[tid];
 	unsigned 	this_yield 	= 0;
 	unsigned 	inu 		= 0;
 	float 		nu 			= 0.0;
 
-	// load from arrays
-	unsigned 	this_dex 	= index[tid];
-	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 11 ];
+	//only do fission for now...
+	if (rxn[tid] == 18 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 41){}
+	else {return;} 
 
-	//load nu value, since e search has alrady been done!
-	memcpy(&nu, &scatterdat[this_dex], sizeof(float));
-	inu = (unsigned) nu;
+	//printf("in fission\n");
 
-	if((float)inu+rn1 < nu){
-		this_yield = inu+1;
+	if (this_rxn == 18){
+		// load nu from arrays
+		unsigned 	this_dex 	= index[tid];
+		float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 11 ];
+	
+		//load nu value, since e search has alrady been done!
+		memcpy(&nu, &scatterdat[this_dex], sizeof(float));
+		inu = (unsigned) nu;
+	
+		if((float)inu+rn1 > nu){
+			this_yield = inu+1;
+		}
+		else{
+			this_yield = inu;
+		}
+		//printf("nu %6.4E inu %u rn1 %6.4E yield %u\n",nu,inu,rn1,this_yield);
 	}
-	else{
-		this_yield = inu;
+	else if(this_rxn == 17){
+		this_yield = 3;
+	}
+	else if(this_rxn == 16 | this_rxn==24 | rxn[tid] == 41){
+		this_yield = 2;
 	}
 
 	// write output and terminate history
 	yield[tid] = this_yield;
-	//done[tid]  = 1;  // this is done in pop
+	//printf("nu=%6.4E\n",nu);
 
 }
 
