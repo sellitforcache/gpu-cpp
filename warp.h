@@ -2712,6 +2712,8 @@ void whistory::run(unsigned num_cycles){
 			update_RNG();
 
 			cudaMemcpy(d_rxn,rxn,Ndataset*sizeof(unsigned),cudaMemcpyHostToDevice);
+			cudaMemcpy(d_yield,zeros,Ndataset*sizeof(unsigned),cudaMemcpyHostToDevice);
+
 
 		}
 

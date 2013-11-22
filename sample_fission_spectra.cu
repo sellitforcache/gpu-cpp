@@ -11,7 +11,7 @@ __global__ void sample_fission_spectra_kernel (unsigned N, unsigned* active, flo
 	//tid=active[tid];
 
 	//monoenergetic for now
-	E[tid]=15.0;
+	E[tid]=0.001;
 
 }
 
