@@ -1162,6 +1162,7 @@ class whistory {
 	unsigned 	NUM_THREADS;
 	unsigned 	blks;
 	// host data
+	unsigned 		RUN_FLAG;
 	unsigned 		qnodes_depth, qnodes_width;
 	unsigned 		n_materials;
 	unsigned 		n_isotopes;
@@ -1236,6 +1237,8 @@ class whistory {
  	unsigned * 		d_active;
  	unsigned * 		d_num_completed;
  	unsigned * 		d_num_active;
+ 	source_point *  d_bank_space;
+ 	float * 		d_bank_E;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -1274,12 +1277,15 @@ public:
     void create_quad_tree();
     void prep_secondaries();
     unsigned map_active();
+    void set_run_type(unsigned);
+    void set_run_type(std::string);
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
 	problem_geom = problem_geom_in;
 	// set tally vector length
 	n_tally = 1024;
+	RUN_FLAG = 1;
 	// device data stuff
 	N = Nin;
 	Ndataset = Nin * 5;
@@ -1323,6 +1329,8 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc( &d_num_completed 		, 1*sizeof(unsigned));
 	cudaMalloc( &d_active 				, Ndataset*sizeof(unsigned));
 	cudaMalloc( &d_num_active 			, 1*sizeof(unsigned));
+	cudaMalloc( &d_bank_space 			, N*sizeof(source_point));
+	cudaMalloc( &d_bank_E				, N*sizeof(float));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point 	[Ndataset];
@@ -2605,9 +2613,8 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 }
 void whistory::reset_fixed(){
 
-	// rest run arrays
+	// rest read-in run arrays (ie not ones that are written to in-between)
 	cudaMemcpy( d_space,		space,		Ndataset*sizeof(source_point),	cudaMemcpyHostToDevice );
-	//cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),			cudaMemcpyHostToDevice );
 	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
@@ -2616,11 +2623,8 @@ void whistory::reset_fixed(){
 	cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
-	//set fission spectra
-	sample_fission_spectra( NUM_THREADS, N, d_active, d_rn_bank, d_E);
-
-	//make directions isotropic
-	sample_isotropic_directions( NUM_THREADS, N , RNUM_PER_THREAD, d_active, d_space , d_rn_bank);
+	//set position, direction, energy
+	sample_fixed_source( NUM_THREADS, N, RNUM_PER_THREAD, d_active, d_rn_bank, d_E, d_space);
 
 	// update RNGs
 	update_RNG();
@@ -2633,9 +2637,7 @@ void whistory::run(unsigned num_cycles){
 	float keff = 0.0;
 	float keff_cycle = 0.0;
 	float it = 0.0;
-	unsigned completed_hist = 0;
 	unsigned current_fission_index = 0;
-	unsigned num_active = 0;
 	unsigned Nrun = N;
 	int iteration = 0;
 	float runtime = get_time();
@@ -2643,20 +2645,21 @@ void whistory::run(unsigned num_cycles){
 	//set mask to ones
 	//cudaMemcpy(d_mask,ones,n_tally*sizeof(unsigned),cudaMemcpyHostToDevice);
 
-	//set fission spectra
-	sample_fission_spectra( NUM_THREADS, Nrun, d_active, d_rn_bank, d_E);
-
-	//make directions isotropic
-	sample_isotropic_directions( NUM_THREADS, Nrun , RNUM_PER_THREAD, d_active, d_space , d_rn_bank);
+	if(RUN_FLAG==0){
+		reset_fixed();
+	}
+	else if(RUN_FLAG==1){
+		sample_fissile_points();
+		sample_fission_spectra(); // only needs to be done at the beginning, pop_source sets real fission spec from interaction data
+	}
 
 	for(iteration = 0 ; iteration<num_cycles ; iteration++){
 
-		//num_active = map_active();
-		Nrun=Ndataset;
-		num_active=Nrun;
+		// init run vars for cycle
+		Nrun=N;
 		keff_cycle = 0;
 
-		while(num_active>0){
+		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	
 			//find the main E grid index
@@ -2687,38 +2690,35 @@ void whistory::run(unsigned num_cycles){
 			absorb  ( NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
 			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 
-			//  collect yields
-			keff_cycle += reduce_yield();
+			if(RUN_FLAG==0){  //fixed source
+				// pop secondaries back in
+				keff_cycle += reduce_yield();
+				prep_secondaries();
+				pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			}
 
-			// pop secondaries back in, can't do this for criticality
-			prep_secondaries();
-			pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy);
+			// remap threads to still active data
+			Nrun = map_active();
 
-			// map to still active data
-			//num_active = map_active();
-
-			// set N to min(N,Nactive)
-			//if(num_active>N){Nrun=N;}
-			//else{Nrun=num_active;}
-
-
-			Nrun=Ndataset;
-			it++;
-
-			num_active = Ndataset - reduce_done();
-			//printf("num_active=%u\n",num_active);
-
-			// update RNGs
+			// update random number bank
 			update_RNG();
-
-			cudaMemcpy(d_rxn,rxn,Ndataset*sizeof(unsigned),cudaMemcpyHostToDevice);
-			cudaMemcpy(d_yield,zeros,Ndataset*sizeof(unsigned),cudaMemcpyHostToDevice);
-
 
 		}
 
-		//reduce yield
-		keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);
+		//reduce yield and reset cycle
+		if(RUN_FLAG==0){
+			keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);   // based on: Ntotal = Nsource / (1-k) 
+			reset_fixed();
+			Nrun=N;
+		}
+		else if (RUN_FLAG==1){
+			keff_cycle = reduce_yield();
+			pop_source(NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_bank_E , d_bank_space , d_xs_data_energy);
+			reset_cycle();
+			Nrun=N;
+		}
+
+		// recalculate running average
 		if (iteration == 0){
 			keff  = keff_cycle;
 		}
@@ -2727,19 +2727,15 @@ void whistory::run(unsigned num_cycles){
 			keff  = (it/(it+1)) * keff + (1/(it+1)) * keff_cycle;
 		}
 
+		// print whatever's clever
 		std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration+1 << ", keff = " << keff_cycle << "\n";
-
-		// reset cycle, adding new fission points to starting points
-		//current_fission_index = reset_cycle(current_fission_index);
-		reset_fixed();
-		completed_hist = 0;
-		Nrun=N;
-
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
 
 	}
 
+
+	// print total transport running time
 	runtime = get_time() - runtime;
 	if(runtime>60.0){
 		std::cout << "RUNTIME = " << runtime/60.0 << " minutes.\n";
@@ -2977,7 +2973,24 @@ unsigned whistory::map_active(){
 
 	return num_active;
 }
+void whistory::set_run_type(unsigned type_in){
 
+	RUN_FLAG = type_in;
+
+}
+void whistory::set_run_type(std::string type_in){
+
+	if(type_in.compare("fixed")){
+		RUN_FLAG = 0;
+	}
+	else if(type_in.compare("criticality")){
+		RUN_FLAG = 1;
+	}
+	else{
+		std::cout << "Run type \"" << type_in << "\" not recognized." << "\n";
+	}
+
+}
 
 
 

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata){
+__global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float*bank_E, source_point* bank_space, float**  energydata){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -103,11 +103,11 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 
 }
 
-void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
+void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float*bank_E, source_point* bank_space, float ** energydata){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata);
+	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, bank_E, bank_space, energydata);
 	cudaThreadSynchronize();
 
 }

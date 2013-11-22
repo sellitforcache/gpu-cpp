@@ -10,9 +10,6 @@ int main(){
 
 	std::string tallyname = "tally";
 
-	//get inputs?
-	int N=1e5;
-
 	//print banner
 	print_banner();
 
@@ -22,12 +19,21 @@ int main(){
 	// UO2 w boron materials
 	//unsigned topes[5]={92235,92238,8016,1001,5010};
 	//float    fracs_fuel[5]={0.01,0.99,2,0,0};
-	//float    fracs_water[5]={0,0,1,2,1};
+	//float    fracs_water[5]={0,0,1,2,0.2};
 	//float    dens_fuel = 10.424;
 	//float 	 dens_water = 1.0;
 	//geom.add_material(1,1,5,dens_fuel,topes,fracs_fuel);
 	//geom.add_material(2,0,5,dens_water,topes,fracs_water);
 	//geom.add_material(3,0,5,dens_water,topes,fracs_water);
+
+	// homogenized UO2 w boron materials
+	//unsigned topes[5]={92235,92238,8016,1001,5010};
+	//float    fracs[5]={0.01,  0.99,   3,   2, 0.1};
+	//float 	 dens = 1.0;
+	//geom.add_material(1,1,5,dens,topes,fracs);
+	//geom.add_material(2,0,5,dens,topes,fracs);
+	//geom.add_material(3,0,5,dens,topes,fracs);
+	//tallyname = "homfuel.tally";
 
 	// water
 	//unsigned topes[2]={8016,1001};
@@ -204,6 +210,7 @@ int main(){
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
+	int N = 1e5;
 	whistory hist ( N , geom );
 	hist.init_host();
 	hist.init_RNG();
@@ -220,7 +227,8 @@ int main(){
 	// converge fission source and run //
 	/////////////////////////////////////
 
-	//hist.converge(10);
+	hist.set_run_type("fixed");
+	hist.converge(10);
 	hist.set_tally_cell(999);
 	hist.run(40);
 	hist.write_tally(0,tallyname);

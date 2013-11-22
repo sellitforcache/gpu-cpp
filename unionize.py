@@ -217,7 +217,7 @@ class cross_section_data:
 				#print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 				return [nextDex,this_E,next_E,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		elif hasattr(rxn,"energy_dist") and hasattr(rxn.energy_dist,"ang"):
-			print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has 44 data"
+			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has 44 data"
 			scatterE   = rxn.energy_dist.energy_in
 			scatterMu  = rxn.energy_dist.ang
 			scatterCDF = rxn.energy_dist.frac 
@@ -265,7 +265,7 @@ class cross_section_data:
 			interped_nu = numpy.interp( self.MT_E_grid, table.nu_t_energy, table.nu_t_value )   #
 			interped_nu = numpy.ascontiguousarray(interped_nu, dtype=numpy.float32)
 			#print interped_nu
-			print "nu for MT="+str(MTnum)
+			#print "nu for MT="+str(MTnum)
 			return [-1,-1,-1,-1,-1,interped_nu,interped_nu,interped_nu,interped_nu]
 		else:
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no angular tables"
@@ -304,7 +304,7 @@ class cross_section_data:
 				scatterCDF = rxn.energy_dist.cdf
 				scatterPDF = rxn.energy_dist.pdf
 				law        = rxn.energy_dist.law
-				print "MT "+str(MTnum)+" law "+str(law)
+				#print "MT "+str(MTnum)+" law "+str(law)
 				# check length
 				assert scatterE.__len__() > 0
 				# find the index of the scattering table energy
@@ -319,9 +319,9 @@ class cross_section_data:
 						plusone = 1
 					# find main E grid indext of next energy
 					nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-					print "isotope = "+ str(isotope)+" MT = "+str(MTnum)
+					#print "isotope = "+ str(isotope)+" MT = "+str(MTnum)
 					#print row,col
-					print this_E,next_E
+					#print this_E,next_E
 					#print scatter_dex
 					#print nextDex
 					#print scatterMu [scatter_dex]
@@ -337,7 +337,7 @@ class cross_section_data:
 					nextmu   	= numpy.ascontiguousarray(scatterMu[scatter_dex + plusone], dtype=numpy.float32)
 					#check to make sure the same length
 					assert vlen == mu.__len__()
-					print "vlen,next "+str(vlen)+" "+str(nextvlen)
+					#print "vlen,next "+str(vlen)+" "+str(nextvlen)
 					# return
 					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,pdf,nextmu,nextcdf,nextpdf]
 				else:  # return 0 if below the first energy]

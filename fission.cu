@@ -52,7 +52,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* a
 
 	// write output and terminate history
 	yield[tid] = this_yield;
-	//printf("nu=%6.4E\n",nu);
+	done[tid]  = 1;    // pop will re-activete this data slot on fixed-source runs
 
 }
 

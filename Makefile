@@ -28,7 +28,7 @@ COBJS =	mt19937ar.o \
 		find_E_grid_index.o \
 		find_E_grid_index_quad.o \
 		sample_fission_spectra.o \
-		sample_isotropic_directions.o \
+		sample_fixed_source.o \
 		tally_spec.o \
 		escatter.o \
 		iscatter.o \
@@ -38,6 +38,7 @@ COBJS =	mt19937ar.o \
 		make_mask.o \
 		print_histories.o \
 		pop_secondaries.o \
+		pop_source.o \
 		flip_done.o \
 		main.o
 
@@ -94,8 +95,8 @@ find_E_grid_index_quad.o:
 sample_fission_spectra.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_fission_spectra.cu
 
-sample_isotropic_directions.o:
-	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_isotropic_directions.cu
+sample_fixed_source.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c sample_fixed_source.cu
 
 macroscopic.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c macroscopic.cu
@@ -132,6 +133,9 @@ print_histories.o:
 
 pop_secondaries.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c pop_secondaries.cu
+
+pop_source.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c pop_source.cu
 
 flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
