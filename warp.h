@@ -1229,6 +1229,7 @@ class whistory {
     float *  		d_number_density_matrix;
     unsigned * 		d_reduced_yields;
     unsigned * 		d_reduced_done;
+    float * 		d_fissile_energy;
     source_point * 	d_fissile_points;
     unsigned * 		d_mask;
     qnode *			d_qnodes;
@@ -1323,14 +1324,13 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	cudaMalloc(	&d_valid_N				, 1*sizeof(unsigned));
 	cudaMalloc(	&d_remap				, Ndataset*sizeof(unsigned));
 	cudaMalloc(	&d_fissile_points		, Ndataset*sizeof(source_point));
+	cudaMalloc( &d_fissile_energy       , Ndataset*sizeof(float));
 	cudaMalloc( &d_mask 				, Ndataset*sizeof(unsigned));
 	cudaMalloc( &d_completed 			, Ndataset*sizeof(unsigned));	
 	cudaMalloc( &d_scanned 				, Ndataset*sizeof(unsigned));
 	cudaMalloc( &d_num_completed 		, 1*sizeof(unsigned));
 	cudaMalloc( &d_active 				, Ndataset*sizeof(unsigned));
 	cudaMalloc( &d_num_active 			, 1*sizeof(unsigned));
-	cudaMalloc( &d_bank_space 			, N*sizeof(source_point));
-	cudaMalloc( &d_bank_E				, N*sizeof(float));
 	// host data stuff
 	//xs_length_numbers 	= new unsigned [6];
 	space 				= new source_point 	[Ndataset];
@@ -2463,7 +2463,7 @@ void whistory::sample_fissile_points(){
 	while (current_index < N){
 		
 		// advance RN bank
-		curandGenerateUniform( rand_gen , d_rn_bank , N*RNUM_PER_THREAD );
+		curandGenerateUniform( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
 		
 		// set uniformly random positions on GPU
 		set_positions_rand ( NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
@@ -2476,7 +2476,7 @@ void whistory::sample_fissile_points(){
 		if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}
 
 		//copy in new values, keep track of index, copies positions and direction
-		copy_points(blks, NUM_THREADS, N, d_valid_N, current_index, d_valid_result, d_fissile_points, d_space); 
+		copy_points(blks, NUM_THREADS, N, d_valid_N, current_index, d_valid_result, d_fissile_points, d_space, d_fissile_energy, d_E); 
 		
 		// copy back and add
 		cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
@@ -2493,6 +2493,7 @@ void whistory::sample_fissile_points(){
 	std::cout << "Copying to starting points...\n";
 
 	cudaMemcpy(d_space,d_fissile_points,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_E,    d_fissile_energy,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
 	//cudaFree(d_fissile_points);
 
 	std::cout << "Done.\n";
@@ -2506,77 +2507,15 @@ void whistory::sample_fissile_points(){
 	fclose(positionsfile);
 
 	// advance RN bank
-	curandGenerateUniform( rand_gen , d_rn_bank , N*RNUM_PER_THREAD );
+	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
 
-}
-void whistory::converge(unsigned num_cycles){
-
-//	float keff = 0.0;
-//	unsigned completed_hist = 0;
-//	unsigned current_fission_index = 0;
-//
-//	//intital samples
-//	sample_fissile_points();
-//
-//	// print
-//	std::cout << "\e[1;32m" << "--- Running "<< num_cycles << " INACTIVE CYCLES --- " << "\e[m \n";
-//
-//	//set fission spectra
-//	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
-//
-//	//make directions isotropic
-//	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
-//
-//	for(int iteration = 0 ; iteration<num_cycles ; iteration++){
-//
-//		while(completed_hist<N){
-//	
-//			//find the main E grid index
-//			find_E_grid_index(blks, NUM_THREADS, N, xs_length_numbers[1], d_xs_data_main_E_grid, d_E, d_index, d_done);
-//
-//			// find what material we are in
-//			trace(2);
-//	
-//			// run macroscopic kernel to find interaction length and reaction isotope
-//			macroscopic( blks, NUM_THREADS, N, n_isotopes, MT_columns, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
-//	
-//			// run optix to detect the nearest surface and move particle there
-//			trace(1);
-//	
-//			// run microscopic kernel to find reaction type
-//			microscopic(blks, NUM_THREADS, N, n_isotopes, MT_columns, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
-//	
-//			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
-//			escatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
-//			iscatter( blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-//			fission(  blks,  NUM_THREADS,   N, RNUM_PER_THREAD, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
-//			absorb(   blks,  NUM_THREADS,   N, d_rxn , d_done);
-//	
-//			// update RNGs
-//			update_RNG();
-//
-//			// get how many histories are complete
-//			completed_hist = reduce_done();
-//
-//			//std::cout << completed_hist << "/" << N << " histories complete\n";
-//		}
-//
-//		//reduce yield
-//		keff = reduce_yield();
-//
-//		std::cout << "DISCARDED cycle keff = " << keff << "\n";
-//
-//		//reset cycle, adding new fission points to starting points
-//		current_fission_index = reset_cycle(current_fission_index);
-//		completed_hist = 0;
-//
-//	}
-
-		
 }
 unsigned whistory::reset_cycle(unsigned current_fission_index){
 
 	unsigned valid_N;
+
+	//set fission spectra
+	sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, Ndataset, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, d_xs_data_energy);
 
 	// do fissile query by setting rnx=18 as valid
 	make_mask( NUM_THREADS, Ndataset, d_mask, d_rxn, 18, 18);  // add ones for all fission numbers
@@ -2584,18 +2523,15 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 	// copy fission points to fission points vector, ***NEED TO REPLICATE BY YIELD, THEN SAMPLE DIRECTION AND SAMPLE FISSION ENERGY INDEPENDENTLY (BEFORE THE DATASETS ARE RESET AND IN INCOMING ENERGY AND ISOTOPE ARE GONE)
 	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , Ndataset);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
-	copy_points(blks, NUM_THREADS, Ndataset, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space);   //copy in new values, keep track of index, copies positions and direction
+	copy_points(blks, NUM_THREADS, Ndataset, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space, d_fissile_energy, d_E);   //copy in new values, keep track of index, copies positions and direction
 	cudaMemcpy(d_space,d_fissile_points,Ndataset*sizeof(source_point),cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_E,    d_fissile_energy,Ndataset*sizeof(float),cudaMemcpyDeviceToDevice);
 
 	// copy back and add, wrap to beginning 
 	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 	current_fission_index += valid_N;
 	if(current_fission_index>=Ndataset){current_fission_index = current_fission_index - Ndataset;}
 
-	//set fission spectra
-	sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, Ndataset, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, d_xs_data_energy);
-	printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-	
 	// rest run arrays
 	//cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),			cudaMemcpyHostToDevice );
 	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
@@ -2607,6 +2543,7 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
 	// return updated fission index
+	std::cout << "Current fission index = " << current_fission_index << "\n";
 	return current_fission_index;
 
 }
@@ -2644,6 +2581,8 @@ void whistory::run(unsigned num_cycles){
 	unsigned current_fission_index = 0;
 	unsigned Nrun = N;
 	int iteration = 0;
+	unsigned converged = 0;
+	unsigned n_skip = 9;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -2651,6 +2590,7 @@ void whistory::run(unsigned num_cycles){
 
 	if(RUN_FLAG==0){
 		reset_fixed();
+		converged=1;
 	}
 	else if(RUN_FLAG==1){
 		sample_fissile_points();
@@ -2661,7 +2601,7 @@ void whistory::run(unsigned num_cycles){
 		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	}
 
-	for(iteration = 0 ; iteration<num_cycles ; iteration++){
+	while(iteration<num_cycles){
 
 		// init run vars for cycle
 		Nrun=N;
@@ -2691,7 +2631,9 @@ void whistory::run(unsigned num_cycles){
 			// run tally kernel to compute spectra
 			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
 			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
-			tally_spec( NUM_THREADS,   Ndataset,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+			if(iteration>n_skip){
+				tally_spec( NUM_THREADS,   Ndataset,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+			}
 
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
@@ -2713,7 +2655,7 @@ void whistory::run(unsigned num_cycles){
 			// update random number bank
 			update_RNG();
 
-			printf("%u\n",Nrun);
+			//printf("%u\n",Nrun);
 
 		}
 
@@ -2727,18 +2669,33 @@ void whistory::run(unsigned num_cycles){
 			keff_cycle = reduce_yield();
 			current_fission_index = reset_cycle(current_fission_index);
 			Nrun=N;
+			if(current_fission_index>=N){
+				converged=1;
+			}
 		}
+
+
 		// recalculate running average
-		if (iteration == 0){
+		if (converged & iteration == 0){
 			keff  = keff_cycle;
+			iteration++;
 		}
-		else {
+		else if (converged){
 			it = (float) iteration;
 			keff  = (it/(it+1)) * keff + (1/(it+1)) * keff_cycle;
+			iteration++;
+		}
+		else{
+			// do not accumulate while converging
 		}
 
 		// print whatever's clever
-		std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration+1 << ", keff = " << keff_cycle << "\n";
+		if(converged){
+			std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration+1 << ", keff = " << keff_cycle << "\n";
+		}
+		else{
+			std::cout << "Converging fission source..." << "\n";
+		}
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
 

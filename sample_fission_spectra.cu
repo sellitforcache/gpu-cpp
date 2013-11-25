@@ -92,8 +92,8 @@ __global__ void sample_fission_spectra_kernel(unsigned N, unsigned RNUM_PER_THRE
 	space[ tid ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
 	space[ tid ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
 	space[ tid ].zhat 	= mu;
-	done [ tid ] 		= 0;
-	rxn  [ tid ] 		= 0;
+	//done [ tid ] 		= 0;
+	//rxn  [ tid ] 		= 0;
 
 }
 

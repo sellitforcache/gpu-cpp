@@ -96,7 +96,7 @@ int main(){
 	geom.add_material(1,1,1,dens,topes,fracs);
 	geom.add_material(2,0,1,dens,topes,fracs);
 	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "1ku235.tally";
+	tallyname = "u235_crit.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
