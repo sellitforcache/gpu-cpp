@@ -11,7 +11,7 @@ void tally_spec( unsigned ,  unsigned , unsigned , unsigned*, source_point * , f
 void escatter( unsigned , unsigned, unsigned , unsigned*, unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*, float**);
 void iscatter( unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
 void cscatter( unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
-void fission( unsigned , unsigned, unsigned , unsigned*, unsigned* , unsigned* , unsigned*  , float * , unsigned* , float**);
+void fission( unsigned , unsigned, unsigned, unsigned , unsigned*, unsigned* , unsigned* , unsigned*  , float * , unsigned* , float**);
 void absorb( unsigned , unsigned , unsigned*, unsigned*  , unsigned* );
 void find_E_grid_index( unsigned , unsigned , unsigned , unsigned*,float * , float* , unsigned *, unsigned* );
 void find_E_grid_index_quad( unsigned, unsigned,  unsigned,  unsigned, unsigned*, qnode*, float*, unsigned*, unsigned*);

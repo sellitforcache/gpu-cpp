@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
+__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
 
 	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
@@ -52,15 +52,17 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* a
 
 	// write output and terminate history
 	yield[tid] = this_yield;
-	done[tid]  = 1;    // pop will re-activete this data slot on fixed-source runs
+	if(RUN_FLAG==1){
+		done[tid]  = 1;    // pop will re-activete this data slot on fixed-source runs
+	}
 
 }
 
-void fission( unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
+void fission( unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, active, rxn , index, yield , rn_bank, done, scatterdat);
+	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, RUN_FLAG, active, rxn , index, yield , rn_bank, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

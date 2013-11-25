@@ -35,7 +35,7 @@ __global__ void sample_fission_spectra_kernel(unsigned N, unsigned RNUM_PER_THRE
 	memcpy(&vlen,   	&this_array[2], sizeof(float));
 	memcpy(&next_vlen,	&this_array[3], sizeof(float));
 	memcpy(&law, 		&this_array[4], sizeof(float));
-	//printf("rxn=%u law=%u vlen/next= %u %u, E-last/this/next= %6.4E %6.4E %6.4E\n",this_rxn,law,vlen,next_vlen,last_E,this_E,next_E);
+	//printf("dex=%u rxn=%u law=%u vlen/next= %u %u, E-last/this/next= %6.4E %6.4E %6.4E\n",dex,rxn[tid],law,vlen,next_vlen,last_E,this_E,next_E);
 	//sample energy dist
 	sampled_E = 0.0;
 	if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E

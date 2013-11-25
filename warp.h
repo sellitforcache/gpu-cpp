@@ -2590,13 +2590,14 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 	// copy back and add, wrap to beginning 
 	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 	current_fission_index += valid_N;
-	if(current_fission_index>=N){current_fission_index = current_fission_index - N;}
+	if(current_fission_index>=Ndataset){current_fission_index = current_fission_index - Ndataset;}
 
 	//set fission spectra
-	sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, Ndataset, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, xs_data_energy);
-
+	sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, Ndataset, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, d_xs_data_energy);
+	printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+	
 	// rest run arrays
-	cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),		cudaMemcpyHostToDevice );
+	//cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),			cudaMemcpyHostToDevice );
 	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
@@ -2630,10 +2631,9 @@ void whistory::reset_fixed(){
 }
 void whistory::run(unsigned num_cycles){
 
-	std::string runtype;
-	if(RUN_FLAG==0){runtype="fixed";}
+	std::string runtype = "UNDEFINED";
+	if     (RUN_FLAG==0){runtype="fixed";}
 	else if(RUN_FLAG==1){runtype="criticality";}
-	else{runtype="UNDEFINED";}
 
 	std::cout << "\e[1;32m" << "--- Running in " << runtype << " source mode --- " << "\e[m \n";
 	std::cout << "\e[1;32m" << "--- Running "<< num_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
@@ -2654,7 +2654,11 @@ void whistory::run(unsigned num_cycles){
 	}
 	else if(RUN_FLAG==1){
 		sample_fissile_points();
-		sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, N, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, xs_data_energy);
+		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+		//find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
+		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+		//sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, N, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, xs_data_energy);
+		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	}
 
 	for(iteration = 0 ; iteration<num_cycles ; iteration++){
@@ -2666,6 +2670,8 @@ void whistory::run(unsigned num_cycles){
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	
+			Nrun=Ndataset;
+
 			//find the main E grid index
 			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
 			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
@@ -2692,7 +2698,7 @@ void whistory::run(unsigned num_cycles){
 			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			absorb  ( NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
-			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 
 			if(RUN_FLAG==0){  //fixed source
 				// pop secondaries back in
@@ -2706,6 +2712,8 @@ void whistory::run(unsigned num_cycles){
 
 			// update random number bank
 			update_RNG();
+
+			printf("%u\n",Nrun);
 
 		}
 
@@ -2982,10 +2990,10 @@ void whistory::set_run_type(unsigned type_in){
 }
 void whistory::set_run_type(std::string type_in){
 
-	if(type_in.compare("fixed")){
+	if(type_in.compare("fixed")==0){
 		RUN_FLAG = 0;
 	}
-	else if(type_in.compare("criticality")){
+	else if(type_in.compare("criticality")==0){
 		RUN_FLAG = 1;
 	}
 	else{
