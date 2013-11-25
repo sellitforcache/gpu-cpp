@@ -119,6 +119,7 @@ RT_PROGRAM void camera()
       }
       else if(trace_type == 3){
         matnum_buffer[launch_index]=payload.hitbuff[0].fiss;
+        rxn_buffer[launch_index]=18;
       }
 
    }

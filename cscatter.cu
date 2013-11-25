@@ -27,7 +27,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  E_max        =   20.0; //MeV
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
-	unsigned 	this_rxn 	= rxn[tid];
+	//unsigned 	this_rxn 	= rxn[tid];
 	unsigned 	this_dex	= index[tid];
 	float 		this_E 		= E[tid];
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);

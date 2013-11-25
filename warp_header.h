@@ -3,7 +3,7 @@ void print_banner();
 // device calls
 void set_positions_rand( unsigned, unsigned, unsigned, source_point * , float *  , float  * );
 void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * );
-void sample_fission_spectra(unsigned,unsigned,unsigned*,float*,float*);
+void sample_fission_spectra(unsigned , unsigned , unsigned , unsigned* , unsigned* , unsigned* , unsigned* , float * , float *, source_point* , float** );
 void sample_fixed_source( unsigned,unsigned,unsigned,unsigned*,float*,float*,source_point*);
 void macroscopic( unsigned ,  unsigned, unsigned, unsigned , unsigned*, source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* , unsigned*);
 void microscopic( unsigned ,  unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float * , float * , float *  , unsigned * , unsigned * ,  float* , unsigned * , float*, unsigned* );

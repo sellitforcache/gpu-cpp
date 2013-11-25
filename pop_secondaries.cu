@@ -73,11 +73,11 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	}
 
 	// interpolate the values
-	//m 			= (pdf1 - pdf0)/(e1-e0);
-	//arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
-	//if(arg<0){arg=0.0;}
-	//sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
-	sampled_E = e0 + (rn1-cdf0)/pdf0;
+	m 			= (pdf1 - pdf0)/(e1-e0);
+	arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
+	if(arg<0){arg=0.0;}
+	sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
+	//sampled_E = e0 + (rn1-cdf0)/pdf0;
 	//printf("%u %u %u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",tid,tid*RNUM_PER_THREAD + 12,fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,m,sampled_E);
 
 
@@ -145,10 +145,10 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		}
 	
 		// interpolate the values
-		//arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
-		//if(arg<0){arg=0.0;}
-		//sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
-		sampled_E = e0 + (rn1-cdf0)/pdf0;
+		arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
+		if(arg<0){arg=0.0;}
+		sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
+		//sampled_E = e0 + (rn1-cdf0)/pdf0;
 		//printf("%u %u %u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",tid,tid*RNUM_PER_THREAD + 11 + (k+1)*3,fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,m,sampled_E);
 
 		//sample isotropic directions

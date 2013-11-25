@@ -1434,7 +1434,7 @@ void whistory::init_host(){
 		space[k].zhat 		= 0.0;
 		space[k].samp_dist 	= 10000.0;
 		space[k].macro_t 	= 0.0;
-		E[k]				= 0.0;
+		E[k]				= 2.5;
 		Q[k]				= 0.0;
 		cellnum[k]			= 0;
 		matnum[k]			= 0;
@@ -2576,39 +2576,37 @@ void whistory::converge(unsigned num_cycles){
 }
 unsigned whistory::reset_cycle(unsigned current_fission_index){
 
-//	unsigned valid_N;
-//
-//	// do fissile query by setting rnx=16-18 as valid
-//	make_mask(blks, NUM_THREADS, N, d_mask, d_rxn, 18, 18);  // add ones for all fission numbers
-//
-//	// copy fission points to fission points vector, ***NEED TO REPLICATE BY YIELD, THEN SAMPLE DIRECTION AND SAMPLE FISSION ENERGY INDEPENDENTLY (BEFORE THE DATASETS ARE RESET AND IN INCOMING ENERGY AND ISOTOPE ARE GONE)
-//	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , N);
-//	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
-//	copy_points(blks, NUM_THREADS, N, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space);   //copy in new values, keep track of index, copies positions and direction
-//	cudaMemcpy(d_space,d_fissile_points,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
-//
-//	// copy back and add, wrap to beginning 
-//	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
-//	current_fission_index += valid_N;
-//	if(current_fission_index>=N){current_fission_index = current_fission_index - N;}
-//
-//	//set fission spectra
-//	sample_fission_spectra(blks, NUM_THREADS,N,d_rn_bank,d_E);
-//
-//	//make directions isotropic
-//	sample_isotropic_directions(blks, NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank);
-//
-//	// rest run arrays
-//	cudaMemcpy( d_Q,    		Q,			N*sizeof(float),		cudaMemcpyHostToDevice );
-//	cudaMemcpy( d_done,			done,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-//	cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-//	cudaMemcpy( d_matnum,		matnum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-//	cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-//	cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-//	cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
-//
-//	// return updated fission index
-//	return current_fission_index;
+	unsigned valid_N;
+
+	// do fissile query by setting rnx=18 as valid
+	make_mask( NUM_THREADS, Ndataset, d_mask, d_rxn, 18, 18);  // add ones for all fission numbers
+
+	// copy fission points to fission points vector, ***NEED TO REPLICATE BY YIELD, THEN SAMPLE DIRECTION AND SAMPLE FISSION ENERGY INDEPENDENTLY (BEFORE THE DATASETS ARE RESET AND IN INCOMING ENERGY AND ISOTOPE ARE GONE)
+	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , Ndataset);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
+	copy_points(blks, NUM_THREADS, Ndataset, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space);   //copy in new values, keep track of index, copies positions and direction
+	cudaMemcpy(d_space,d_fissile_points,Ndataset*sizeof(source_point),cudaMemcpyDeviceToDevice);
+
+	// copy back and add, wrap to beginning 
+	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
+	current_fission_index += valid_N;
+	if(current_fission_index>=N){current_fission_index = current_fission_index - N;}
+
+	//set fission spectra
+	sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, Ndataset, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, xs_data_energy);
+
+	// rest run arrays
+	cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_isonum,		isonum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_yield,		yield,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+
+	// return updated fission index
+	return current_fission_index;
 
 }
 void whistory::reset_fixed(){
@@ -2632,6 +2630,12 @@ void whistory::reset_fixed(){
 }
 void whistory::run(unsigned num_cycles){
 
+	std::string runtype;
+	if(RUN_FLAG==0){runtype="fixed";}
+	else if(RUN_FLAG==1){runtype="criticality";}
+	else{runtype="UNDEFINED";}
+
+	std::cout << "\e[1;32m" << "--- Running in " << runtype << " source mode --- " << "\e[m \n";
 	std::cout << "\e[1;32m" << "--- Running "<< num_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
 
 	float keff = 0.0;
@@ -2650,7 +2654,7 @@ void whistory::run(unsigned num_cycles){
 	}
 	else if(RUN_FLAG==1){
 		sample_fissile_points();
-		sample_fission_spectra(); // only needs to be done at the beginning, pop_source sets real fission spec from interaction data
+		sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, N, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, xs_data_energy);
 	}
 
 	for(iteration = 0 ; iteration<num_cycles ; iteration++){
@@ -2713,11 +2717,9 @@ void whistory::run(unsigned num_cycles){
 		}
 		else if (RUN_FLAG==1){
 			keff_cycle = reduce_yield();
-			pop_source(NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_bank_E , d_bank_space , d_xs_data_energy);
-			reset_cycle();
+			current_fission_index = reset_cycle(current_fission_index);
 			Nrun=N;
 		}
-
 		// recalculate running average
 		if (iteration == 0){
 			keff  = keff_cycle;
