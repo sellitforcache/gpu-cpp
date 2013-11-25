@@ -230,7 +230,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.run(40);
+	hist.run(100);
 	hist.write_tally(0,tallyname);
 
 

@@ -2523,14 +2523,14 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 	// copy fission points to fission points vector, ***NEED TO REPLICATE BY YIELD, THEN SAMPLE DIRECTION AND SAMPLE FISSION ENERGY INDEPENDENTLY (BEFORE THE DATASETS ARE RESET AND IN INCOMING ENERGY AND ISOTOPE ARE GONE)
 	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , Ndataset);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
-	copy_points(blks, NUM_THREADS, Ndataset, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space, d_fissile_energy, d_E);   //copy in new values, keep track of index, copies positions and direction
+	copy_points(blks, NUM_THREADS, N, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space, d_fissile_energy, d_E);   //copy in new values, keep track of index, copies positions and direction
 	cudaMemcpy(d_space,d_fissile_points,Ndataset*sizeof(source_point),cudaMemcpyDeviceToDevice);
 	cudaMemcpy(d_E,    d_fissile_energy,Ndataset*sizeof(float),cudaMemcpyDeviceToDevice);
 
 	// copy back and add, wrap to beginning 
 	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 	current_fission_index += valid_N;
-	if(current_fission_index>=Ndataset){current_fission_index = current_fission_index - Ndataset;}
+	if(current_fission_index>=N){current_fission_index = current_fission_index - N;}
 
 	// rest run arrays
 	//cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),			cudaMemcpyHostToDevice );
@@ -2543,7 +2543,7 @@ unsigned whistory::reset_cycle(unsigned current_fission_index){
 	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
 	// return updated fission index
-	std::cout << "Current fission index = " << current_fission_index << "\n";
+	//std::cout << "Current fission index = " << current_fission_index << "\n";
 	return current_fission_index;
 
 }
@@ -2579,7 +2579,9 @@ void whistory::run(unsigned num_cycles){
 	float keff_cycle = 0.0;
 	float it = 0.0;
 	unsigned current_fission_index = 0;
+	unsigned current_fission_index_temp = 0;
 	unsigned Nrun = N;
+	int difference = 0;
 	int iteration = 0;
 	unsigned converged = 0;
 	unsigned n_skip = 9;
@@ -2601,11 +2603,11 @@ void whistory::run(unsigned num_cycles){
 		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	}
 
-	while(iteration<num_cycles){
+	// init run vars for cycle
+	Nrun=N;
+	keff_cycle = 0;
 
-		// init run vars for cycle
-		Nrun=N;
-		keff_cycle = 0;
+	while(iteration<num_cycles){
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -2659,22 +2661,6 @@ void whistory::run(unsigned num_cycles){
 
 		}
 
-		//reduce yield and reset cycle
-		if(RUN_FLAG==0){
-			keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);   // based on: Ntotal = Nsource / (1-k) 
-			reset_fixed();
-			Nrun=N;
-		}
-		else if (RUN_FLAG==1){
-			keff_cycle = reduce_yield();
-			current_fission_index = reset_cycle(current_fission_index);
-			Nrun=N;
-			if(current_fission_index>=N){
-				converged=1;
-			}
-		}
-
-
 		// recalculate running average
 		if (converged & iteration == 0){
 			keff  = keff_cycle;
@@ -2696,6 +2682,24 @@ void whistory::run(unsigned num_cycles){
 		else{
 			std::cout << "Converging fission source..." << "\n";
 		}
+
+		//reduce yield and reset cycle
+		if(RUN_FLAG==0){
+			keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);   // based on: Ntotal = Nsource / (1-k) 
+			reset_fixed();
+			Nrun=Ndataset;
+		}
+		else if (RUN_FLAG==1){	
+			keff_cycle = reduce_yield();
+			current_fission_index_temp = reset_cycle(current_fission_index);
+			Nrun=Ndataset;
+			difference = (int)current_fission_index_temp - (int)current_fission_index;
+			if( difference < 0){
+				converged=1;
+			}
+			current_fission_index = current_fission_index_temp;
+		}
+
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
 
