@@ -1268,7 +1268,7 @@ public:
     float reduce_yield();
     void run(unsigned);
     unsigned reduce_done();
-    unsigned reset_cycle(unsigned);
+    void reset_cycle(float);
     void reset_fixed();
     void trace(unsigned);
     float get_time();
@@ -2405,6 +2405,17 @@ void whistory::write_xs_data(std::string filename){
 	}
 	fclose(xsfile);
 
+
+	// write (hopefully) covnerged fission source
+	cudaMemcpy(space, d_fissile_points, Ndataset*sizeof(source_point), cudaMemcpyDeviceToHost);
+	cudaMemcpy(E,     d_fissile_energy, Ndataset*sizeof(float),        cudaMemcpyDeviceToHost);
+	this_name = filename + ".fission_source";
+	xsfile = fopen(this_name.c_str(),"w");
+	for(int j=0;j<Ndataset;j++){
+		fprintf(xsfile,"% 6.4E % 6.4E % 6.4E %6.4E\n",space[j].x,space[j].y,space[j].z,E[j]);
+	}
+	fclose(xsfile); 
+
 	std::cout << "Done." << "\e[m \n";
 
 }
@@ -2510,41 +2521,32 @@ void whistory::sample_fissile_points(){
 	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
 
 }
-unsigned whistory::reset_cycle(unsigned current_fission_index){
+void whistory::reset_cycle(float keff_cycle){
 
-	unsigned valid_N;
+	// re-base the yield so keff is 1
+	rebase_yield( NUM_THREADS,  RNUM_PER_THREAD, N,  keff_cycle, d_rn_bank, d_yield);
 
-	//set fission spectra
-	sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, Ndataset, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, d_xs_data_energy);
+	//reduce to check
+	float keff_new = reduce_yield();
+	std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
 
-	// do fissile query by setting rnx=18 as valid
-	make_mask( NUM_THREADS, Ndataset, d_mask, d_rxn, 18, 18);  // add ones for all fission numbers
-
-	// copy fission points to fission points vector, ***NEED TO REPLICATE BY YIELD, THEN SAMPLE DIRECTION AND SAMPLE FISSION ENERGY INDEPENDENTLY (BEFORE THE DATASETS ARE RESET AND IN INCOMING ENERGY AND ISOTOPE ARE GONE)
-	res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_mask , Ndataset);
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting\n");exit(-1);}  // compact
-	copy_points(blks, NUM_THREADS, N, d_valid_N, current_fission_index, d_valid_result, d_fissile_points, d_space, d_fissile_energy, d_E);   //copy in new values, keep track of index, copies positions and direction
-	cudaMemcpy(d_space,d_fissile_points,Ndataset*sizeof(source_point),cudaMemcpyDeviceToDevice);
-	cudaMemcpy(d_E,    d_fissile_energy,Ndataset*sizeof(float),cudaMemcpyDeviceToDevice);
-
-	// copy back and add, wrap to beginning 
-	cudaMemcpy( &valid_N, d_valid_N, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
-	current_fission_index += valid_N;
-	if(current_fission_index>=N){current_fission_index = current_fission_index - N;}
+	// pop them in!  should be the right size now.  scan to see where to write
+	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
+	// compact the done data to know where to write
+	//res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , Ndataset);
+	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
+	// do not have to compact since everything should be completed
+	pop_source( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy);
 
 	// rest run arrays
-	//cudaMemcpy( d_Q,    		Q,			Ndataset*sizeof(float),			cudaMemcpyHostToDevice );
 	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_isonum,		isonum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_yield,		yield,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	//cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-
-	// return updated fission index
-	//std::cout << "Current fission index = " << current_fission_index << "\n";
-	return current_fission_index;
 
 }
 void whistory::reset_fixed(){
@@ -2583,8 +2585,9 @@ void whistory::run(unsigned num_cycles){
 	unsigned Nrun = N;
 	int difference = 0;
 	int iteration = 0;
+	int iteration_total=0;
 	unsigned converged = 0;
-	unsigned n_skip = 9;
+	unsigned n_skip = 20;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -2633,7 +2636,7 @@ void whistory::run(unsigned num_cycles){
 			// run tally kernel to compute spectra
 			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
 			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
-			if(iteration>n_skip){
+			if(converged){
 				tally_spec( NUM_THREADS,   Ndataset,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
 			}
 
@@ -2691,17 +2694,17 @@ void whistory::run(unsigned num_cycles){
 		}
 		else if (RUN_FLAG==1){	
 			keff_cycle = reduce_yield();
-			current_fission_index_temp = reset_cycle(current_fission_index);
+			reset_cycle(keff_cycle);
 			Nrun=Ndataset;
-			difference = (int)current_fission_index_temp - (int)current_fission_index;
-			if( difference < 0){
+			if( iteration_total>n_skip){ //difference < 0){
 				converged=1;
 			}
-			current_fission_index = current_fission_index_temp;
 		}
 
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
+
+		iteration_total++;
 
 	}
 

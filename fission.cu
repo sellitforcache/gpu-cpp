@@ -20,7 +20,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 	unsigned 	inu 		= 0;
 	float 		nu 			= 0.0;
 
-	//only do fission for now...
+	//only do reactions with secondary neutrons
 	if (rxn[tid] == 18 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 41){}
 	else {return;} 
 
@@ -53,7 +53,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 	// write output and terminate history
 	yield[tid] = this_yield;
 	if(RUN_FLAG==1){
-		done[tid]  = 1;    // pop will re-activete this data slot on fixed-source runs
+		done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
 	}
 
 }

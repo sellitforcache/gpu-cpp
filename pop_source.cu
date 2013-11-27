@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata){
+__global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -27,92 +27,24 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	float 		cdf0, cdf1, e0, e1, m, pdf0, pdf1, arg;
 	const float  pi           =   3.14159265359 ;
 
-	// sample spectrum, set data.  
-	// reset self then write elsewhere
-
 	//read in values
-	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 ];
-	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 ];
 	offset = 5;
 	//printf("rxn %u eptr %p\n",this_rxn,this_array);
 	memcpy(&last_E,   	&this_array[0], sizeof(float));
 	memcpy(&next_E,   	&this_array[1], sizeof(float));
 	memcpy(&vlen,   	&this_array[2], sizeof(float));
 	memcpy(&next_vlen,	&this_array[3], sizeof(float));
-	memcpy(&law, 		&this_array[4], sizeof(float));
-	//printf("rxn=%u law=%u vlen/next= %u %u, E-last/this/next= %6.4E %6.4E %6.4E\n",this_rxn,law,vlen,next_vlen,last_E,this_E,next_E);
-	//sample energy dist
-	sampled_E = 0.0;
-	if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
-		fork=0;
-		for ( n=0 ; n<vlen-1 ; n++ ){
-			cdf0 		= this_array[ (offset +   vlen ) + n+0];
-			cdf1 		= this_array[ (offset +   vlen ) + n+1];
-			pdf0		= this_array[ (offset + 2*vlen ) + n+0];
-			pdf1		= this_array[ (offset + 2*vlen ) + n+1];
-			e0  		= this_array[ (offset          ) + n+0];
-			e1  		= this_array[ (offset          ) + n+1]; 
-			if( rn1 >= cdf0 & rn1 < cdf1 ){
-				break;
-			}
-		}
-	}
-	else{
-		fork=1;
-		for ( n=0 ; n<next_vlen-1 ; n++ ){
-			cdf0 		= this_array[ (offset + 3*vlen +   next_vlen ) + n+0];
-			cdf1  		= this_array[ (offset + 3*vlen +   next_vlen ) + n+1];
-			pdf0		= this_array[ (offset + 3*vlen + 2*next_vlen ) + n+0];
-			pdf1		= this_array[ (offset + 3*vlen + 2*next_vlen ) + n+1];
-			e0   		= this_array[ (offset + 3*vlen               ) + n+0];
-			e1   		= this_array[ (offset + 3*vlen               ) + n+1];
-			if( rn1 >= cdf0 & rn1 < cdf1 ){
-				break;
-			}
-		}
-	}
+	memcpy(&law, 		&this_array[4], sizeof(float)); 
 
-	// interpolate the values
-	m 			= (pdf1 - pdf0)/(e1-e0);
-	arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
-	if(arg<0){arg=0.0;}
-	sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
-	//sampled_E = e0 + (rn1-cdf0)/pdf0;
-	//printf("%u %u %u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",tid,tid*RNUM_PER_THREAD + 12,fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,m,sampled_E);
-
-
-	//sample isotropic directions
-	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 ];
-	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 ];
-	mu  = 2.0*rn1-1.0; 
-	phi = 2.0*pi*rn2;
-	
-	//check limits
-	if (sampled_E >= Emax){sampled_E = Emax * 0.9;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
-	if (sampled_E <= Emin){sampled_E = Emin * 1.1;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
-
-	// sync before writes
-	__syncthreads();
-
-	// set self data
-	E    [ tid ] 		= sampled_E;
-	space[ tid ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
-	space[ tid ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
-	space[ tid ].zhat 	= mu;
-	done [ tid ] 		= 0;
-	yield[ tid ] 		= 0;
-	rxn  [ tid ] 		= 0;//this_rxn;
-	//printf("popped - dex %u rxn %u ptr %p sampled_E %6.4E\n",tid,this_rxn,this_array,sampled_E); 
-
-	for(k=0 ; k < this_yield-1 ; k++ ){
+	for(k=0 ; k < this_yield ; k++ ){
 		//get proper data index
 		data_dex=completed[position+k];
 		//printf("tid %u position %u k %u data_dex %u done %u (xyz) % 6.4E % 6.4E % 6.4E\n",tid,position,k,data_dex,done[data_dex],this_space.x,this_space.y,this_space.z);
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + (k+1)*3];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + (k+1)*3];
+		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*3];
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*3];
 		//sample energy dist
 		sampled_E = 0.0;
 		if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
@@ -145,7 +77,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		}
 	
 		// interpolate the values
-		m   = (pdf1 - pdf0)/(e1-e0);
+		m 	= (pdf1 - pdf0)/(e1-e0);
 		arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
 		if(arg<0){arg=0.0;}
 		sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
@@ -153,8 +85,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		//printf("%u %u %u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",tid,tid*RNUM_PER_THREAD + 11 + (k+1)*3,fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,m,sampled_E);
 
 		//sample isotropic directions
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + (k+1)*3];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + (k+1)*3];
+		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*3];
 		mu  = 2.0*rn1-1.0; 
 		phi = 2.0*pi*rn2;
 	
@@ -189,11 +121,11 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 }
 
-void pop_secondaries( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
+void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	pop_secondaries_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata);
+	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata);
 	cudaThreadSynchronize();
 
 }

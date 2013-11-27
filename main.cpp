@@ -218,7 +218,6 @@ int main(){
 	hist.load_cross_sections();
 	hist.print_xs_data();
 	hist.copy_to_device();
-	hist.write_xs_data("xsdata");
 	hist.print_materials_table();
 	//hist.create_quad_tree();
 
@@ -230,8 +229,9 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.run(100);
+	hist.run(40);
 	hist.write_tally(0,tallyname);
+	hist.write_xs_data("xsdata");
 
 
 	return 0;

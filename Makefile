@@ -38,6 +38,8 @@ COBJS =	mt19937ar.o \
 		make_mask.o \
 		print_histories.o \
 		pop_secondaries.o \
+		pop_source.o \
+		rebase_yield.o \
 		flip_done.o \
 		main.o
 
@@ -132,6 +134,12 @@ print_histories.o:
 
 pop_secondaries.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c pop_secondaries.cu
+
+pop_source.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c pop_source.cu
+
+rebase_yield.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c rebase_yield.cu
 
 flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
