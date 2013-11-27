@@ -2537,16 +2537,19 @@ void whistory::reset_cycle(float keff_cycle){
 	//res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , Ndataset);
 	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
 	// do not have to compact since everything should be completed
-	pop_source( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy);
+	//print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);
+	pop_source( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy);
 
 	// rest run arrays
+	cudaMemcpy( d_space,		d_fissile_points,		N*sizeof(source_point),		cudaMemcpyDeviceToDevice );
+	cudaMemcpy( d_E,			d_fissile_energy,		N*sizeof(unsigned),		cudaMemcpyDeviceToDevice );
 	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_cellnum,		cellnum,	Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_isonum,		isonum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_yield,		yield,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	//cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_matnum,		matnum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_isonum,		isonum,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_yield,		yield,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	cudaMemcpy( d_active,		remap,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
 }
 void whistory::reset_fixed(){
@@ -2587,7 +2590,7 @@ void whistory::run(unsigned num_cycles){
 	int iteration = 0;
 	int iteration_total=0;
 	unsigned converged = 0;
-	unsigned n_skip = 20;
+	unsigned n_skip = 10;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -2599,33 +2602,43 @@ void whistory::run(unsigned num_cycles){
 	}
 	else if(RUN_FLAG==1){
 		sample_fissile_points();
-		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-		//find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
-		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-		//sample_fission_spectra(  NUM_THREADS,  RNUM_PER_THREAD, N, d_index, d_done, d_active, d_rxn, d_rn_bank, d_E, d_space, xs_data_energy);
-		//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 	}
 
 	// init run vars for cycle
-	Nrun=N;
+	if(RUN_FLAG==0){
+		Nrun=Ndataset;
+	}
+	else if(RUN_FLAG==1){
+		Nrun=N;
+	}
 	keff_cycle = 0;
 
 	while(iteration<num_cycles){
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-	
-			Nrun=Ndataset;
 
+			if(RUN_FLAG==0){
+				Nrun=Ndataset;
+			}
+			else if(RUN_FLAG==1){
+				Nrun=N;
+			}
+	
 			//find the main E grid index
 			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
 			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// find what material we are in
+			//if(iteration_total==1){write_xs_data("xsdata");exit(0);}
 			trace(2);
 
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
+
+			if(converged){
+				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+			}
 
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
@@ -2636,9 +2649,7 @@ void whistory::run(unsigned num_cycles){
 			// run tally kernel to compute spectra
 			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
 			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
-			if(converged){
-				tally_spec( NUM_THREADS,   Ndataset,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
-			}
+			
 
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
@@ -2656,12 +2667,28 @@ void whistory::run(unsigned num_cycles){
 
 			// remap threads to still active data
 			Nrun = map_active();
+			//if(Nrun<=50){print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 
 			// update random number bank
 			update_RNG();
 
 			//printf("%u\n",Nrun);
 
+		}
+
+		//reduce yield and reset cycle
+		if(RUN_FLAG==0){
+			keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);   // based on: Ntotal = Nsource / (1-k) 
+			reset_fixed();
+			Nrun=Ndataset;
+		}
+		else if (RUN_FLAG==1){	
+			keff_cycle = reduce_yield();
+			reset_cycle(keff_cycle);
+			Nrun=N;
+			if( iteration_total>n_skip){ //difference < 0){
+				converged=1;
+			}
 		}
 
 		// recalculate running average
@@ -2680,27 +2707,12 @@ void whistory::run(unsigned num_cycles){
 
 		// print whatever's clever
 		if(converged){
-			std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration+1 << ", keff = " << keff_cycle << "\n";
+			std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", keff = " << keff_cycle << "\n";
 		}
 		else{
 			std::cout << "Converging fission source..." << "\n";
 		}
-
-		//reduce yield and reset cycle
-		if(RUN_FLAG==0){
-			keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);   // based on: Ntotal = Nsource / (1-k) 
-			reset_fixed();
-			Nrun=Ndataset;
-		}
-		else if (RUN_FLAG==1){	
-			keff_cycle = reduce_yield();
-			reset_cycle(keff_cycle);
-			Nrun=Ndataset;
-			if( iteration_total>n_skip){ //difference < 0){
-				converged=1;
-			}
-		}
-
+		
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
 

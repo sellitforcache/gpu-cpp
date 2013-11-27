@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata){
+__global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata, source_point* space_out, float* E_out){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -18,6 +18,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;
 	source_point 	this_space 	= space[tid];
+	//printf("tid %u rxn %u space % 6.4E % 6.4E % 6.4E\n",tid,this_rxn,this_space.x,this_space.y,this_space.z);
 
 	// internal data
 	float 		Emin=1e-11;
@@ -104,28 +105,28 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		__syncthreads();
 
 		// set data
-		E    [ data_dex ] 		= sampled_E;
-		space[ data_dex ].x 	= this_space.x;
-		space[ data_dex ].y 	= this_space.y;
-		space[ data_dex ].z 	= this_space.z;
-		space[ data_dex ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
-		space[ data_dex ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
-		space[ data_dex ].zhat 	= mu;
-		done [ data_dex ] 		= 0;
-		yield[ data_dex ] 		= 0;
-		rxn  [ data_dex ]		= 0;//this_rxn;
-		//printf("popped - dex %u rxn %u ptr %p sampled_E %6.4E\n",data_dex,this_rxn,this_array,sampled_E); 
+		E_out 	 [ data_dex ] 		= sampled_E;
+		space_out[ data_dex ].x 	= this_space.x;
+		space_out[ data_dex ].y 	= this_space.y;
+		space_out[ data_dex ].z 	= this_space.z;
+		space_out[ data_dex ].xhat 	= sqrtf(1.0-(mu*mu))*cosf(phi);
+		space_out[ data_dex ].yhat 	= sqrtf(1.0-(mu*mu))*sinf(phi); 
+		space_out[ data_dex ].zhat 	= mu;
+		//done [ data_dex ] 		= 0;
+		//yield[ data_dex ] 		= 0;
+		//rxn  [ data_dex ]		= 0;//this_rxn;
+		//printf("popped - dex %u space % 6.4E % 6.4E % 6.4E\n",data_dex,sampled_E,this_space.x,this_space.y,this_space.z); 
 
 	}
 
 
 }
 
-void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
+void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata, source_point* space_out, float* E_out){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata);
+	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata, space_out, E_out);
 	cudaThreadSynchronize();
 
 }
