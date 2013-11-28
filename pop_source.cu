@@ -50,8 +50,8 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*3];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*3];
+		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*4];
+		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*4];
 		//sample energy dist
 		sampled_E = 0.0;
 		if(  rn2 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
@@ -91,53 +91,22 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		//sampled_E = e0 + (rn1-cdf0)/pdf0;
 		//printf("%u %u %u %u %u %p %6.4E %u %u %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",tid,tid*RNUM_PER_THREAD + 11 + (k+1)*3,fork,n,dex,this_array,rn1,next_vlen,vlen,this_E,e0,e1,cdf0,cdf1,pdf0,pdf1,m,sampled_E);
 
-		//if(this_rxn>=16 & this_rxn<=17){ //convert to CM
-		//	wfloat3 hats_target;
-		//	mu  = (2.0*   rn_bank[ tid*RNUM_PER_THREAD + 9  + k*3]) - 1.0;
-		//	phi = 2.0*pi* rn_bank[ tid*RNUM_PER_THREAD + 10 + k*3];
-		//	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
-		//	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
-		//	hats_target.z = mu;
-		//	// calc v_lf
-		//	wfloat3 v_n_lf = hats_old    * speed_n;
-		//	// calculate  v_cm
-		//	wfloat3 v_cm = (v_n_lf)/(1.0+this_awr);
-		//	//transform neutron velocity into CM frame
-		//	wfloat3 v_n_cm = v_n_lf - v_cm;
-		//	// pre rotation directions
-		//	wfloat3 hats_old = v_n_cm / v_n_cm.norm2();
-		//	//  create a perpendicular roation vector 
-		//	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-		//	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
-		//	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*3];
-		//	mu  = 2.0*rn1-1.0; 
-		//	phi = 2.0*pi*rn2;
-		//	wfloat3 rotation_hat = hats_target.cross( v_n_cm );
-		//	rotation_hat = rotation_hat / rotation_hat.norm2();
-		//	//  do rotations, polar first, then azimuthal
-		//	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
-		//	v_n_cm.rodrigues_rotation( hats_old,     phi       );
-		//	//  scale to sampled energy
-		//	v_n_cm = v_n_cm/v_n_cm.norm2() * sqrtf(2.0*sampled_E/m_n);
-		//	// transform back to L
-		//	v_n_lf = v_n_cm + v_cm;
-		//	wfloat3 hats_new = v_n_lf / v_n_lf.norm2();
-		//	// calculate energy in lab frame
-		//	sampled_E = 0.5 * m_n * v_n_lf.dot(v_n_lf);
-		//	x = hats_new.x;
-		//	y = hats_new.y;
-		//	z = hats_new.z;
-		//}
-		//else{
+		if(this_rxn==18){
 			//sample isotropic directions
-			rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*3];
-			rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*3];
+			rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*4];
+			rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*4];
 			mu  = 2.0*rn1-1.0; 
 			phi = 2.0*pi*rn2;
 			x = sqrtf(1.0-(mu*mu))*cosf(phi);
 			y = sqrtf(1.0-(mu*mu))*sinf(phi);
 			z = mu;
-		//}
+		}
+		else{  
+			// pass old values
+			x 	= this_space.xhat;
+			y 	= this_space.yhat;
+			z 	= this_space.zhat;	
+		}
 	
 		//printf("tid %u k %u mu % 6.4E phi % 6.4E rn1 % 6.4E rn2 % 6.4E compactpos %u realpos %u\n",tid,k,mu,phi,rn1,rn2, position, completed[k+position]);
 	
@@ -153,27 +122,20 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		__syncthreads();
 
 		// set data
+		space_out[ data_dex ].x 	= this_space.x;
+		space_out[ data_dex ].y 	= this_space.y;
+		space_out[ data_dex ].z 	= this_space.z;
+		space_out[ data_dex ].xhat 	= x;
+		space_out[ data_dex ].yhat 	= y;
+		space_out[ data_dex ].zhat 	= z;
+		rxn  	 [ data_dex ]		= this_rxn;
+		index 	 [ data_dex ] 		= dex;
+		isonum   [ data_dex ]  		= this_tope;
 		if(this_rxn==18){
 			E_out 	 [ data_dex ] 		= sampled_E;
-			space_out[ data_dex ].x 	= this_space.x;
-			space_out[ data_dex ].y 	= this_space.y;
-			space_out[ data_dex ].z 	= this_space.z;
-			space_out[ data_dex ].xhat 	= x;
-			space_out[ data_dex ].yhat 	= y;
-			space_out[ data_dex ].zhat 	= z;
-			rxn  	 [ data_dex ]		= this_rxn;
 		}
 		else{ // pass to cscatter
 			E_out 	 [ data_dex ] 		= this_E;
-			space_out[ data_dex ].x 	= this_space.x;
-			space_out[ data_dex ].y 	= this_space.y;
-			space_out[ data_dex ].z 	= this_space.z;
-			space_out[ data_dex ].xhat 	= this_space.xhat;
-			space_out[ data_dex ].yhat 	= this_space.yhat;
-			space_out[ data_dex ].zhat 	= this_space.zhat;
-			rxn  	 [ data_dex ]		= this_rxn;
-			index 	 [ data_dex ] 		= dex;
-			isonum   [ data_dex ]  		= this_tope;
 		}
 		//done [ data_dex ] 		= 0;
 		//yield[ data_dex ] 		= 0;

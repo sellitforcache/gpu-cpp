@@ -2198,7 +2198,7 @@ void whistory::load_cross_sections(){
 
     // do the rest of the MT numbers
     for (int j=1*xs_length_numbers[0] ; j<MT_columns ; j++){  //start after the total xs vectors
-    	std::cout << "  at energy column " << j+1 << " of " << MT_columns<< "\n";
+    	//std::cout << "  at energy column " << j+1 << " of " << MT_columns<< "\n";
     	for (int k=0 ; k<MT_rows ; k++){
 
     		// call cross_section_data instance to get buffer
@@ -2562,7 +2562,7 @@ void whistory::reset_fixed(){
 	cudaMemcpy( d_matnum,		matnum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_isonum,		isonum,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_yield,		yield,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
-	cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
+	//cudaMemcpy( d_rxn,			rxn,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_active,		remap,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
 	//set position, direction, energy
