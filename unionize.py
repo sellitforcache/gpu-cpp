@@ -170,7 +170,7 @@ class cross_section_data:
 		rxn   = table.reactions[MTnum]
 		# get the energy from this index
 		this_E = self.MT_E_grid[row]
-		#print "isotope = "+ str(isotope)+" MT = "+str(MTnum)+" row="+str(row)+" col="+str(col)
+		#print "isotope = "+ str(isotope)+" = "+self.tables[isotope].name+" MT = "+str(MTnum)+" row="+str(row)+" col="+str(col)
 		#print "energy="+str(self.MT_E_grid[row])
 		if hasattr(rxn,"ang_energy_in"):
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"

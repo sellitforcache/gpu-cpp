@@ -18,6 +18,6 @@ void find_E_grid_index_quad( unsigned, unsigned,  unsigned,  unsigned, unsigned*
 void make_mask( unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
 void print_histories(unsigned, unsigned, unsigned *, unsigned*, source_point*, float*, unsigned*,unsigned*);
 void pop_secondaries( unsigned, unsigned, unsigned, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, unsigned*, source_point* , float* , float* , float** );
-void pop_source( unsigned, unsigned, unsigned, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, unsigned*, source_point* , float* , float* , float** , source_point*, float*);
+void pop_source( unsigned, unsigned, unsigned, unsigned*, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, unsigned*, source_point* , float* , float* , float** , source_point*, float*, float*);
 void rebase_yield( unsigned , unsigned , unsigned , float , float* , unsigned* );
 void flip_done(unsigned , unsigned , unsigned* );

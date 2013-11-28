@@ -2538,7 +2538,8 @@ void whistory::reset_cycle(float keff_cycle){
 	//if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
 	// do not have to compact since everything should be completed
 	//print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);
-	pop_source( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy);
+	pop_source( NUM_THREADS, N, RNUM_PER_THREAD, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
+	cscatter( NUM_THREADS,   N, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_fissile_energy, d_fissile_points, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 
 	// rest run arrays
 	cudaMemcpy( d_space,		d_fissile_points,		N*sizeof(source_point),		cudaMemcpyDeviceToDevice );
@@ -2636,15 +2637,15 @@ void whistory::run(unsigned num_cycles){
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 
-			if(converged){
-				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
-			}
-
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
 
 			// run optix to detect the nearest surface and move particle there, sets rxn to 888 if leaked!
 			trace(1);
+
+			if(converged){
+				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+			}
 
 			// run tally kernel to compute spectra
 			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
