@@ -14,7 +14,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if(done[tid]){return;}
 
 	// return if not inelastic
-	if (rxn[tid] == 91 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 22 | rxn[tid] == 28 | rxn[tid] == 24 | rxn[tid] == 32 | rxn[tid] == 33 | rxn[tid] == 41 ){}
+	unsigned 	this_rxn 	= rxn[tid];
+	if (this_rxn == 91 | this_rxn == 16 | this_rxn == 17 | this_rxn == 37 | this_rxn == 24 | this_rxn == 22 | this_rxn == 28 | this_rxn == 24 | this_rxn == 32 | this_rxn == 33 | this_rxn == 41 ){}
 	else {return;}  //return if not continuum inelastic scatter or n,Xn
 
 	//printf("in cscatter, tid %u rxn %u\n",tid,rxn[tid]);
@@ -27,16 +28,15 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  E_max        =   20.0; //MeV
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
-	//unsigned 	this_rxn 	= rxn[tid];
 	unsigned 	this_dex	= index[tid];
 	float 		this_E 		= E[tid];
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
 	float * 	this_Earray =  energydat[this_dex];
-	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
-	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
-	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
+	//float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
+	//float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
+	//float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
 	float 		rn4 		= rn_bank[ tid*RNUM_PER_THREAD + 6];
 	float 		rn5 		= rn_bank[ tid*RNUM_PER_THREAD + 7];
 	float 		rn6 		= rn_bank[ tid*RNUM_PER_THREAD + 8];
@@ -49,8 +49,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		mu, phi, next_E, last_E, sampled_E;
     unsigned 	vlen, next_vlen, offset, n, law; 
     unsigned  	isdone = 0;
-	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
-	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
+	//float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
+	float 		speed_target     	=   0;//sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
@@ -144,6 +144,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		mu = logf(rn9*expf(A)+(1.0-rn9)*expf(-A))/A;
 	}
 
+	//mu = 2.0*rn9 - 1.0;
+
 	//if(this_rxn==91){printf("%u % 6.4E % 6.4E % 6.4E\n",this_rxn,mu,sampled_E,this_E);}
 
 	// sample new phi
@@ -172,7 +174,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	}
 
 	//if(this_rxn==91){printf("%6.4E %6.4E %6.4E\n",E_new,this_E,E_new/this_E);}
-	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,len,this_Sarray,this_Earray,E_new,sampled_E,A,R);
+	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,vlen,this_Sarray,this_Earray,E_new,sampled_E,A,R);
 
 	// write results
 	done[tid]       = isdone;

@@ -96,7 +96,7 @@ int main(){
 	geom.add_material(1,1,1,dens,topes,fracs);
 	geom.add_material(2,0,1,dens,topes,fracs);
 	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "u235_crit.tally";
+	tallyname = "u235_crit_nocont.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
@@ -238,7 +238,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.run(100);
+	hist.run(40);
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");
 

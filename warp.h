@@ -28,7 +28,9 @@
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
-
+/**
+	@class yeah
+*/
 class primitive
 {	
 	public:
@@ -54,7 +56,8 @@ class primitive
 };
 
 int primitive::num_primitives=0;
-
+/**
+*/
 primitive::primitive(){
 	//box default constructor
 	min[0]=0;min[1]=0;min[2]=0;
@@ -76,6 +79,8 @@ primitive::primitive(){
 	//transforms.push_back(this_transform);
 
 }
+/**
+*/
 primitive::primitive(int ptype, unsigned cellnum ,unsigned cellmat ,float xmin,float ymin,float zmin,float xmax,float ymax,float zmax,float x,float y,float z){
 	//box valued constructor
 	min[0]=xmin;min[1]=ymin;min[2]=zmin;
@@ -96,6 +101,8 @@ primitive::primitive(int ptype, unsigned cellnum ,unsigned cellmat ,float xmin,f
 	transforms.push_back(this_transform);
 	n_transforms=1;
 }
+/**
+*/
 primitive::~primitive(){
 	//box destructor
 	//delete min;
@@ -105,6 +112,8 @@ primitive::~primitive(){
 	//delete &n_transforms;
 	//delete   &transforms;
 }
+/**
+*/
 void primitive::add_transform(){
 	wtransform this_transform;
 	if(transforms.empty()){
@@ -122,6 +131,8 @@ void primitive::add_transform(){
 	transforms.push_back(this_transform);
 	n_transforms++;
 }
+/**
+*/
 void primitive::add_transform(unsigned cellnum , float dx , float dy , float dz , float theta , float phi ){
 	wtransform this_transform;
 	this_transform.cellnum = cellnum;
@@ -134,6 +145,8 @@ void primitive::add_transform(unsigned cellnum , float dx , float dy , float dz 
 	transforms.push_back(this_transform);
 	n_transforms++;
 }
+/**
+*/
 void primitive::add_transform(unsigned cellnum ,unsigned cellmat, float dx , float dy , float dz , float theta , float phi ){
 	wtransform this_transform;
 	this_transform.cellnum = cellnum;
@@ -146,6 +159,8 @@ void primitive::add_transform(unsigned cellnum ,unsigned cellmat, float dx , flo
 	transforms.push_back(this_transform);
 	n_transforms++;
 }
+/**
+*/
 void primitive::print_transform(){
 	std::cout << "--- primitive id  = " << primitive_id << " ---" << "\n";
 	std::cout << "   min,max  = (" << min[0] << " , " << min[1] << " , " << min[2] << "),(" << max[0] << " , " << max[1] << " , " << max[2] << ")" << "\n";
@@ -164,6 +179,8 @@ void primitive::print_transform(){
 		std::cout << "   phi      = " << transforms[tnum].phi << "\n";
 	}
 }
+/**
+*/
 void primitive::print_transform(int tnum){
 	std::cout << "--- primitive id  = " << primitive_id << " ---" << "\n";
 	std::cout << "   min,max  = (" << min[0] << " , " << min[1] << " , " << min[2] << "),(" << max[0] << " , " << max[1] << " , " << max[2] << ")" << "\n";
@@ -180,7 +197,8 @@ void primitive::print_transform(int tnum){
 	std::cout << "   theta    = " << transforms[tnum].theta << "\n";
 	std::cout << "   phi      = " << transforms[tnum].phi << "\n";
 }
-
+/**
+*/
 void primitive::make_hex_array(int n, float x, float y, unsigned starting_index){
 
 	wtransform this_transform;
@@ -230,7 +248,10 @@ void primitive::make_hex_array(int n, float x, float y, unsigned starting_index)
 	}
 
 }
-
+/**
+	make_hex_array makes hex arrays
+	@param n edge length in primitives
+*/
 void primitive::make_hex_array(int n, float x, float y, float phi, unsigned starting_index){
 
 	wtransform this_transform;
@@ -281,7 +302,9 @@ void primitive::make_hex_array(int n, float x, float y, float phi, unsigned star
 
 }
 
-
+/**
+	@class aww yeah
+*/
 class wgeometry {
 	unsigned 	n_box;
 	unsigned 	n_cyl;
@@ -2591,7 +2614,7 @@ void whistory::run(unsigned num_cycles){
 	int iteration = 0;
 	int iteration_total=0;
 	unsigned converged = 0;
-	unsigned n_skip = 10;
+	unsigned n_skip = 0;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -2600,9 +2623,11 @@ void whistory::run(unsigned num_cycles){
 	if(RUN_FLAG==0){
 		reset_fixed();
 		converged=1;
+		n_skip=0;
 	}
 	else if(RUN_FLAG==1){
 		sample_fissile_points();
+		n_skip=20;
 	}
 
 	// init run vars for cycle
@@ -2655,7 +2680,7 @@ void whistory::run(unsigned num_cycles){
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			//cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			absorb  ( NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
 			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 

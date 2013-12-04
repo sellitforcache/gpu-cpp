@@ -3,6 +3,7 @@ from pyne import nucname
 import numpy
 import sys
 import glob
+import pylab
 
 class cross_section_data:
 
@@ -170,7 +171,7 @@ class cross_section_data:
 		rxn   = table.reactions[MTnum]
 		# get the energy from this index
 		this_E = self.MT_E_grid[row]
-		#print "isotope = "+ str(isotope)+" = "+self.tables[isotope].name+" MT = "+str(MTnum)+" row="+str(row)+" col="+str(col)
+		print "isotope = "+ str(isotope)+" = "+self.tables[isotope].name+" MT = "+str(MTnum)+" row="+str(row)+" col="+str(col)
 		#print "energy="+str(self.MT_E_grid[row])
 		if hasattr(rxn,"ang_energy_in"):
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has scattering data"
@@ -254,11 +255,17 @@ class cross_section_data:
 				assert vlen == mu.__len__()
 				# return
 				#print "vlen="+str(vlen)
+				if MTnum == 91 :
+					print "MT=91  thisE="+str(this_E)+" nextE="+str(next_E)+" thisdex="+str(row)+" nextdex="+str(nextDex)
+					pylab.plot(mu,cdf)
+					pylab.savefig("MT91_scatter_"+str(this_E)+".png")
+					pylab.cla()
 				return [nextDex,this_E,next_E,vlen,nextvlen,mu,cdf,nextmu,nextcdf]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-				#print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
+				if MTnum==91:
+					print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 				return [nextDex,this_E,next_E,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		elif hasattr(table,"nu_t_energy"):
 			# return interpolated nu values
@@ -339,10 +346,18 @@ class cross_section_data:
 					assert vlen == mu.__len__()
 					#print "vlen,next "+str(vlen)+" "+str(nextvlen)
 					# return
+					if MTnum == 91 :
+						print "MT=91  thisE="+str(this_E)+" nextE="+str(next_E)+" thisdex="+str(row)+" nextdex="+str(nextDex)
+						print scatter_dex
+						pylab.plot(mu,cdf)
+						pylab.savefig("MT91_energy_"+str(this_E)+".png")
+						pylab.cla()
 					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,pdf,nextmu,nextcdf,nextpdf]
 				else:  # return 0 if below the first energy]
 					next_E = scatterE[0]
 					nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
+					if MTnum==91:
+						print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 					return [nextDex,0,0,0,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		else:
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no energy tables"
