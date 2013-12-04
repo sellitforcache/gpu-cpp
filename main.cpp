@@ -92,11 +92,11 @@ int main(){
 	// u235
 	unsigned topes[1]={92235};
 	float    fracs[1]={1};
-	float    dens = 3.0;
+	float    dens = 1.0;
 	geom.add_material(1,1,1,dens,topes,fracs);
 	geom.add_material(2,0,1,dens,topes,fracs);
 	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "u235_crit_nocont.tally";
+	tallyname = "u235.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
@@ -235,7 +235,7 @@ int main(){
 	// converge fission source and run //
 	/////////////////////////////////////
 
-	hist.set_run_type("criticality");
+	hist.set_run_type("fixed");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
 	hist.run(40);

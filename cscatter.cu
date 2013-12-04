@@ -146,8 +146,6 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	//mu = 2.0*rn9 - 1.0;
 
-	//if(this_rxn==91){printf("%u % 6.4E % 6.4E % 6.4E\n",this_rxn,mu,sampled_E,this_E);}
-
 	// sample new phi
 	phi = 2.0*pi*rn10;
 
@@ -173,6 +171,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		isdone=1;
 	}
 
+	//if(this_rxn==91){printf("%u % 6.4E %6.4E %6.4E %6.4E\n",this_rxn,mu,sampled_E,this_E,E_new);}
 	//if(this_rxn==91){printf("%6.4E %6.4E %6.4E\n",E_new,this_E,E_new/this_E);}
 	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,vlen,this_Sarray,this_Earray,E_new,sampled_E,A,R);
 
