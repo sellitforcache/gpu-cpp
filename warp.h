@@ -2700,7 +2700,6 @@ void whistory::run(unsigned num_cycles){
 
 		//reduce yield and reset cycle
 		if(RUN_FLAG==0){
-			std::cout << keff_cycle << "\n";
 			keff_cycle = 1.0 - 1.0/(keff_cycle+1.0);   // based on: Ntotal = Nsource / (1-k) 
 			reset_fixed();
 			Nrun=Ndataset;
@@ -2729,13 +2728,13 @@ void whistory::run(unsigned num_cycles){
 		}
 
 		// print whatever's clever
-		if(converged){
-			     if(RUN_FLAG==0){std::cout << "Cumulative keff/sc-mult = "<< keff << " / " << 1.0/(1.0-keff) << ", ACTIVE cycle " << iteration << ", cycle keff/sc-mult = " << keff_cycle << " / " << 1.0/(1.0-keff_cycle) << "\n";}
-			else if(RUN_FLAG==1){std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", cycle keff = " << keff_cycle << "\n";}
-		}
-		else{
-			std::cout << "Converging fission source..." << "\n";
-		}
+//		if(converged){
+//			     if(RUN_FLAG==0){std::cout << "Cumulative keff/sc-mult = "<< keff << " / " << 1.0/(1.0-keff) << ", ACTIVE cycle " << iteration << ", cycle keff/sc-mult = " << keff_cycle << " / " << 1.0/(1.0-keff_cycle) << "\n";}
+//			else if(RUN_FLAG==1){std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", cycle keff = " << keff_cycle << "\n";}
+//		}
+//		else{
+//			std::cout << "Converging fission source..." << "\n";
+//		}
 		
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();

@@ -235,7 +235,7 @@ int main(){
 	// converge fission source and run //
 	/////////////////////////////////////
 
-	hist.set_run_type("fixed");
+	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
 	hist.run(40);
