@@ -35,7 +35,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 		memcpy(&nu, &scatterdat[this_dex], sizeof(float));
 		inu = (unsigned) nu;
 	
-		if((float)inu+rn1 < nu){
+		if((float)inu+rn1 <= nu){
 			this_yield = inu+1;
 		}
 		else{
