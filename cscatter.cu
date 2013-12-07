@@ -142,15 +142,21 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	// histogram interpolation
 	E0 = e0 + (e1-e0)/(cdf1-cdf0)*(rn7-cdf0);
-	E1 =  last_e_start + r*( next_e_start - last_e_start );
-	Ek =  next_e_end   + r*( next_e_end   - last_e_end   );
-	sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
 	//lin-lin interpolation
 	//float m   = (pdf1 - pdf0)/(e1-e0);
 	//float arg = pdf0*pdf0 + 2.0 * m * (rn7-cdf0);
-	//if(arg<0){arg=0.0;}
-	//sampled_E 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
+	//if(arg<0){
+	//	E0 = e0 + (e1-e0)/(cdf1-cdf0)*(rn7-cdf0);
+	//}
+	//else{
+	//	E0 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
+	//}
 
+	//scale it
+	E1 = last_e_start + r*( next_e_start - last_e_start );
+	Ek = next_e_end   + r*( next_e_end   - last_e_end   );
+	sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
+	//sampled_E = E0;
 
 	// find mu
 	if(rn8>R){
@@ -188,7 +194,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		isdone=1;
 	}
 
-	if(this_rxn==91){printf("%u % 6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",this_rxn,mu,sampled_E,this_E,E_new, E0, E1, Ek, e_start);}
+	
+	//if(this_rxn==91){printf("%u % 6.4E %6.4E %6.4E %6.4E %u %u\n",this_rxn,mu,sampled_E,this_E,E_new, vlen, next_vlen);}
 	//if(this_rxn==91){printf("%6.4E %6.4E %6.4E\n",E_new,this_E,E_new/this_E);}
 	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,vlen,this_Sarray,this_Earray,E_new,sampled_E,A,R);
 

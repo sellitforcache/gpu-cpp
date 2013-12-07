@@ -2675,7 +2675,7 @@ void whistory::run(unsigned num_cycles){
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			//cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			absorb  ( NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
 			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 
@@ -2728,13 +2728,13 @@ void whistory::run(unsigned num_cycles){
 		}
 
 		// print whatever's clever
-//		if(converged){
-//			     if(RUN_FLAG==0){std::cout << "Cumulative keff/sc-mult = "<< keff << " / " << 1.0/(1.0-keff) << ", ACTIVE cycle " << iteration << ", cycle keff/sc-mult = " << keff_cycle << " / " << 1.0/(1.0-keff_cycle) << "\n";}
-//			else if(RUN_FLAG==1){std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", cycle keff = " << keff_cycle << "\n";}
-//		}
-//		else{
-//			std::cout << "Converging fission source..." << "\n";
-//		}
+		if(converged){
+			     if(RUN_FLAG==0){std::cout << "Cumulative keff/sc-mult = "<< keff << " / " << 1.0/(1.0-keff) << ", ACTIVE cycle " << iteration << ", cycle keff/sc-mult = " << keff_cycle << " / " << 1.0/(1.0-keff_cycle) << "\n";}
+			else if(RUN_FLAG==1){std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", cycle keff = " << keff_cycle << "\n";}
+		}
+		else{
+			std::cout << "Converging fission source..." << "\n";
+		}
 		
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();

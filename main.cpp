@@ -92,11 +92,11 @@ int main(){
 	// u235
 	unsigned topes[1]={92235};
 	float    fracs[1]={1};
-	float    dens = 1.0;
+	float    dens = 3.0;
 	geom.add_material(1,1,1,dens,topes,fracs);
 	geom.add_material(2,0,1,dens,topes,fracs);
 	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "u235.tally";
+	tallyname = "u235_crit.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
@@ -179,12 +179,12 @@ int main(){
 	geom.add_primitive();
 	geom.primitives[0].type=0;
 	geom.primitives[0].material=1;
-	geom.primitives[0].min[0]=-42;
-	geom.primitives[0].min[1]=-42;
-	geom.primitives[0].min[2]=-42;
-	geom.primitives[0].max[0]=42;
-	geom.primitives[0].max[1]=42;
-	geom.primitives[0].max[2]=42;
+	geom.primitives[0].min[0]=-500;
+	geom.primitives[0].min[1]=-500;
+	geom.primitives[0].min[2]=-500;
+	geom.primitives[0].max[0]= 500;
+	geom.primitives[0].max[1]= 500;
+	geom.primitives[0].max[2]= 500;
 	geom.primitives[0].add_transform();
 	geom.primitives[0].transforms[0].cellnum = 999;
 	geom.primitives[0].transforms[0].dx      = 0;

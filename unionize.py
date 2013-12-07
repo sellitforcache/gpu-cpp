@@ -255,11 +255,11 @@ class cross_section_data:
 				assert vlen == mu.__len__()
 				# return
 				#print "vlen="+str(vlen)
-				if MTnum == 91 :
-					print "MT=91  thisE="+str(this_E)+" nextE="+str(next_E)+" thisdex="+str(row)+" nextdex="+str(nextDex)
-					pylab.plot(mu,cdf)
-					pylab.savefig("MT91_scatter_"+str(this_E)+".png")
-					pylab.cla()
+				#if MTnum == 91 :
+				#	print "MT=91  thisE="+str(this_E)+" nextE="+str(next_E)+" thisdex="+str(row)+" nextdex="+str(nextDex)
+				#	pylab.plot(mu,cdf)
+				#	pylab.savefig("MT91_scatter_"+str(this_E)+".png")
+				#	pylab.cla()
 				return [nextDex,this_E,next_E,vlen,nextvlen,mu,cdf,nextmu,nextcdf]
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
@@ -346,12 +346,12 @@ class cross_section_data:
 					assert vlen == mu.__len__()
 					#print "vlen,next "+str(vlen)+" "+str(nextvlen)
 					# return
-					if MTnum == 91 :
-						print "MT=91  thisE="+str(this_E)+" nextE="+str(next_E)+" thisdex="+str(row)+" nextdex="+str(nextDex)
-						print scatter_dex
-						pylab.plot(mu,cdf)
-						pylab.savefig("MT91_energy_"+str(this_E)+".png")
-						pylab.cla()
+					#if MTnum == 91 :
+					#	print "MT=91  thisE="+str(this_E)+" nextE="+str(next_E)+" thisdex="+str(row)+" nextdex="+str(nextDex)
+					#	print scatter_dex
+					#	pylab.plot(mu,cdf)
+					#	pylab.savefig("MT91_energy_"+str(this_E)+".png")
+					#	pylab.cla()
 					return [nextDex,this_E,next_E,vlen,nextvlen,law,mu,cdf,pdf,nextmu,nextcdf,nextpdf]
 				else:  # return 0 if below the first energy]
 					next_E = scatterE[0]
