@@ -156,7 +156,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	E1 = last_e_start + r*( next_e_start - last_e_start );
 	Ek = next_e_end   + r*( next_e_end   - last_e_end   );
 	sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
-	//sampled_E = E0;
+	sampled_E = E0;
 
 	// find mu
 	if(rn8>R){
