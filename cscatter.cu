@@ -34,9 +34,9 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
 	float * 	this_Earray =  energydat[this_dex];
-	//float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
-	//float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
-	//float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
+	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
+	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
+	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
 	float 		rn4 		= rn_bank[ tid*RNUM_PER_THREAD + 6];
 	float 		rn5 		= rn_bank[ tid*RNUM_PER_THREAD + 7];
 	float 		rn6 		= rn_bank[ tid*RNUM_PER_THREAD + 8];
@@ -49,8 +49,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		mu, phi, next_E, last_E, sampled_E, e_start, E0, E1, Ek, next_e_start, next_e_end, last_e_start, last_e_end, diff;
     unsigned 	vlen, next_vlen, offset, n, law; 
     unsigned  	isdone = 0;
-	//float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
-	float 		speed_target     	=   0;//sqrtf(2.0*E_target/(this_awr*m_n));
+	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
+	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);

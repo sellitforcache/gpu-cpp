@@ -134,6 +134,17 @@ int main(){
 	//geom.add_material(3,0,1,dens,topes,fracs);
 	//tallyname = "hydrogen1.tally";
 
+	// assembly mats
+	//unsigned topes      [4] = {92235,92238,8016,1001};
+	//float    fracs_fuel [4] = {0.05,  0.95,   0,   0};
+	//float 	 fracs_water[4] = {   0,     0,   1,   2};
+	//float    dens_fuel = 10.424;
+	//float 	 dens_water = 1.0;
+	//geom.add_material(1,1,4,dens_fuel, topes,fracs_fuel);
+	//geom.add_material(2,0,4,dens_water,topes,fracs_water);
+	//geom.add_material(3,0,4,dens_water,topes,fracs_water);
+	//tallyname = "assembly.tally";
+
 	// assembly geom
 	//geom.add_primitive();
 	//geom.primitives[0].type=1;
@@ -238,7 +249,8 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.run(40);
+	hist.set_run_param(1,1);
+	hist.run();
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");
 

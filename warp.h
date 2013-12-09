@@ -1191,6 +1191,8 @@ class whistory {
 	unsigned 		n_isotopes;
 	unsigned 		n_tally;
 	unsigned 		n_qnodes;
+	unsigned 		n_skip;
+	unsigned 		n_cycles;
     source_point *  space;
     unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points 
     unsigned *      xs_MT_numbers_total;
@@ -1289,7 +1291,7 @@ public:
     void converge(unsigned);
     void sample_fissile_points();
     float reduce_yield();
-    void run(unsigned);
+    void run();
     unsigned reduce_done();
     void reset_cycle(float);
     void reset_fixed();
@@ -1303,6 +1305,7 @@ public:
     unsigned map_active();
     void set_run_type(unsigned);
     void set_run_type(std::string);
+    void set_run_param(unsigned,unsigned);
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 	// do problem gemetry stuff first
@@ -2590,14 +2593,11 @@ void whistory::reset_fixed(){
 	update_RNG();
 
 }
-void whistory::run(unsigned num_cycles){
+void whistory::run(){
 
 	std::string runtype = "UNDEFINED";
 	if     (RUN_FLAG==0){runtype="fixed";}
 	else if(RUN_FLAG==1){runtype="criticality";}
-
-	std::cout << "\e[1;32m" << "--- Running in " << runtype << " source mode --- " << "\e[m \n";
-	std::cout << "\e[1;32m" << "--- Running "<< num_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
 
 	float keff = 0.0;
 	float keff_cycle = 0.0;
@@ -2609,7 +2609,6 @@ void whistory::run(unsigned num_cycles){
 	int iteration = 0;
 	int iteration_total=0;
 	unsigned converged = 0;
-	unsigned n_skip = 0;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -2622,7 +2621,6 @@ void whistory::run(unsigned num_cycles){
 	}
 	else if(RUN_FLAG==1){
 		sample_fissile_points();
-		n_skip=20;
 	}
 
 	// init run vars for cycle
@@ -2634,7 +2632,10 @@ void whistory::run(unsigned num_cycles){
 	}
 	keff_cycle = 0;
 
-	while(iteration<num_cycles){
+	std::cout << "\e[1;32m" << "--- Running in " << runtype << " source mode --- " << "\e[m \n";
+	std::cout << "\e[1;32m" << "--- Skipping "<< n_skip << " cycles, Running "<< n_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
+
+	while(iteration<n_cycles){
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -2708,7 +2709,7 @@ void whistory::run(unsigned num_cycles){
 			keff_cycle = reduce_yield();
 			reset_cycle(keff_cycle);
 			Nrun=N;
-			if( iteration_total>n_skip){ //difference < 0){
+			if( iteration_total>=n_skip){ //difference < 0){
 				converged=1;
 			}
 		}
@@ -2733,7 +2734,7 @@ void whistory::run(unsigned num_cycles){
 			else if(RUN_FLAG==1){std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", cycle keff = " << keff_cycle << "\n";}
 		}
 		else{
-			std::cout << "Converging fission source..." << "\n";
+			std::cout << "Converging fission source... skiped cycle " << iteration_total+1 <<"\n";
 		}
 		
 		//std::cout << "cycle done, press enter to continue...\n";
@@ -3000,6 +3001,12 @@ void whistory::set_run_type(std::string type_in){
 	else{
 		std::cout << "Run type \"" << type_in << "\" not recognized." << "\n";
 	}
+
+}
+void whistory::set_run_param(unsigned n_cycles_in, unsigned n_skip_in){
+
+	n_skip = n_skip_in;
+	n_cycles = n_cycles_in;
 
 }
 
