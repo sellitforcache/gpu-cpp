@@ -314,6 +314,7 @@ class wgeometry {
 	unsigned 	outer_cell;
 	unsigned 	n_materials;
 	unsigned 	n_isotopes;
+	unsigned 	fissile_flag;
 	unsigned * 	material_num_list;
 	unsigned * 	cell_num_list;
 public:
@@ -336,6 +337,7 @@ public:
 	void make_material_table();
 	void get_material_table(unsigned*,unsigned*,unsigned**,unsigned**,float**);
 	void print_materials_table();
+	unsigned check_fissile();
 	std::vector<primitive>   	primitives;
 	std::vector<material_def>	materials;
 	std::vector<unsigned>		isotopes;
@@ -355,6 +357,7 @@ wgeometry::wgeometry(){
 	outer_cell   = 0;
 	n_materials  = 0;
 	n_isotopes   = 0;
+	fissile_flag = 0;
 }
 wgeometry::~wgeometry(){
 	//material destructor
@@ -563,7 +566,6 @@ int wgeometry::check(){
 	}
 
 	// check that there are materials for each number specified in the geom
-
 	for(int k=0;k<mat_list_index;k++){
 		notfound=1;
 		for(int j=0;j<n_materials;j++){
@@ -590,6 +592,11 @@ int wgeometry::check(){
 	if(notfound){
 		std::cout << "Cell " << outer_cell << " not found, cannot set it as the outer cell!\n";
 		return 1;
+	}
+
+	//see if there are any fissile isotopes
+	for(int k=0;k<n_materials;k++){
+		fissile_flag += materials[k].is_fissile;
 	}
 
 	std::cout << "They check out.\n";
@@ -624,6 +631,11 @@ unsigned wgeometry::get_outer_cell_dims(float * input_array){
 }
 unsigned wgeometry::get_material_count(){
 	return n_materials;
+}
+unsigned wgeometry::check_fissile(){
+
+	return fissile_flag;
+
 }
 void wgeometry::make_material_table(){
 
@@ -2734,7 +2746,7 @@ void whistory::run(){
 			else if(RUN_FLAG==1){std::cout << "Cumulative keff = "<< keff << ", ACTIVE cycle " << iteration << ", cycle keff = " << keff_cycle << "\n";}
 		}
 		else{
-			std::cout << "Converging fission source... skiped cycle " << iteration_total+1 <<"\n";
+			std::cout << "Converging fission source... skipped cycle " << iteration_total+1 <<"\n";
 		}
 		
 		//std::cout << "cycle done, press enter to continue...\n";
@@ -2996,7 +3008,15 @@ void whistory::set_run_type(std::string type_in){
 		RUN_FLAG = 0;
 	}
 	else if(type_in.compare("criticality")==0){
-		RUN_FLAG = 1;
+		// check of there are fissile materials
+		if(problem_geom.check_fissile()){
+			//set flag to criticality
+			RUN_FLAG = 1;
+		}
+		else{
+			RUN_FLAG = 0;
+			std::cout << "\e[1;31m" << "!!! No materials marked as fissile, criticality source mode rejected, will run in fixed source mode !!!" << "\e[m \n";
+		}
 	}
 	else{
 		std::cout << "Run type \"" << type_in << "\" not recognized." << "\n";

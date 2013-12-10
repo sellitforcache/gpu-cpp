@@ -28,7 +28,7 @@ def get_serpent_det(filepath):
 if   case=='water':
 	tally      = numpy.loadtxt('water.tally')
 	tallybins  = numpy.loadtxt('water.tallybins')
-	serpdata   = get_serpent_det('../serpent-benchmark/nonfiss_mono2_det0.m')
+	serpdata   = get_serpent_det('../serpent-benchmark/water_10Mev_det0.m')
 elif case=='isowater':
 	tally      = numpy.loadtxt('isowater.tally')
 	tallybins  = numpy.loadtxt('isowater.tallybins')

@@ -18,7 +18,7 @@ __global__ void sample_fixed_source_kernel(unsigned N, unsigned RNUM_PER_THREAD,
 	const float theta = ( rn2 ) * 2.0 * pi ;
 
 	//monoenergetic for now
-	E[tid]=1.0e-6;
+	E[tid]=10.0;//1.0e-6;
 
 	//point source for now
 	space[tid].x = 0.0;

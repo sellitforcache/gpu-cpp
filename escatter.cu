@@ -46,7 +46,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		mu, phi, next_E, last_E;
     unsigned 	vlen, next_vlen, offset, k; 
     unsigned  	isdone = 0;
-	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
+	float  		E_target     		=   1.2 * temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
 	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
