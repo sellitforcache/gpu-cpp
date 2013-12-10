@@ -2566,7 +2566,7 @@ void whistory::reset_cycle(float keff_cycle){
 
 	//reduce to check
 	float keff_new = reduce_yield();
-	//std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
+	std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
 
 	// pop them in!  should be the right size now.  scan to see where to write
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
