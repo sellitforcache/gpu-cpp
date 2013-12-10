@@ -264,8 +264,8 @@ class cross_section_data:
 			else:  # return 0 if below the first energy]
 				next_E = scatterE[0]
 				nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-				if MTnum==91:
-					print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
+				#if MTnum==91:
+					#print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 				return [nextDex,this_E,next_E,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		elif hasattr(table,"nu_t_energy"):
 			# return interpolated nu values
@@ -301,7 +301,7 @@ class cross_section_data:
 		# get the energy from this index
 		this_E = self.MT_E_grid[row]
 		if hasattr(rxn,"energy_dist"):
-			#print "LAW="+str(rxn.energy_dist.law)+" MT="+str(MTnum)
+			print "LAW="+str(rxn.energy_dist.law)+" MT="+str(MTnum)
 			if rxn.energy_dist.law == 3:
 				next_E = self.MT_E_grid[self.num_main_E-1]
 				return [(self.MT_E_grid.__len__()-1),this_E,next_E,0,0,3,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
@@ -356,8 +356,8 @@ class cross_section_data:
 				else:  # return 0 if below the first energy]
 					next_E = scatterE[0]
 					nextDex = numpy.where( self.MT_E_grid == next_E )[0][0]
-					if MTnum==91:
-						print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
+					#if MTnum==91:
+						#print "energy starts at dex "+str(nextDex)+", energy="+str(next_E)+","+str(self.MT_E_grid[nextDex])
 					return [nextDex,0,0,0,0,0,numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0]),numpy.array([0])]
 		else:
 			#print "isotope "+str(isotope)+", MT = "+str(MTnum)+" has no energy tables"

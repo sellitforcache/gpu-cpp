@@ -49,7 +49,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	xs_total 	= (t1-t0)/(e1-e0)*(this_E-e0) + t0 ;    
 
 	// determine the reaction for this isotope
-	for(k=tope_beginning; k<tope_ending; k++){
+	for(k=tope_beginning; k<=tope_ending; k++){
 		//linearly interpolate
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
@@ -57,6 +57,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		if(rn1 <= cum_prob){
 			// reactions happen in reaction k
 			this_rxn = xs_MT_numbers[k];
+			//printf("tope %u beg/end %u %u rxn %u cum_prob %6.4E rn1 %6.4E this_E %6.4E (tot,es,91,abs) %6.4E %6.4E %6.4E %6.4E\n",this_tope,tope_beginning,tope_ending,this_rxn,cum_prob,rn1,this_E,xs_data_MT[n_columns* dex    + 0],xs_data_MT[n_columns* dex    + 1],xs_data_MT[n_columns* dex    + 46],xs_data_MT[n_columns* dex    + 47]);
 			this_Q   = xs_data_Q[k];
 			this_dex = n_columns* dex + k;
 			break;
@@ -64,27 +65,28 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	}
 
 	if(this_rxn == 999999999){ // there is a gap in between the last MT and the total cross section, remap the rn to fit into the available data (effectively rescales the total cross section so everything adds up to it, if things aren't samples the first time around)
-		//printf("REACTION NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u rxn=%u cum_prob=%6.4E\n",this_tope, this_E, dex, this_rxn, cum_prob);
-		rn1 = rn1 * cum_prob;
-		cum_prob = 0.0;
-		for(k=tope_beginning; k<tope_ending; k++){
-			//lienarly interpolate
-			t0 = xs_data_MT[n_columns* dex    + k];     
-			t1 = xs_data_MT[n_columns*(dex+1) + k];
-			cum_prob += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) / xs_total;
-			if(rn1 <= cum_prob){
-				// reactions happen in reaction k
-				this_rxn = xs_MT_numbers[k];
-				this_Q   = xs_data_Q[k];
-				this_dex = n_columns * dex + k;
-				break;
-			}
-		}
+		printf("REACTION NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u rxn=%u cum_prob=%6.4E\n",this_tope, this_E, dex, this_rxn, cum_prob);
+		//rn1 = rn1 * cum_prob;
+		//cum_prob = 0.0;
+		//for(k=tope_beginning; k<tope_ending; k++){
+		//	//lienarly interpolate
+		//	t0 = xs_data_MT[n_columns* dex    + k];     
+		//	t1 = xs_data_MT[n_columns*(dex+1) + k];
+		//	cum_prob += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) / xs_total;
+		//	if(rn1 <= cum_prob){
+		//		// reactions happen in reaction k
+		//		this_rxn = xs_MT_numbers[k];
+		//		this_Q   = xs_data_Q[k];
+		//		this_dex = n_columns * dex + k;
+		//		break;
+		//	}
+		//}
 	}
 
 
 	// write results out
 	//if( this_rxn >= 4 & this_rxn<50 & this_rxn!=18 ){printf("this_rxn(%d,(1:5))=[%u,%u,%u,%u,%u];\n",tid+1,xs_MT_numbers[k],this_dex,this_rxn,this_tope,k);}
+	//printf("%u\n",this_rxn);
 	if(this_rxn==4){printf("MT=4!!!\n");}
 	rxn[tid] = this_rxn;
 	Q[tid] 	 = this_Q;

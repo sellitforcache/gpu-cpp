@@ -2721,9 +2721,6 @@ void whistory::run(){
 			keff_cycle = reduce_yield();
 			reset_cycle(keff_cycle);
 			Nrun=N;
-			if( iteration_total>=n_skip){ //difference < 0){
-				converged=1;
-			}
 		}
 
 		// recalculate running average
@@ -2752,8 +2749,13 @@ void whistory::run(){
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
 
-		iteration_total++;
+		// set convergence flag
+		if( iteration_total==n_skip-1){ 
+				converged=1;
+		}
 
+		// advance iteration number, reset cycle keff
+		iteration_total++;
 		keff_cycle = 0.0;
 
 	}

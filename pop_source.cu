@@ -92,8 +92,12 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		// lin-lin interpolation
 		m 	= (pdf1 - pdf0)/(e1-e0);
 		arg = pdf0*pdf0 + 2.0 * m * (rn1-cdf0);
-		if(arg<0){arg=0.0;}
-		E0 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
+		if(arg<0){
+			E0 = e0 + (e1-e0)/(cdf1-cdf0)*(rn1-cdf0);
+		}
+		else{
+			E0 	= e0 + (  sqrtf( arg ) - pdf0) / m ;
+		}
 		// histogram interpolation
 		//E0 = e0 + (rn1-cdf0)/pdf0;
 		
@@ -102,6 +106,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		Ek = last_e_end   + r*( next_e_end   - last_e_end   );
 		sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
 		//sampled_E = E0;
+		//printf("%6.4E\n",sampled_E);
 
 		if(this_rxn==18){
 			//sample isotropic directions

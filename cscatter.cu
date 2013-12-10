@@ -109,25 +109,6 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		offset = 4;
 		A = this_Sarray[ (offset)      + n ];
 		R = this_Sarray[ (offset+vlen) + n ];
-//		for ( n=0 ; n<vlen-1 ; n++ ){
-//			cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
-//			cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
-//			pdf0		= this_Earray[ (offset + 2*vlen ) + n+0];
-//			pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
-//			e0  		= this_Earray[ (offset          ) + n+0];
-//			e1  		= this_Earray[ (offset          ) + n+1]; 
-//			//printf("cdf0=%6.4E\n",cdf0);
-//			if( rn7 >= cdf0 & rn7 < cdf1 ){
-//				//printf("found emission energy\n");
-//				//memcpy(&svlen, 		&this_Sarray[2], sizeof(float));
-//				//if(svlen!=vlen){printf("svlen length does not match!\n");}
-//				//len=vlen;
-//				offset = 4;
-//				A = this_Sarray[ (offset)      + n ];
-//				R = this_Sarray[ (offset+vlen) + n ];
-//				break;
-//			}
-//		}
 	}
 	else{
 		diff = next_e_end - next_e_start;
@@ -143,24 +124,6 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		offset = 4;
 		A = this_Sarray[ (offset+2*vlen)           +n  ] ;
 		R = this_Sarray[ (offset+2*vlen+next_vlen) +n  ];
-//		for ( n=0 ; n<next_vlen-1 ; n++ ){
-//			cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
-//			cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
-//			pdf0		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+0];
-//			pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
-//			e0   		= this_Earray[ (offset + 3*vlen               ) + n+0];
-//			e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
-//			if( rn7 >= cdf0 & rn7 < cdf1 ){
-//				//printf("found emission energy\n");
-//				//memcpy(&next_svlen, 		&this_Sarray[3], sizeof(float));
-//				//if(next_svlen!=next_vlen){printf("next_svlen length does not match!\n");}
-//				//len=next_vlen;
-//				offset = 4;
-//				A = this_Sarray[ (offset+2*vlen)           +n  ] ;
-//				R = this_Sarray[ (offset+2*vlen+next_vlen) +n  ];
-//				break;
-//			}
-//		}
 	}
 
 	// histogram interpolation

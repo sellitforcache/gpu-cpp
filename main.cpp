@@ -90,13 +90,13 @@ int main(){
 	//tallyname = "lithium.tally";
 
 	// u235
-	unsigned topes[1]={92235};
-	float    fracs[1]={1};
-	float    dens = 3.0;
-	geom.add_material(1,1,1,dens,topes,fracs);
-	geom.add_material(2,0,1,dens,topes,fracs);
-	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "u235_crit.tally";
+	//unsigned topes[1]={92235};
+	//float    fracs[1]={1};
+	//float    dens = 3.0;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "u235_crit.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
@@ -108,13 +108,13 @@ int main(){
 	//tallyname = "1kpu239.tally";
 
 	// u238
-	//unsigned topes[1]={92238};
-	//float    fracs[1]={1};
-	//float    dens = 1;
-	//geom.add_material(1,1,1,dens,topes,fracs);
-	//geom.add_material(2,0,1,dens,topes,fracs);
-	//geom.add_material(3,0,1,dens,topes,fracs);
-	//tallyname = "u238_crit.tally";
+	unsigned topes[1]={92238};
+	float    fracs[1]={1};
+	float    dens = 3;
+	geom.add_material(1,1,1,dens,topes,fracs);
+	geom.add_material(2,0,1,dens,topes,fracs);
+	geom.add_material(3,0,1,dens,topes,fracs);
+	tallyname = "u238_crit.tally";
 
 	// hydrogen2
 	//unsigned topes[1]={1002};
@@ -249,7 +249,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.set_run_param(10,10);  //run, skip
+	hist.set_run_param(1,1);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");
