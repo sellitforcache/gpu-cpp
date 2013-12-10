@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 #include "wfloat3.h"
+#include "binary_search.h"
 
 __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
@@ -34,9 +35,9 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
 	float * 	this_Earray =  energydat[this_dex];
-	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
-	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
-	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
+	//float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
+	//float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
+	//float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
 	float 		rn4 		= rn_bank[ tid*RNUM_PER_THREAD + 6];
 	float 		rn5 		= rn_bank[ tid*RNUM_PER_THREAD + 7];
 	float 		rn6 		= rn_bank[ tid*RNUM_PER_THREAD + 8];
@@ -49,8 +50,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		mu, phi, next_E, last_E, sampled_E, e_start, E0, E1, Ek, next_e_start, next_e_end, last_e_start, last_e_end, diff;
     unsigned 	vlen, next_vlen, offset, n, law; 
     unsigned  	isdone = 0;
-	float  		E_target     		=   temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
-	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
+	float  		E_target     		=   0;//temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
+	float 		speed_target     	=   0;//sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
@@ -97,47 +98,69 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if(  rn6 >= r ){   //sample last E
 		diff = last_e_end - last_e_start;
 		e_start = last_e_start;
-		for ( n=0 ; n<vlen-1 ; n++ ){
-			cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
-			cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
-			pdf0		= this_Earray[ (offset + 2*vlen ) + n+0];
-			pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
-			e0  		= this_Earray[ (offset          ) + n+0];
-			e1  		= this_Earray[ (offset          ) + n+1]; 
-			//printf("cdf0=%6.4E\n",cdf0);
-			if( rn7 >= cdf0 & rn7 < cdf1 ){
-				//printf("found emission energy\n");
-				//memcpy(&svlen, 		&this_Sarray[2], sizeof(float));
-				//if(svlen!=vlen){printf("svlen length does not match!\n");}
-				//len=vlen;
-				offset = 4;
-				A = this_Sarray[ (offset)      + n ];
-				R = this_Sarray[ (offset+vlen) + n ];
-				break;
-			}
-		}
+		n = binary_search( &this_Earray[ offset + vlen ] , rn7, vlen);
+		//printf("n %u vlen %u rn7 %6.4E\n",n,vlen,rn7);
+		cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
+		cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
+		pdf0		= this_Earray[ (offset + 2*vlen ) + n+0];
+		pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
+		e0  		= this_Earray[ (offset          ) + n+0];
+		e1  		= this_Earray[ (offset          ) + n+1]; 
+		offset = 4;
+		A = this_Sarray[ (offset)      + n ];
+		R = this_Sarray[ (offset+vlen) + n ];
+//		for ( n=0 ; n<vlen-1 ; n++ ){
+//			cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
+//			cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
+//			pdf0		= this_Earray[ (offset + 2*vlen ) + n+0];
+//			pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
+//			e0  		= this_Earray[ (offset          ) + n+0];
+//			e1  		= this_Earray[ (offset          ) + n+1]; 
+//			//printf("cdf0=%6.4E\n",cdf0);
+//			if( rn7 >= cdf0 & rn7 < cdf1 ){
+//				//printf("found emission energy\n");
+//				//memcpy(&svlen, 		&this_Sarray[2], sizeof(float));
+//				//if(svlen!=vlen){printf("svlen length does not match!\n");}
+//				//len=vlen;
+//				offset = 4;
+//				A = this_Sarray[ (offset)      + n ];
+//				R = this_Sarray[ (offset+vlen) + n ];
+//				break;
+//			}
+//		}
 	}
 	else{
 		diff = next_e_end - next_e_start;
 		e_start = next_e_start;
-		for ( n=0 ; n<next_vlen-1 ; n++ ){
-			cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
-			cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
-			pdf0		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+0];
-			pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
-			e0   		= this_Earray[ (offset + 3*vlen               ) + n+0];
-			e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
-			if( rn7 >= cdf0 & rn7 < cdf1 ){
-				//printf("found emission energy\n");
-				//memcpy(&next_svlen, 		&this_Sarray[3], sizeof(float));
-				//if(next_svlen!=next_vlen){printf("next_svlen length does not match!\n");}
-				//len=next_vlen;
-				offset = 4;
-				A = this_Sarray[ (offset+2*vlen)           +n  ] ;
-				R = this_Sarray[ (offset+2*vlen+next_vlen) +n  ];
-				break;
-			}
-		}
+		n = binary_search( &this_Earray[ offset + 3*vlen + next_vlen] , rn7, next_vlen);
+		//printf("n %u next_vlen %u rn7 %6.4E\n",n,next_vlen,rn7);
+		cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
+		cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
+		pdf0		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+0];
+		pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
+		e0   		= this_Earray[ (offset + 3*vlen               ) + n+0];
+		e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
+		offset = 4;
+		A = this_Sarray[ (offset+2*vlen)           +n  ] ;
+		R = this_Sarray[ (offset+2*vlen+next_vlen) +n  ];
+//		for ( n=0 ; n<next_vlen-1 ; n++ ){
+//			cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
+//			cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
+//			pdf0		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+0];
+//			pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
+//			e0   		= this_Earray[ (offset + 3*vlen               ) + n+0];
+//			e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
+//			if( rn7 >= cdf0 & rn7 < cdf1 ){
+//				//printf("found emission energy\n");
+//				//memcpy(&next_svlen, 		&this_Sarray[3], sizeof(float));
+//				//if(next_svlen!=next_vlen){printf("next_svlen length does not match!\n");}
+//				//len=next_vlen;
+//				offset = 4;
+//				A = this_Sarray[ (offset+2*vlen)           +n  ] ;
+//				R = this_Sarray[ (offset+2*vlen+next_vlen) +n  ];
+//				break;
+//			}
+//		}
 	}
 
 	// histogram interpolation
