@@ -27,13 +27,13 @@ int main(){
 	//geom.add_material(3,0,5,dens_water,topes,fracs_water);
 
 	// homogenized UO2 w boron materials
-	//unsigned topes[5]={92235,92238,8016,1001,5010};
-	//float    fracs[5]={0.01,  0.99,   3,   2, 0.1};
-	//float 	 dens = 1.0;
-	//geom.add_material(1,1,5,dens,topes,fracs);
-	//geom.add_material(2,0,5,dens,topes,fracs);
-	//geom.add_material(3,0,5,dens,topes,fracs);
-	//tallyname = "homfuel.tally";
+	unsigned topes[4]={92235,92238,8016,1001};
+	float    fracs[4]={0.01,  0.99,   3,   2};
+	float 	 dens = 3.0;
+	geom.add_material(1,1,4,dens,topes,fracs);
+	geom.add_material(2,0,4,dens,topes,fracs);
+	geom.add_material(3,0,4,dens,topes,fracs);
+	tallyname = "homfuel.tally";
 
 	// water
 	//unsigned topes[2]={8016,1001};
@@ -90,13 +90,13 @@ int main(){
 	//tallyname = "lithium.tally";
 
 	// u235
-	unsigned topes[1]={92235};
-	float    fracs[1]={1};
-	float    dens = 3.0;
-	geom.add_material(1,1,1,dens,topes,fracs);
-	geom.add_material(2,0,1,dens,topes,fracs);
-	geom.add_material(3,0,1,dens,topes,fracs);
-	tallyname = "u235_crit.tally";
+	//unsigned topes[1]={92235};
+	//float    fracs[1]={1};
+	//float    dens = 3.0;
+	//geom.add_material(1,1,1,dens,topes,fracs);
+	//geom.add_material(2,0,1,dens,topes,fracs);
+	//geom.add_material(3,0,1,dens,topes,fracs);
+	//tallyname = "u235_crit.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
