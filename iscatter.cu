@@ -79,7 +79,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	offset=4;
 	if(this_Sarray == 0x0){
 		mu= 2*rn6-1; 
-		printf("null pointer in iscatter!\n");
+		printf("null pointer in iscatter!,dex %u tope %u E %6.4E\n",this_dex,this_tope,this_E);
 	}
 	else{  // 
 		//printf("rxn=%u dex=%u %p %6.4E\n",rxn[tid],this_dex,this_array,this_E);
