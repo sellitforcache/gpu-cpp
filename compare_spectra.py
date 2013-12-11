@@ -97,6 +97,10 @@ elif case== 'u235-crit-nocont':
 	tally      = numpy.loadtxt('u235_crit_nocont.tally')
 	tallybins  = numpy.loadtxt('u235_crit_nocont.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/u235_crit_det0.m')
+elif case== 'homfuel':
+	tally      = numpy.loadtxt('homfuel.tally')
+	tallybins  = numpy.loadtxt('homfuel.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/homfuel_crit_det0.m')
 
 
 

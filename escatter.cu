@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 #include "wfloat3.h"
-
+#include "binary_search.h"
 
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
@@ -31,7 +31,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//float 		this_Q 		= 0.0;
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
-	float * 	this_array 	= scatterdat[this_dex];
+	float * 	this_Sarray = scatterdat[this_dex];
 	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
 	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
 	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
@@ -76,39 +76,33 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// sample new phi, mu_cm
 	phi = 2.0*pi*rn7;
 	offset=4;
-	if(this_array == 0x0){
+	if(this_Sarray == 0x0){
 		mu= 2*rn6-1; 
 		printf("null pointer in escatter!\n");
 	}
 	else{  // 
-		memcpy(&last_E, 	&this_array[0], sizeof(float));
-		memcpy(&next_E, 	&this_array[1], sizeof(float));
-		memcpy(&vlen, 		&this_array[2], sizeof(float));
-		memcpy(&next_vlen, 	&this_array[3], sizeof(float));
+		//printf("rxn=%u dex=%u %p %6.4E\n",rxn[tid],this_dex,this_array,this_E);
+		memcpy(&last_E, 	&this_Sarray[0], sizeof(float));
+		memcpy(&next_E, 	&this_Sarray[1], sizeof(float));
+		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
+		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
+		float r = (this_E-last_E)/(next_E-last_E);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
-		if(  rn8 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
-			for ( k=0 ; k<vlen-1 ; k++ ){
-				if( rn6 >= this_array[ (offset+vlen) +k] & rn6 < this_array[ (offset+vlen) +k+1] ){
-					cdf0 = this_array[ (offset+vlen) +k  ];
-					cdf1 = this_array[ (offset+vlen) +k+1];
-					mu0  = this_array[ (offset)      +k  ];
-					mu1  = this_array[ (offset)      +k+1];
-					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
-					break;
-				}
-			}
+		if(  rn8 >= r ){   //sample last E
+			k = binary_search(&this_Sarray[offset+vlen], rn6, vlen);
+			cdf0 = this_Sarray[ (offset+vlen) +k  ];
+			cdf1 = this_Sarray[ (offset+vlen) +k+1];
+			mu0  = this_Sarray[ (offset)      +k  ];
+			mu1  = this_Sarray[ (offset)      +k+1];
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 		}
 		else{   // sample E+1
-			for ( k=0 ; k<next_vlen-1 ; k++ ){
-				if( rn6 >= this_array[ (offset+2*vlen+next_vlen) +k] & rn6 < this_array[ (offset+2*vlen+next_vlen) +k+1] ){
-					cdf0 = this_array[ (offset+2*vlen+next_vlen) +k  ];
-					cdf1 = this_array[ (offset+2*vlen+next_vlen) +k+1];
-					mu0  = this_array[ (offset+2*vlen)           +k  ];
-					mu1  = this_array[ (offset+2*vlen)           +k+1];
-					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
-					break;
-				}
-			}
+			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], rn6, next_vlen);
+			cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
+			cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
+			mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
+			mu1  = this_Sarray[ (offset+2*vlen)           +k+1];
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 		}
 	}
 

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 #include "wfloat3.h"
+#include "binary_search.h"
 
 __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
@@ -86,30 +87,23 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&next_E, 	&this_Sarray[1], sizeof(float));
 		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
 		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
+		float r = (this_E-last_E)/(next_E-last_E);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
-		if(  rn8 <= (next_E-this_E)/(next_E-last_E) ){   //sample last E
-			for ( k=0 ; k<vlen-1 ; k++ ){
-				if( rn6 >= this_Sarray[ (offset+vlen) +k] & rn6 < this_Sarray[ (offset+vlen) +k+1] ){
-					cdf0 = this_Sarray[ (offset+vlen) +k  ];
-					cdf1 = this_Sarray[ (offset+vlen) +k+1];
-					mu0  = this_Sarray[ (offset)      +k  ];
-					mu1  = this_Sarray[ (offset)      +k+1];
-					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
-					break;
-				}
-			}
+		if(  rn8 >= r ){   //sample last E
+			k = binary_search(&this_Sarray[offset+vlen], rn6, vlen);
+			cdf0 = this_Sarray[ (offset+vlen) +k  ];
+			cdf1 = this_Sarray[ (offset+vlen) +k+1];
+			mu0  = this_Sarray[ (offset)      +k  ];
+			mu1  = this_Sarray[ (offset)      +k+1];
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 		}
 		else{   // sample E+1
-			for ( k=0 ; k<next_vlen-1 ; k++ ){
-				if( rn6 >= this_Sarray[ (offset+2*vlen+next_vlen) +k] & rn6 < this_Sarray[ (offset+2*vlen+next_vlen) +k+1] ){
-					cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
-					cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
-					mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
-					mu1  = this_Sarray[ (offset+2*vlen)           +k+1];
-					mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
-					break;
-				}
-			}
+			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], rn6, next_vlen);
+			cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
+			cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
+			mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
+			mu1  = this_Sarray[ (offset+2*vlen)           +k+1];
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 		}
 	}
 
