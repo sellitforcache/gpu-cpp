@@ -457,6 +457,9 @@ void wgeometry::print_summary(){
 		for(int j=0;j<materials[k].num_isotopes;j++){
 			std::cout << "  number "<< j << ":  isotope " << materials[k].isotopes[j] << " frac = " << materials[k].fractions[j] << "\n";
 		}
+		if(k!=n_materials-1){
+			std::cout << "     ***\n";
+		}
 	}
 }
 void wgeometry::print_all(){
@@ -772,10 +775,12 @@ void wgeometry::print_materials_table(){
 
 class optix_stuff{
 	optix::Context 	context;
+	std::string accel_type, traverse_type;
 	unsigned mincell;
 	unsigned maxcell;
+	unsigned compute_device;
 	void make_geom(wgeometry);
-	void init_internal(wgeometry, unsigned);
+	void init_internal(wgeometry, unsigned, std::string);
 public:
 	CUdeviceptr 	positions_ptr; 
 	CUdeviceptr 	      rxn_ptr; 
@@ -789,7 +794,7 @@ public:
 	optix_stuff(unsigned,unsigned);
 	optix_stuff();
 	~optix_stuff();
-	void init(wgeometry, unsigned);
+	void init(wgeometry, unsigned, std::string);
 	void trace();
 	void trace(unsigned);
 	void set_trace_type(unsigned);
@@ -813,7 +818,7 @@ optix_stuff::~optix_stuff(){
 		exit(1);
 	}
 }
-void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device){
+void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_in, std::string accel_type_in){
 
 	using namespace optix;
 
@@ -837,6 +842,13 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device)
 	Variable 			trace_type_var;
 	RTsize              stack_size;
 	RTsize				printf_size;
+
+	//set vars
+	compute_device = compute_device_in;
+	accel_type     = accel_type_in;   
+	     if(accel_type.compare("Sbvh")==0){traverse_type="Bvh";}
+	else if(accel_type.compare("Bvh")==0) {traverse_type="Bvh";}
+	else if(accel_type.compare("TriangleKdTree")==0){traverse_type="KdTree";}
 
 	//get device info
 	int deviceId = compute_device;
@@ -863,7 +875,7 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device)
 	printf_size = context->getPrintBufferSize();
 	context->setPrintBufferSize(printf_size*10);
 	context->setExceptionEnabled( RT_EXCEPTION_ALL, 1);
-	context->setDevices(&deviceId, &deviceId+1);
+	context->setDevices(&deviceId, &deviceId+1);  //accel previously set up
 
 	// set stack size
 	stack_size = context->getStackSize();
@@ -936,13 +948,13 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device)
 	context->validate();
     context->compile();
 }
-void optix_stuff::init(wgeometry problem_geom, unsigned compute_device){
+void optix_stuff::init(wgeometry problem_geom, unsigned compute_device_in, std::string accel_type_in){
 	// set min and max cell numbers
 	mincell = problem_geom.get_minimum_cell();
 	maxcell = problem_geom.get_maximum_cell();
 	// try to init optix
 	try {
-		init_internal(problem_geom, compute_device);	
+		init_internal(problem_geom, compute_device_in, accel_type_in);	
 	} 
 	catch( optix::Exception &e ){
 		std::cout << "OptiX Error in init:" << e.getErrorString().c_str() <<"\n";
@@ -990,8 +1002,8 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 	unsigned 			uniqueindex = 0;
 	unsigned 			is_fissile = 0;
 
-	// Make top level group/accel as children of the top level object 
-	this_accel 	= context -> createAcceleration("Sbvh","Bvh");
+	// Make top level group/accel as children of the top level object
+	this_accel 	= context -> createAcceleration(accel_type.c_str(),traverse_type.c_str());
 	this_accel 	-> markDirty();
 	top_level_group = context->createGroup();
 	top_level_group ->setChildCount(problem_geom.get_transform_count());   // every primitive has at least 1 transform, so the total number of transforms is the number of instances
@@ -1157,6 +1169,8 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 }
 void optix_stuff::print(){
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
+	std::cout << "  Device set to "<<compute_device<<"\n";
+	std::cout << "  Acceleration set to "<<accel_type<<"/"<<traverse_type<<"\n";
 	std::cout << "  stack  size = " << context->getStackSize() << " bytes\n";
 	std::cout << "  printf size = " << context->getPrintBufferSize() << " bytes\n";
 }
@@ -1187,6 +1201,7 @@ class whistory {
 	wgeometry 			   problem_geom;
 	// optix object 
 	optix_stuff 		   optix_obj;
+	std::string 		   accel_type;
 	// CUDPP
 	CUDPPHandle            theCudpp;
 	CUDPPHashTableConfig   hash_config;
@@ -1338,6 +1353,7 @@ public:
     void init();
     void device_report();
     void set_device(unsigned);
+    void set_acceration(std::string);
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
 // do problem gemetry stuff first
@@ -1350,12 +1366,13 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	Ndataset = Nin * 5;
 	n_qnodes = 0;
 	compute_device = 0;	
+	accel_type = "Sbvh";
 }
 void whistory::init(){
 	// init optix stuff second
 	optix_obj.N=Ndataset;
 	optix_obj.stack_size_multiplier=12;
-	optix_obj.init(problem_geom,compute_device);
+	optix_obj.init(problem_geom,compute_device,accel_type);
 	optix_obj.print();
 	// CUDA stuff
 	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
@@ -3100,7 +3117,9 @@ void whistory::device_report(){
 	}
 		
 }
+void whistory::set_acceration(std::string accel_in){
 
+}
 
 
 
