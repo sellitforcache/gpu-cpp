@@ -775,7 +775,7 @@ class optix_stuff{
 	unsigned mincell;
 	unsigned maxcell;
 	void make_geom(wgeometry);
-	void init_internal(wgeometry);
+	void init_internal(wgeometry, unsigned);
 public:
 	CUdeviceptr 	positions_ptr; 
 	CUdeviceptr 	      rxn_ptr; 
@@ -789,7 +789,7 @@ public:
 	optix_stuff(unsigned,unsigned);
 	optix_stuff();
 	~optix_stuff();
-	void init(wgeometry);
+	void init(wgeometry, unsigned);
 	void trace();
 	void trace(unsigned);
 	void set_trace_type(unsigned);
@@ -813,7 +813,7 @@ optix_stuff::~optix_stuff(){
 		exit(1);
 	}
 }
-void optix_stuff::init_internal(wgeometry problem_geom){
+void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device){
 
 	using namespace optix;
 
@@ -837,7 +837,22 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 	Variable 			trace_type_var;
 	RTsize              stack_size;
 	RTsize				printf_size;
-	
+
+	//get device info
+	int deviceId = compute_device;
+  	int computeCaps[2];
+  	if (RTresult code = rtDeviceGetAttribute(0, RT_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY, sizeof(computeCaps), &computeCaps))
+  		throw Exception::makeException(code, 0);
+  	//for(unsigned int index = 1; index < Context::getDeviceCount(); ++index) {
+	//	int computeCapsB[2];
+	//	if (RTresult code = rtDeviceGetAttribute(index, RT_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY, sizeof(computeCaps), &computeCapsB))
+	//		throw Exception::makeException(code, 0);
+	//	if (computeCaps[0] == computeCapsB[0] && computeCaps[1] == computeCapsB[1]) {
+	//		deviceId = index;
+	//		break;
+	//	}
+  	//}
+
 	// Set up context
 	context = Context::create();
   	context->setRayTypeCount( 1u );
@@ -848,6 +863,7 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 	printf_size = context->getPrintBufferSize();
 	context->setPrintBufferSize(printf_size*10);
 	context->setExceptionEnabled( RT_EXCEPTION_ALL, 1);
+	context->setDevices(&deviceId, &deviceId+1);
 
 	// set stack size
 	stack_size = context->getStackSize();
@@ -920,13 +936,13 @@ void optix_stuff::init_internal(wgeometry problem_geom){
 	context->validate();
     context->compile();
 }
-void optix_stuff::init(wgeometry problem_geom){
+void optix_stuff::init(wgeometry problem_geom, unsigned compute_device){
 	// set min and max cell numbers
 	mincell = problem_geom.get_minimum_cell();
 	maxcell = problem_geom.get_maximum_cell();
 	// try to init optix
 	try {
-		init_internal(problem_geom);	
+		init_internal(problem_geom, compute_device);	
 	} 
 	catch( optix::Exception &e ){
 		std::cout << "OptiX Error in init:" << e.getErrorString().c_str() <<"\n";
@@ -1196,6 +1212,7 @@ class whistory {
 	unsigned    RNUM_PER_THREAD;
 	unsigned 	NUM_THREADS;
 	unsigned 	blks;
+	unsigned 	compute_device;
 	// host data
 	unsigned 		RUN_FLAG;
 	unsigned 		qnodes_depth, qnodes_width;
@@ -1288,39 +1305,42 @@ class whistory {
     //geom parameters
     float 			outer_cell_dims [6];
     // private transport functions
-public:
-     whistory(int,wgeometry);
-    ~whistory();
     void init_RNG();
     void update_RNG();
     void init_CUDPP();
     void init_host();
     void copy_to_device();
     void load_cross_sections();
-    void print_xs_data();
-    void print_pointers();
-    void print_materials_table();
-    void converge(unsigned);
-    void sample_fissile_points();
-    float reduce_yield();
-    void run();
+    void trace(unsigned);
     unsigned reduce_done();
     void reset_cycle(float);
     void reset_fixed();
-    void trace(unsigned);
+    void converge(unsigned);
+    void sample_fissile_points();
+    float reduce_yield();
+    void create_quad_tree();
     float get_time();
+    void prep_secondaries();
+    unsigned map_active();
+public:
+     whistory(int,wgeometry);
+    ~whistory();
+    void print_xs_data();
+    void print_pointers();
+    void print_materials_table();
+    void run();
     void write_xs_data(std::string);
     void write_tally(unsigned, std::string);
     void set_tally_cell(unsigned);
-    void create_quad_tree();
-    void prep_secondaries();
-    unsigned map_active();
     void set_run_type(unsigned);
     void set_run_type(std::string);
     void set_run_param(unsigned,unsigned);
+    void init();
+    void device_report();
+    void set_device(unsigned);
 };
 whistory::whistory(int Nin, wgeometry problem_geom_in){
-	// do problem gemetry stuff first
+// do problem gemetry stuff first
 	problem_geom = problem_geom_in;
 	// set tally vector length
 	n_tally = 1024;
@@ -1329,17 +1349,22 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	N = Nin;
 	Ndataset = Nin * 5;
 	n_qnodes = 0;
+	compute_device = 0;	
+}
+void whistory::init(){
 	// init optix stuff second
 	optix_obj.N=Ndataset;
 	optix_obj.stack_size_multiplier=12;
-	optix_obj.init(problem_geom);
+	optix_obj.init(problem_geom,compute_device);
 	optix_obj.print();
 	// CUDA stuff
-	std::cout << "\e[1;32m" << "Dataset size is "<< Nin << "\e[m \n";
-	N=Nin;
+	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
 	NUM_THREADS = 256;
 	RNUM_PER_THREAD = 30;
 	blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
+	cudaSetDevice(compute_device);
+	std::cout << "\e[1;32m" << "Compute device set to "<< compute_device << ". Available devices shown below:" <<"\e[m \n";
+	device_report();
 	cudaDeviceSetLimit(cudaLimitPrintfFifoSize, (size_t) 10*1048576 );
 	//device data
 				 d_space 	= (source_point*) optix_obj.positions_ptr;
@@ -1393,6 +1418,12 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	//copy any info needed
 	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
 	xs_isotope_string = problem_geom.isotope_list;
+	// init host values
+	init_host();
+	init_RNG();
+	init_CUDPP();
+	load_cross_sections();
+	copy_to_device();
 }
 whistory::~whistory(){
 	cudaFree( d_xs_length_numbers 	);
@@ -3031,7 +3062,42 @@ void whistory::set_run_param(unsigned n_cycles_in, unsigned n_skip_in){
 	n_cycles = n_cycles_in;
 
 }
+void whistory::set_device(unsigned dev_in){
 
+	//get number to make sure this is a valid device
+	int 			n_devices;
+	cudaGetDeviceCount(&n_devices);
+
+	// set obj
+	if(dev_in < n_devices){
+		compute_device = dev_in;
+	}
+	else{
+		std::cout << "!!!! Device " << dev_in << " does not exist.  Max devices is " << n_devices <<"\n";
+	}
+
+}
+void whistory::device_report(){
+
+	// vars
+	cudaDeviceProp 	device_prop;
+	int 			n_devices;
+	float 			compute_cap;
+
+	// get the number of devices
+	cudaGetDeviceCount(&n_devices);
+
+	// loop over and print
+	std::cout << "\e[1;32m" << "--- Compute Devices Present ---" << "\e[m \n";
+	std::cout << "  Device | Model             |  SMs  | Global Mem | SM Freq | Mem Freq | Compute Cap. |" << "\n";
+	for(unsigned k=0;k<n_devices;k++){
+		cudaGetDeviceProperties(&device_prop,k);
+		compute_cap = (float)device_prop.major + (float)device_prop.minor/10.0;
+		printf(  "  %d      | %5.24s   |  %d    | %6.4f  | %6.1f  | %6.1f   | %2.1f          |\n", k, device_prop.name, device_prop.multiProcessorCount, (float)device_prop.totalGlobalMem/(1024*1024), (float)device_prop.clockRate/1e3, (float)device_prop.memoryClockRate/1e3, compute_cap);
+	}
+	std::cout << "  ----------------------------------------------------\n";
+		
+}
 
 
 
