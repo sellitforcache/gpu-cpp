@@ -3089,13 +3089,15 @@ void whistory::device_report(){
 
 	// loop over and print
 	std::cout << "\e[1;32m" << "--- Compute Devices Present ---" << "\e[m \n";
+	std::cout << "  -------------------------------------------------------------------------------------\n";
 	std::cout << "  Device | Model             |  SMs  | Global Mem | SM Freq | Mem Freq | Compute Cap. |" << "\n";
+	std::cout << "  -------------------------------------------------------------------------------------\n";
 	for(unsigned k=0;k<n_devices;k++){
 		cudaGetDeviceProperties(&device_prop,k);
 		compute_cap = (float)device_prop.major + (float)device_prop.minor/10.0;
 		printf(  "  %d      | %5.24s   |  %d    | %6.4f  | %6.1f  | %6.1f   | %2.1f          |\n", k, device_prop.name, device_prop.multiProcessorCount, (float)device_prop.totalGlobalMem/(1024*1024), (float)device_prop.clockRate/1e3, (float)device_prop.memoryClockRate/1e3, compute_cap);
+		std::cout << "  -------------------------------------------------------------------------------------\n";
 	}
-	std::cout << "  ----------------------------------------------------\n";
 		
 }
 
