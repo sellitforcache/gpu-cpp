@@ -1228,6 +1228,7 @@ class whistory {
 	unsigned 	NUM_THREADS;
 	unsigned 	blks;
 	unsigned 	compute_device;
+	cudaStream_t stream[5];
 	// host data
 	unsigned 		RUN_FLAG;
 	unsigned 		qnodes_depth, qnodes_width;
@@ -1367,6 +1368,9 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 	n_qnodes = 0;
 	compute_device = 0;	
 	accel_type = "Sbvh";
+	for (int i = 0; i < 5; ++i){
+		cudaStreamCreate(&stream[i]);
+	}
 }
 void whistory::init(){
 	// init optix stuff second
@@ -2620,7 +2624,7 @@ void whistory::reset_cycle(float keff_cycle){
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
 	pop_source( NUM_THREADS, N, RNUM_PER_THREAD, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
-	cscatter( NUM_THREADS,   N, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_fissile_energy, d_fissile_points, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+	cscatter(   stream[2], NUM_THREADS,   N, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_fissile_energy, d_fissile_points, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 
 	// rest run arrays
 	cudaMemcpy( d_space,		d_fissile_points,		N*sizeof(source_point),		cudaMemcpyDeviceToDevice );
@@ -2732,13 +2736,15 @@ void whistory::run(){
 			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
 			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
 			
-
+			
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
-			escatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
-			iscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			cscatter( NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			absorb  ( NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
-			fission ( NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+			cudaThreadSynchronize();
+			escatter( stream[0], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
+			iscatter( stream[1], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			cscatter( stream[2], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			absorb  ( stream[3], NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
+			fission ( stream[4], NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+			cudaDeviceSynchronize();
 
 			if(RUN_FLAG==0){  //fixed source
 				// pop secondaries back in

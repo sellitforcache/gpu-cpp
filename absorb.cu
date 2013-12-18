@@ -22,11 +22,11 @@ __global__ void absorb_kernel(unsigned N, unsigned* active, unsigned * rxn , uns
 
 }
 
-void absorb( unsigned NUM_THREADS, unsigned N, unsigned* active, unsigned * rxn , unsigned* done){
+void absorb( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned* active, unsigned * rxn , unsigned* done){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	
-	absorb_kernel <<< blks, NUM_THREADS >>> (  N, active, rxn , done);
+	absorb_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, active, rxn , done);
 	cudaThreadSynchronize();
 
 }

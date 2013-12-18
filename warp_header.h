@@ -8,11 +8,11 @@ void sample_fixed_source( unsigned,unsigned,unsigned,unsigned*,float*,float*,sou
 void macroscopic( unsigned ,  unsigned, unsigned, unsigned , unsigned*, source_point * , unsigned* , unsigned * , unsigned * , float * , float * , float * , float *  , float* , unsigned*);
 void microscopic( unsigned ,  unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float * , float * , float *  , unsigned * , unsigned * ,  float* , unsigned * , float*, unsigned* );
 void tally_spec( unsigned ,  unsigned , unsigned , unsigned*, source_point * , float* , float * , unsigned * , unsigned*, unsigned*);
-void escatter( unsigned , unsigned, unsigned , unsigned*, unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*, float**);
-void iscatter( unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
-void cscatter( unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
-void fission( unsigned , unsigned, unsigned, unsigned , unsigned*, unsigned* , unsigned* , unsigned*  , float * , unsigned* , float**);
-void absorb( unsigned , unsigned , unsigned*, unsigned*  , unsigned* );
+void escatter( cudaStream_t, unsigned , unsigned, unsigned , unsigned*, unsigned* , unsigned* , float* , float*, source_point* , unsigned*, float*, unsigned*, float**);
+void iscatter( cudaStream_t, unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
+void cscatter( cudaStream_t, unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
+void fission(  cudaStream_t, unsigned , unsigned, unsigned, unsigned , unsigned*, unsigned* , unsigned* , unsigned*  , float * , unsigned* , float**);
+void absorb(   cudaStream_t, unsigned , unsigned , unsigned*, unsigned*  , unsigned* );
 void find_E_grid_index( unsigned , unsigned , unsigned , unsigned*,float * , float* , unsigned *, unsigned* );
 void find_E_grid_index_quad( unsigned, unsigned,  unsigned,  unsigned, unsigned*, qnode*, float*, unsigned*, unsigned*);
 void make_mask( unsigned, unsigned, unsigned*, unsigned*, unsigned, unsigned);
