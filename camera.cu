@@ -30,27 +30,18 @@ RT_PROGRAM void camera()
   float               samp_dist = positions_buffer[launch_index].samp_dist;
 
   intersection_point  payload;
-  
-  float3 ray_direction  = make_float3(positions_buffer[launch_index].xhat, positions_buffer[launch_index].yhat, positions_buffer[launch_index].zhat);
-  float3 ray_origin     = make_float3(positions_buffer[launch_index].x,    positions_buffer[launch_index].y,    positions_buffer[launch_index].z);
-  optix::Ray ray        = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
-
   //rtPrintf("i=%u, (% 10.8E,% 10.8E,% 10.8E) (% 10.8E,% 10.8E,% 10.8E)\n",launch_index,positions_buffer[launch_index].x,positions_buffer[launch_index].y,positions_buffer[launch_index].z,positions_buffer[launch_index].xhat,positions_buffer[launch_index].yhat,positions_buffer[launch_index].zhat);
 
-  // init payload
+  // init payload flags
   payload.cont=1;
   payload.do_first_hit=1;
-  for(cnt=0;cnt<10;cnt++){
-    payload.hitbuff[cnt].cell = -1;
-    payload.hitbuff[cnt].mat  = -1;
-    payload.hitbuff[cnt].fiss = -1;
-  }
-
-  // first trace to find closest hit
-  rtTrace(top_object, ray, payload);
-
 
    if (trace_type==1){   // transport trace type
+    float3 ray_direction  = make_float3(positions_buffer[launch_index].xhat, positions_buffer[launch_index].yhat, positions_buffer[launch_index].zhat);
+    float3 ray_origin     = make_float3(positions_buffer[launch_index].x,    positions_buffer[launch_index].y,    positions_buffer[launch_index].z);
+    optix::Ray ray        = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
+    // first trace to find closest hit
+    rtTrace(top_object, ray, payload);
       dist_to_surf = payload.surf_dist;
       if ( (dist_to_surf - 1.75*epsilon) >= samp_dist ){  // interaction is closer
          x = positions_buffer[launch_index].x + samp_dist*positions_buffer[launch_index].xhat;
@@ -101,6 +92,18 @@ RT_PROGRAM void camera()
 
 
    else if(trace_type==2 | trace_type==3){   // where am I? trace
+      // init ray
+      float3 ray_direction  = make_float3(0,0,-1);   // just down, makes it much faster for 2d-like geoms?
+      float3 ray_origin     = make_float3(positions_buffer[launch_index].x,    positions_buffer[launch_index].y,    positions_buffer[launch_index].z);
+      optix::Ray ray        = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
+      // init hitbuff
+      for(cnt=0;cnt<10;cnt++){
+        payload.hitbuff[cnt].cell = -1;
+        payload.hitbuff[cnt].mat  = -1;
+        payload.hitbuff[cnt].fiss = -1;
+      }
+      // first trace to find closest hit
+      rtTrace(top_object, ray, payload);
       // check if bc
       if (payload.cell_first==outer_cell){
             payload.cont=0; 

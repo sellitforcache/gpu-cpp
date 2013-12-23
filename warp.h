@@ -1375,7 +1375,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 void whistory::init(){
 	// init optix stuff second
 	optix_obj.N=Ndataset;
-	optix_obj.stack_size_multiplier=12;
+	optix_obj.stack_size_multiplier=1;
 	optix_obj.init(problem_geom,compute_device,accel_type);
 	optix_obj.print();
 	// CUDA stuff
