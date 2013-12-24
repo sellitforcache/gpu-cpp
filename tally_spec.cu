@@ -22,15 +22,16 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active,
 	float this_bin,next_bin;
 
 	// determine bin number
-	this_bin=Emin;
-	for(k=0;k<Ntally;k++){
-		next_bin=multiplier*this_bin;
-		if(my_E>this_bin & my_E<=next_bin){
-			my_bin_index=k;
-			break;
-		}
-		this_bin=next_bin;
-	}
+	my_bin_index = logf(my_E/Emin)/logf(multiplier);
+//	this_bin=Emin;
+//	for(k=0;k<Ntally;k++){
+//		next_bin=multiplier*this_bin;
+//		if(my_E>this_bin & my_E<=next_bin){
+//			my_bin_index=k;
+//			break;
+//		}
+//		this_bin=next_bin;
+//	}
 
 	//printf("macro_t=%6.4E my_bin_index=%u: score there = %10.8E, count there = %u \n",macro_t,my_bin_index,tally_score[my_bin_index],tally_count[my_bin_index]);
 

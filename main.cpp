@@ -90,13 +90,13 @@ int main(){
 	//tallyname = "lithium.tally";
 
 	// u235
-	//unsigned topes[1]={92235};
-	//float    fracs[1]={1};
-	//float    dens = 3.0;
-	//geom.add_material(1,1,1,dens,topes,fracs);
-	//geom.add_material(2,0,1,dens,topes,fracs);
-	//geom.add_material(3,0,1,dens,topes,fracs);
-	//tallyname = "u235_crit.tally";
+	unsigned topes[1]={92235};
+	float    fracs[1]={1};
+	float    dens = 3.0;
+	geom.add_material(1,1,1,dens,topes,fracs);
+	geom.add_material(2,0,1,dens,topes,fracs);
+	geom.add_material(3,0,1,dens,topes,fracs);
+	tallyname = "u235_crit.tally";
 
 	// pu239
 	//unsigned topes[1]={94239};
@@ -135,74 +135,74 @@ int main(){
 	//tallyname = "hydrogen1.tally";
 
 	// assembly mats
-	unsigned topes      [2] = {92235,92238};//,8016,1001};
-	float    fracs_fuel [2] = {1,  0};//,   0,   0};
-	float 	 fracs_water[2] = {   0,     1};//,   1,   2};
-	float    dens_fuel = 5;
-	float 	 dens_water = 3;
-	geom.add_material(1,1,2,dens_fuel, topes,fracs_fuel);
-	geom.add_material(2,0,2,dens_water,topes,fracs_water);
-	geom.add_material(3,0,2,dens_water,topes,fracs_water);
-	tallyname = "assembly.tally";
+	//unsigned topes      [2] = {92235,92238};//,8016,1001};
+	//float    fracs_fuel [2] = {1,  0};//,   0,   0};
+	//float 	 fracs_water[2] = {   0,     1};//,   1,   2};
+	//float    dens_fuel = 5;
+	//float 	 dens_water = 3;
+	//geom.add_material(1,1,2,dens_fuel, topes,fracs_fuel);
+	//geom.add_material(2,0,2,dens_water,topes,fracs_water);
+	//geom.add_material(3,0,2,dens_water,topes,fracs_water);
+	//tallyname = "assembly.tally";
 
 	// assembly geom
-	geom.add_primitive();
-	geom.primitives[0].type=1;
-	geom.primitives[0].material=1;
-	geom.primitives[0].min[0]=-20.0;
-	geom.primitives[0].min[1]=-20.0;
-	geom.primitives[0].min[2]=-20.0;
-	geom.primitives[0].max[0]= 20.0;
-	geom.primitives[0].max[1]= 1.0;
-	geom.primitives[0].max[2]= 10.0;
-	geom.primitives[0].make_hex_array(15,0.0,0.0,3.14159/2,0);  
-	geom.add_primitive();
-	geom.primitives[1].type=2;
-	geom.primitives[1].material=2;
-	geom.primitives[1].min[0]=-21;
-	geom.primitives[1].max[0]=21;
-	geom.primitives[1].max[1]=31.0;
-	geom.primitives[1].add_transform();
-	geom.primitives[1].transforms[0].cellnum = 800;
-	geom.primitives[1].transforms[0].dx      = 0;
-	geom.primitives[1].transforms[0].dy      = 0;
-	geom.primitives[1].transforms[0].dz      = 0;
-	geom.primitives[1].transforms[0].theta   = 0;
-	geom.primitives[1].transforms[0].phi     = 0;
-	geom.add_primitive();
-	geom.primitives[2].type=0;
-	geom.primitives[2].material=3;
-	geom.primitives[2].min[0]=-42;
-	geom.primitives[2].min[1]=-42;
-	geom.primitives[2].min[2]=-42;
-	geom.primitives[2].max[0]=42;
-	geom.primitives[2].max[1]=42;
-	geom.primitives[2].max[2]=42;
-	geom.primitives[2].add_transform();
-	geom.primitives[2].transforms[0].cellnum = 999;
-	geom.primitives[2].transforms[0].dx      = 0;
-	geom.primitives[2].transforms[0].dy      = 0;
-	geom.primitives[2].transforms[0].dz      = 0;
-	geom.primitives[2].transforms[0].theta   = 0;
-	geom.primitives[2].transforms[0].phi     = 0;
+	//geom.add_primitive();
+	//geom.primitives[0].type=1;
+	//geom.primitives[0].material=1;
+	//geom.primitives[0].min[0]=-20.0;
+	//geom.primitives[0].min[1]=-20.0;
+	//geom.primitives[0].min[2]=-20.0;
+	//geom.primitives[0].max[0]= 20.0;
+	//geom.primitives[0].max[1]= 1.0;
+	//geom.primitives[0].max[2]= 10.0;
+	//geom.primitives[0].make_hex_array(15,0.0,0.0,3.14159/2,0);  
+	//geom.add_primitive();
+	//geom.primitives[1].type=2;
+	//geom.primitives[1].material=2;
+	//geom.primitives[1].min[0]=-21;
+	//geom.primitives[1].max[0]=21;
+	//geom.primitives[1].max[1]=31.0;
+	//geom.primitives[1].add_transform();
+	//geom.primitives[1].transforms[0].cellnum = 800;
+	//geom.primitives[1].transforms[0].dx      = 0;
+	//geom.primitives[1].transforms[0].dy      = 0;
+	//geom.primitives[1].transforms[0].dz      = 0;
+	//geom.primitives[1].transforms[0].theta   = 0;
+	//geom.primitives[1].transforms[0].phi     = 0;
+	//geom.add_primitive();
+	//geom.primitives[2].type=0;
+	//geom.primitives[2].material=3;
+	//geom.primitives[2].min[0]=-42;
+	//geom.primitives[2].min[1]=-42;
+	//geom.primitives[2].min[2]=-42;
+	//geom.primitives[2].max[0]=42;
+	//geom.primitives[2].max[1]=42;
+	//geom.primitives[2].max[2]=42;
+	//geom.primitives[2].add_transform();
+	//geom.primitives[2].transforms[0].cellnum = 999;
+	//geom.primitives[2].transforms[0].dx      = 0;
+	//geom.primitives[2].transforms[0].dy      = 0;
+	//geom.primitives[2].transforms[0].dz      = 0;
+	//geom.primitives[2].transforms[0].theta   = 0;
+	//geom.primitives[2].transforms[0].phi     = 0;
 
 	//simple geom
-	//geom.add_primitive();
-	//geom.primitives[0].type=0;
-	//geom.primitives[0].material=1;
-	//geom.primitives[0].min[0]=-500;
-	//geom.primitives[0].min[1]=-500;
-	//geom.primitives[0].min[2]=-500;
-	//geom.primitives[0].max[0]= 500;
-	//geom.primitives[0].max[1]= 500;
-	//geom.primitives[0].max[2]= 500;
-	//geom.primitives[0].add_transform();
-	//geom.primitives[0].transforms[0].cellnum = 999;
-	//geom.primitives[0].transforms[0].dx      = 0;
-	//geom.primitives[0].transforms[0].dy      = 0;
-	//geom.primitives[0].transforms[0].dz      = 0;
-	//geom.primitives[0].transforms[0].theta   = 0;
-	//geom.primitives[0].transforms[0].phi     = 0;
+	geom.add_primitive();
+	geom.primitives[0].type=0;
+	geom.primitives[0].material=1;
+	geom.primitives[0].min[0]=-500;
+	geom.primitives[0].min[1]=-500;
+	geom.primitives[0].min[2]=-500;
+	geom.primitives[0].max[0]= 500;
+	geom.primitives[0].max[1]= 500;
+	geom.primitives[0].max[2]= 500;
+	geom.primitives[0].add_transform();
+	geom.primitives[0].transforms[0].cellnum = 999;
+	geom.primitives[0].transforms[0].dx      = 0;
+	geom.primitives[0].transforms[0].dy      = 0;
+	geom.primitives[0].transforms[0].dz      = 0;
+	geom.primitives[0].transforms[0].theta   = 0;
+	geom.primitives[0].transforms[0].phi     = 0;
 
 	// finalize geom
 	geom.set_outer_cell(999);
@@ -244,7 +244,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.set_run_param(1,1);  //run, skip
+	hist.set_run_param(40,20);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");
