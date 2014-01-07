@@ -853,7 +853,7 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	else if(accel_type.compare("TriangleKdTree")==0){traverse_type="KdTree";}
 
 	// set geom type  0=primitive instancing, 1=transform instancing
-	GEOM_FLAG = 1;
+	GEOM_FLAG = 0;
 
 	//get device info
 	int deviceId = compute_device;
@@ -1324,13 +1324,13 @@ class whistory {
 	// CURAND
 	curandGenerator_t rand_gen;
 	// cuda parameters
-	unsigned 	N;
-	unsigned 	Ndataset;
-	unsigned    RNUM_PER_THREAD;
-	unsigned 	NUM_THREADS;
-	unsigned 	blks;
-	unsigned 	compute_device;
-	cudaStream_t stream[5];
+	unsigned 		N;
+	unsigned 		Ndataset;
+	unsigned  		RNUM_PER_THREAD;
+	unsigned 		NUM_THREADS;
+	unsigned 		blks;
+	unsigned 		compute_device;
+	cudaStream_t 	stream[5];
 	// host data
 	unsigned 		RUN_FLAG;
 	unsigned 		qnodes_depth, qnodes_width;

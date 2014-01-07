@@ -17,9 +17,6 @@ rtDeclareVariable(unsigned,  outer_cell,  , );
 
 RT_PROGRAM void closest_hit()
 {
-	unsigned cellnum = dims
-	unsigned cellmat = 
-	unsigned cellfissile = 
 	unsigned j = 0;
 	unsigned cell_notfound = 1;
 	unsigned end_notfound = 1;
