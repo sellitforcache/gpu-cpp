@@ -942,6 +942,10 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	//set trace type, 1=transport (writes intersection point and next cell), 2=fission (writes origin and current cell)
 	context["trace_type"]->setUint(1);
 
+	//set outer cell adn get its dimensions
+	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
+	outer_cell_type = problem_geom.get_outer_cell_dims(outer_cell_dims);
+
 	// make all geometry instances
 	if(GEOM_FLAG){
 		make_geom_xform(problem_geom);
@@ -950,13 +954,10 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 		make_geom_prim(problem_geom);
 	}
 
-	//set outer cell adn get its dimensions
-	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
-	outer_cell_type = problem_geom.get_outer_cell_dims(outer_cell_dims);
-
 	//validate and compile
 	context->validate();
     context->compile();
+
 }
 void optix_stuff::init(wgeometry problem_geom, unsigned compute_device_in, std::string accel_type_in){
 	// set min and max cell numbers
@@ -1081,7 +1082,7 @@ void optix_stuff::make_geom_xform(wgeometry problem_geom){
 			//std::cout << "cellnum,matnum,isfiss " << cellnum << " " << cellmat << " " << is_fissile << "\n";
 
 			// make geometry group for this primitive (to attach acceleration to)
-			this_accel = context->createAcceleration("Sbvh","Bvh");
+			this_accel = context->createAcceleration(accel_type.c_str(),traverse_type.c_str());
 			this_accel -> markDirty();
 			this_geom_group = context -> createGeometryGroup();
 			this_geom_group -> setChildCount( 1u );
@@ -1120,7 +1121,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
 	Buffer 				geom_buffer;
 	geom_data* 			geom_buffer_host;
-	CUdeviceptr			geom_buffer_ptr;
+	geom_data*			geom_buffer_ptr;
 
 	GeometryGroup 		this_geom_group;
 	//Variable 			this_geom_min;
@@ -1146,7 +1147,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	unsigned 			is_fissile = 0;
 
 	// Make top level group/accel as children of the top level object
-	this_accel = context->createAcceleration("Sbvh","Bvh");
+	this_accel = context->createAcceleration(accel_type.c_str(),traverse_type.c_str());
 	this_accel -> markDirty();
 	this_geom_group = context -> createGeometryGroup();
 	this_geom_group -> setChildCount( problem_geom.get_transform_count() );
@@ -1177,28 +1178,34 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		// create internal optix buffer and copy "transform" data, as well as cellnum, matnum, and isfiss into the buffer stuct
 		geom_buffer = context->createBuffer(RT_BUFFER_INPUT,RT_FORMAT_USER,problem_geom.primitives[j].n_transforms);
 		geom_buffer -> setElementSize( sizeof(geom_data) );
-		geom_buffer -> getDevicePointer(compute_device,&geom_buffer_ptr);
-		geom_buffer_host = new geom_data[problem_geom.primitives[j].n_transforms];
+		geom_buffer_ptr = (geom_data*) geom_buffer->map();
 		for(int k=0 ; k<problem_geom.primitives[j].n_transforms ; k++){
-			geom_buffer_host[k].min[0]		= problem_geom.primitives[j].min[0] + problem_geom.primitives[j].transforms[k].dx;
-			geom_buffer_host[k].min[1]		= problem_geom.primitives[j].min[1] + problem_geom.primitives[j].transforms[k].dy;
-			geom_buffer_host[k].min[2]		= problem_geom.primitives[j].min[2] + problem_geom.primitives[j].transforms[k].dz;
-			geom_buffer_host[k].max[0]		= problem_geom.primitives[j].max[0] + problem_geom.primitives[j].transforms[k].dx;
-			geom_buffer_host[k].max[1]		= problem_geom.primitives[j].max[1] + problem_geom.primitives[j].transforms[k].dy;
-			geom_buffer_host[k].max[2]		= problem_geom.primitives[j].max[2] + problem_geom.primitives[j].transforms[k].dz;
-			geom_buffer_host[k].cellnum		= problem_geom.primitives[j].transforms[k].cellnum;
-			geom_buffer_host[k].matnum		= problem_geom.primitives[j].transforms[k].cellmat;
-			geom_buffer_host[k].is_fissile	= problem_geom.materials[problem_geom.primitives[j].transforms[k].cellmat].is_fissile;
+			geom_buffer_ptr[k].min[0]		= problem_geom.primitives[j].min[0] + problem_geom.primitives[j].transforms[k].dx;
+			geom_buffer_ptr[k].min[1]		= problem_geom.primitives[j].min[1] + problem_geom.primitives[j].transforms[k].dy;
+			geom_buffer_ptr[k].min[2]		= problem_geom.primitives[j].min[2] + problem_geom.primitives[j].transforms[k].dz;
+			geom_buffer_ptr[k].max[0]		= problem_geom.primitives[j].max[0] + problem_geom.primitives[j].transforms[k].dx;
+			geom_buffer_ptr[k].max[1]		= problem_geom.primitives[j].max[1] + problem_geom.primitives[j].transforms[k].dy;
+			geom_buffer_ptr[k].max[2]		= problem_geom.primitives[j].max[2] + problem_geom.primitives[j].transforms[k].dz;
+			geom_buffer_ptr[k].cellnum		= problem_geom.primitives[j].transforms[k].cellnum;
+			geom_buffer_ptr[k].matnum		= problem_geom.primitives[j].transforms[k].cellmat;
+			for(int z=0;z<problem_geom.get_material_count();z++){  // resolve the material number (user input) to material ID (index) to be used in the phyics routines
+				if (geom_buffer_ptr[k].matnum == problem_geom.materials[z].matnum){
+					geom_buffer_ptr[k].is_fissile =  problem_geom.materials[z].is_fissile;   // set fissile flag
+					geom_buffer_ptr[k].matnum    =  problem_geom.materials[z].id;            // hash the material number to the ID, which is the matrix index, not that user-set number
+					break;
+				}
+			}
+			//std::cout << "Prim/xform " << j << "," << k << " " << geom_buffer_ptr[k].min[0] << " "	<< geom_buffer_ptr[k].min[1]	<< " "	<< geom_buffer_ptr[k].min[2]	<< " "	<< geom_buffer_ptr[k].max[0]	<< " "	<< geom_buffer_ptr[k].max[1]	<< " "	<< geom_buffer_ptr[k].max[2]	<< " "	<< geom_buffer_ptr[k].cellnum	<< " "	<< geom_buffer_ptr[k].matnum	<< " "	<< geom_buffer_ptr[k].is_fissile << "\n";
 		}
-		cudaMemcpy((geom_data*)geom_buffer_ptr,geom_buffer_host,problem_geom.get_transform_count()*sizeof(geom_data),cudaMemcpyHostToDevice);
-		delete geom_buffer_host;
 
 		//set program variables for this object type
     	this_geom["dims"] -> setBuffer( geom_buffer );
 
-    	//done!  hopefully... if my understanding is right
+    	//done!  hopefully... if my understanding is right...
 
 	}
+
+	std::cout << "Done setting up primitive-based instancing\n";
 
 }
 void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::string filename){
