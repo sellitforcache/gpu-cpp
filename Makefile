@@ -49,6 +49,11 @@ ptx_objects = 	camera.ptx \
 				box.ptx \
 				cylinder.ptx \
 				hex.ptx\
+				hits_mesh.ptx \
+				box_mesh.ptx \
+				cylinder_mesh.ptx \
+				hex_mesh.ptx\
+
 
 all:  	$(ptx_objects) \
 		$(COBJS) \
@@ -73,6 +78,18 @@ cylinder.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx cylinder.cu
 
 hex.ptx:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hex.cu
+
+hits_mesh.ptx:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hits.cu
+
+box_mesh.ptx:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx box.cu
+
+cylinder_mesh.ptx:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx cylinder.cu
+
+hex_mesh.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hex.cu
 
 mt19937ar.o:

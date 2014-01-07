@@ -1120,7 +1120,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
 	Buffer 				geom_buffer;
 	geom_data* 			geom_buffer_host;
-	geom_data* 			geom_buffer_ptr;
+	CUdeviceptr			geom_buffer_ptr;
 
 	GeometryGroup 		this_geom_group;
 	//Variable 			this_geom_min;
@@ -1133,6 +1133,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	Program  			closest_hit_program;
 	Transform 			this_transform;
 	Acceleration  		acceleration;
+	//Variable 			this_geom_buffer_var;
 	//Variable  			cellnum_var;
 	//Variable  			cellmat_var;
 	//Variable 			cellfissile_var;
@@ -1152,11 +1153,11 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	this_geom_group -> setAcceleration( this_accel );
 	context["top_object"] -> set( this_geom_group );	
 
-	for(int j=0;j<problem_geom.get_primitive_count();j++){
+	for(int j=0 ; j<problem_geom.get_primitive_count() ; j++){
 
 		//create this geometry type
 		this_geom = context->createGeometry();
-		this_geom -> setPrimitiveCount( problem_geom.primitives[0].n_transforms );
+		this_geom -> setPrimitiveCount( problem_geom.primitives[j].n_transforms );
 
 		//set intersection and BB programs
 		if      (problem_geom.primitives[j].type == 0)	{sprintf( path_to_ptx, "%s", "box_mesh.ptx" );}
@@ -1168,23 +1169,32 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		this_geom -> setIntersectionProgram( intersection_program );
 
 		//set hit programs to material
-		sprintf( path_to_ptx, "%s", "hits.ptx" );
+		sprintf( path_to_ptx, "%s", "hits_mesh.ptx" );
 		closest_hit_program = context->createProgramFromPTXFile( path_to_ptx, "closest_hit" );
 		material = context -> createMaterial();
 		material -> setClosestHitProgram( 0, closest_hit_program );
 
 		// create internal optix buffer and copy "transform" data, as well as cellnum, matnum, and isfiss into the buffer stuct
-		geom_buffer = context->createBuffer(RT_BUFFER_INPUT,RT_FORMAT_USER,problem_geom.get_transform_count());
+		geom_buffer = context->createBuffer(RT_BUFFER_INPUT,RT_FORMAT_USER,problem_geom.primitives[j].n_transforms);
 		geom_buffer -> setElementSize( sizeof(geom_data) );
 		geom_buffer -> getDevicePointer(compute_device,&geom_buffer_ptr);
-		for(){
-
+		geom_buffer_host = new geom_data[problem_geom.primitives[j].n_transforms];
+		for(int k=0 ; k<problem_geom.primitives[j].n_transforms ; k++){
+			geom_buffer_host[k].min[0]		= problem_geom.primitives[j].min[0] + problem_geom.primitives[j].transforms[k].dx;
+			geom_buffer_host[k].min[1]		= problem_geom.primitives[j].min[1] + problem_geom.primitives[j].transforms[k].dy;
+			geom_buffer_host[k].min[2]		= problem_geom.primitives[j].min[2] + problem_geom.primitives[j].transforms[k].dz;
+			geom_buffer_host[k].max[0]		= problem_geom.primitives[j].max[0] + problem_geom.primitives[j].transforms[k].dx;
+			geom_buffer_host[k].max[1]		= problem_geom.primitives[j].max[1] + problem_geom.primitives[j].transforms[k].dy;
+			geom_buffer_host[k].max[2]		= problem_geom.primitives[j].max[2] + problem_geom.primitives[j].transforms[k].dz;
+			geom_buffer_host[k].cellnum		= problem_geom.primitives[j].transforms[k].cellnum;
+			geom_buffer_host[k].matnum		= problem_geom.primitives[j].transforms[k].cellmat;
+			geom_buffer_host[k].is_fissile	= problem_geom.materials[problem_geom.primitives[j].transforms[k].cellmat].is_fissile;
 		}
-		cudaMemcpy(geom_buffer_ptr,geom_buffer_host,problem_geom.get_transform_count()*sizeof(geom_data),cudaMemcpyHostToDevice);
+		cudaMemcpy((geom_data*)geom_buffer_ptr,geom_buffer_host,problem_geom.get_transform_count()*sizeof(geom_data),cudaMemcpyHostToDevice);
+		delete geom_buffer_host;
 
 		//set program variables for this object type
-    	this_geom_min = this_geom["dims"];
-    	this_geom_min -> setBuffer( someBuffer );
+    	this_geom["dims"] -> setBuffer( geom_buffer );
 
     	//done!  hopefully... if my understanding is right
 
