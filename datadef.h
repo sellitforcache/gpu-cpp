@@ -15,6 +15,14 @@ struct wtransform {
     float       phi;
 };
 
+struct geom_data{
+    float       min[3];
+    float       max[3];
+    int         cellnum;
+    int         matnum;
+    int         is_fissile;
+};
+
 // source point struct
 struct source_point{ 
     float x; 

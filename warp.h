@@ -779,7 +779,9 @@ class optix_stuff{
 	unsigned mincell;
 	unsigned maxcell;
 	unsigned compute_device;
-	void make_geom(wgeometry);
+	unsigned GEOM_FLAG;
+	void make_geom_xform(wgeometry);
+	void make_geom_prim(wgeometry);
 	void init_internal(wgeometry, unsigned, std::string);
 public:
 	CUdeviceptr 	positions_ptr; 
@@ -850,6 +852,9 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	else if(accel_type.compare("Bvh")==0) {traverse_type="Bvh";}
 	else if(accel_type.compare("TriangleKdTree")==0){traverse_type="KdTree";}
 
+	// set geom type  0=primitive instancing, 1=transform instancing
+	GEOM_FLAG = 1;
+
 	//get device info
 	int deviceId = compute_device;
   	int computeCaps[2];
@@ -885,35 +890,35 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	// Render particle buffer and attach to variable, get pointer for CUDA
 	positions_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	positions_buffer -> setElementSize( sizeof(source_point) );
-	positions_buffer -> getDevicePointer(0,&positions_ptr);  // 0 is optix device
+	positions_buffer -> getDevicePointer(compute_device,&positions_ptr);  // 0 is optix device
 	positions_var = context["positions_buffer"];
 	positions_var -> set(positions_buffer);
 
 	// Render reaction buffer and attach to variable, get pointer for CUDA
 	rxn_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	rxn_buffer -> setElementSize( sizeof(unsigned) );
-	rxn_buffer -> getDevicePointer(0,&rxn_ptr);
+	rxn_buffer -> getDevicePointer(compute_device,&rxn_ptr);
 	rxn_var = context["rxn_buffer"];
 	rxn_var -> set(rxn_buffer);
 
 	// Render done buffer and attach to variable, get pointer for CUDA
 	done_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	done_buffer -> setElementSize( sizeof(unsigned) );
-	done_buffer -> getDevicePointer(0,&done_ptr);
+	done_buffer -> getDevicePointer(compute_device,&done_ptr);
 	done_var = context["done_buffer"];
 	done_var -> set(done_buffer);
 
 	// Render cellnum buffer and attach to variable, get pointer for CUDA
 	cellnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	cellnum_buffer -> setElementSize( sizeof(unsigned) );
-	cellnum_buffer -> getDevicePointer(0,&cellnum_ptr);
+	cellnum_buffer -> getDevicePointer(compute_device,&cellnum_ptr);
 	cellnum_var = context["cellnum_buffer"];
 	cellnum_var -> set(cellnum_buffer);
 
 	// Render matnum buffer and attach to variable, get pointer for CUDA
 	matnum_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
 	matnum_buffer -> setElementSize( sizeof(unsigned) );
-	matnum_buffer -> getDevicePointer(0,&matnum_ptr);
+	matnum_buffer -> getDevicePointer(compute_device,&matnum_ptr);
 	matnum_var = context["matnum_buffer"];
 	matnum_var -> set(matnum_buffer);
 
@@ -938,7 +943,12 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	context["trace_type"]->setUint(1);
 
 	// make all geometry instances
-	make_geom(problem_geom);
+	if(GEOM_FLAG){
+		make_geom_xform(problem_geom);
+	}
+	else{
+		make_geom_prim(problem_geom);
+	}
 
 	//set outer cell adn get its dimensions
 	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
@@ -971,7 +981,7 @@ void optix_stuff::trace(unsigned trace_type){
 void optix_stuff::trace(){
 	context -> launch( 0 , N );
 }
-void optix_stuff::make_geom(wgeometry problem_geom){
+void optix_stuff::make_geom_xform(wgeometry problem_geom){
 
 	using namespace optix;
 
@@ -1095,6 +1105,88 @@ void optix_stuff::make_geom(wgeometry problem_geom){
 			uniqueindex++;
 
 		}
+
+	}
+
+}
+void optix_stuff::make_geom_prim(wgeometry problem_geom){
+
+	using namespace optix;
+
+	//Group 				top_level_group;
+	Variable 			top_object;
+	Acceleration 		top_level_acceleration;
+	Acceleration 		this_accel;
+
+	Buffer 				geom_buffer;
+	geom_data* 			geom_buffer_host;
+	geom_data* 			geom_buffer_ptr;
+
+	GeometryGroup 		this_geom_group;
+	//Variable 			this_geom_min;
+	//Variable 			this_geom_max;
+	Geometry 			this_geom;
+	GeometryInstance 	ginst;
+	Material 			material;
+	Program  			intersection_program;
+	Program  			bounding_box_program;
+	Program  			closest_hit_program;
+	Transform 			this_transform;
+	Acceleration  		acceleration;
+	//Variable  			cellnum_var;
+	//Variable  			cellmat_var;
+	//Variable 			cellfissile_var;
+
+	char 				path_to_ptx[512];
+	unsigned 			cellnum,cellmat;
+	float 				dx,dy,dz,theta,phi;
+	float 				m[16];
+	unsigned 			uniqueindex = 0;
+	unsigned 			is_fissile = 0;
+
+	// Make top level group/accel as children of the top level object
+	this_accel = context->createAcceleration("Sbvh","Bvh");
+	this_accel -> markDirty();
+	this_geom_group = context -> createGeometryGroup();
+	this_geom_group -> setChildCount( problem_geom.get_transform_count() );
+	this_geom_group -> setAcceleration( this_accel );
+	context["top_object"] -> set( this_geom_group );	
+
+	for(int j=0;j<problem_geom.get_primitive_count();j++){
+
+		//create this geometry type
+		this_geom = context->createGeometry();
+		this_geom -> setPrimitiveCount( problem_geom.primitives[0].n_transforms );
+
+		//set intersection and BB programs
+		if      (problem_geom.primitives[j].type == 0)	{sprintf( path_to_ptx, "%s", "box_mesh.ptx" );}
+		else if (problem_geom.primitives[j].type == 1)	{sprintf( path_to_ptx, "%s", "cylinder_mesh.ptx" );}
+		else if (problem_geom.primitives[j].type == 2)	{sprintf( path_to_ptx, "%s", "hex_mesh.ptx" );}
+		bounding_box_program = context->createProgramFromPTXFile( path_to_ptx, "bounds" );
+		intersection_program = context->createProgramFromPTXFile( path_to_ptx, "intersect" );
+		this_geom -> setBoundingBoxProgram ( bounding_box_program );
+		this_geom -> setIntersectionProgram( intersection_program );
+
+		//set hit programs to material
+		sprintf( path_to_ptx, "%s", "hits.ptx" );
+		closest_hit_program = context->createProgramFromPTXFile( path_to_ptx, "closest_hit" );
+		material = context -> createMaterial();
+		material -> setClosestHitProgram( 0, closest_hit_program );
+
+		// create internal optix buffer and copy "transform" data, as well as cellnum, matnum, and isfiss into the buffer stuct
+		geom_buffer = context->createBuffer(RT_BUFFER_INPUT,RT_FORMAT_USER,problem_geom.get_transform_count());
+		geom_buffer -> setElementSize( sizeof(geom_data) );
+		geom_buffer -> getDevicePointer(compute_device,&geom_buffer_ptr);
+		for(){
+
+		}
+		cudaMemcpy(geom_buffer_ptr,geom_buffer_host,problem_geom.get_transform_count()*sizeof(geom_data),cudaMemcpyHostToDevice);
+
+		//set program variables for this object type
+    	this_geom_min = this_geom["dims"];
+    	this_geom_min -> setBuffer( someBuffer );
+
+    	//done!  hopefully... if my understanding is right
 
 	}
 
