@@ -1019,7 +1019,7 @@ void optix_stuff::make_geom_xform(wgeometry problem_geom){
 	top_level_group = context->createGroup();
 	top_level_group ->setChildCount(problem_geom.get_transform_count());   // every primitive has at least 1 transform, so the total number of transforms is the number of instances
 	top_level_group -> setAcceleration( this_accel );
-	context["top_object"] -> set( top_level_group );
+	context["top_object"]-> set( top_level_group );
 
 	for(int j=0;j<problem_geom.get_primitive_count();j++){
 
@@ -1114,9 +1114,9 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
 	using namespace optix;
 
-	//Group 				top_level_group;
+	Group 				top_level_group;
 	Variable 			top_object;
-	Acceleration 		top_level_acceleration;
+	//Acceleration 		top_level_acceleration;
 	Acceleration 		this_accel;
 
 	Buffer 				geom_buffer;
@@ -1134,10 +1134,10 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	Program  			closest_hit_program;
 	Transform 			this_transform;
 	Acceleration  		acceleration;
-	//Variable 			this_geom_buffer_var;
-	//Variable  			cellnum_var;
-	//Variable  			cellmat_var;
-	//Variable 			cellfissile_var;
+	//Variable			this_geom_buffer_var;
+	//Variable			cellnum_var;
+	//Variable			cellmat_var;
+	//Variable			cellfissile_var;
 
 	char 				path_to_ptx[512];
 	unsigned 			cellnum,cellmat;
@@ -1150,9 +1150,9 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	this_accel = context->createAcceleration(accel_type.c_str(),traverse_type.c_str());
 	this_accel -> markDirty();
 	this_geom_group = context -> createGeometryGroup();
-	this_geom_group -> setChildCount( problem_geom.get_transform_count() );
+	this_geom_group -> setChildCount( problem_geom.get_primitive_count() );
 	this_geom_group -> setAcceleration( this_accel );
-	context["top_object"] -> set( this_geom_group );	
+	context["top_object"]-> set( this_geom_group );
 
 	for(int j=0 ; j<problem_geom.get_primitive_count() ; j++){
 
@@ -1174,6 +1174,12 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		closest_hit_program = context->createProgramFromPTXFile( path_to_ptx, "closest_hit" );
 		material = context -> createMaterial();
 		material -> setClosestHitProgram( 0, closest_hit_program );
+
+		//create instance
+		ginst = context -> createGeometryInstance();
+		ginst -> setGeometry( this_geom );
+		ginst -> setMaterialCount( 1u );
+		ginst -> setMaterial( 0, material );
 
 		// create internal optix buffer and copy "transform" data, as well as cellnum, matnum, and isfiss into the buffer stuct
 		geom_buffer = context->createBuffer(RT_BUFFER_INPUT,RT_FORMAT_USER,problem_geom.primitives[j].n_transforms);
@@ -1197,9 +1203,13 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 			}
 			//std::cout << "Prim/xform " << j << "," << k << " " << geom_buffer_ptr[k].min[0] << " "	<< geom_buffer_ptr[k].min[1]	<< " "	<< geom_buffer_ptr[k].min[2]	<< " "	<< geom_buffer_ptr[k].max[0]	<< " "	<< geom_buffer_ptr[k].max[1]	<< " "	<< geom_buffer_ptr[k].max[2]	<< " "	<< geom_buffer_ptr[k].cellnum	<< " "	<< geom_buffer_ptr[k].matnum	<< " "	<< geom_buffer_ptr[k].is_fissile << "\n";
 		}
+		geom_buffer->unmap();
 
 		//set program variables for this object type
     	this_geom["dims"] -> setBuffer( geom_buffer );
+
+    	//set instance as group child
+    	this_geom_group -> setChild(j,ginst);
 
     	//done!  hopefully... if my understanding is right...
 
