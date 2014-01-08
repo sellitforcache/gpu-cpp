@@ -1213,10 +1213,8 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		//set program variables for this object type
     	this_geom["dims"] -> setBuffer( geom_buffer );
 
-    	//set instance as group child
+    	//set instance as geomgroup child
     	this_geom_group -> setChild(j,ginst);
-
-    	//done!  hopefully... if my understanding is right...
 
 	}
 
