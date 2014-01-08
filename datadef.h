@@ -18,6 +18,7 @@ struct wtransform {
 struct geom_data{
     float       min[3];
     float       max[3];
+    float       loc[3];
     int         cellnum;
     int         matnum;
     int         is_fissile;

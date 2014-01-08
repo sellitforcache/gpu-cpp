@@ -17,6 +17,8 @@ RT_PROGRAM void intersect(int object_dex)
 
   float3 mins = make_float3(dims[object_dex].min[0],dims[object_dex].min[1],dims[object_dex].min[2]);
   float3 maxs = make_float3(dims[object_dex].max[0],dims[object_dex].max[1],dims[object_dex].max[2]);
+  float3 loc  = make_float3(dims[object_dex].loc[0],dims[object_dex].loc[1],dims[object_dex].loc[2]);
+  float3 xformed_origin = ray.origin - loc;
 
   float   tvec[8], tmin, ndD;
   float   ax, ay, az;
@@ -43,31 +45,31 @@ RT_PROGRAM void intersect(int object_dex)
   // find all plane intersections
   ndD=dot(z_hat,ray.direction);
   if (ndD!=0.0){
-    tvec[0]=dot(z_hat,(p1-ray.origin))/ndD;
-    tvec[1]=dot(z_hat,(p4-ray.origin))/ndD;
-    pvec[0] = ray.origin+tvec[0]*ray.direction;
-    pvec[1] = ray.origin+tvec[1]*ray.direction;
+    tvec[0]=dot(z_hat,(p1-xformed_origin))/ndD;
+    tvec[1]=dot(z_hat,(p4-xformed_origin))/ndD;
+    pvec[0] = xformed_origin+tvec[0]*ray.direction;
+    pvec[1] = xformed_origin+tvec[1]*ray.direction;
   }
   ndD=dot(y_hat,ray.direction);
   if (ndD!=0.0){
-    tvec[2]=dot(  y_hat , ( p2 - ray.origin ) ) / ndD;
-    tvec[3]=dot(  y_hat , ( p3 - ray.origin ) ) / ndD;
-    pvec[2] = ray.origin+tvec[2]*ray.direction;
-    pvec[3] = ray.origin+tvec[3]*ray.direction;
+    tvec[2]=dot(  y_hat , ( p2 - xformed_origin ) ) / ndD;
+    tvec[3]=dot(  y_hat , ( p3 - xformed_origin ) ) / ndD;
+    pvec[2] = xformed_origin+tvec[2]*ray.direction;
+    pvec[3] = xformed_origin+tvec[3]*ray.direction;
   }
   ndD=dot(l_hat,ray.direction);
   if (ndD!=0.0){
-    tvec[4]=dot(  l_hat , ( p2 - ray.origin ) ) / ndD;
-    tvec[5]=dot(  l_hat , ( p1 - ray.origin ) ) / ndD;
-    pvec[4] = ray.origin+tvec[4]*ray.direction;
-    pvec[5] = ray.origin+tvec[5]*ray.direction;
+    tvec[4]=dot(  l_hat , ( p2 - xformed_origin ) ) / ndD;
+    tvec[5]=dot(  l_hat , ( p1 - xformed_origin ) ) / ndD;
+    pvec[4] = xformed_origin+tvec[4]*ray.direction;
+    pvec[5] = xformed_origin+tvec[5]*ray.direction;
   }
   ndD=dot(r_hat,ray.direction);
   if (ndD!=0.0){
-    tvec[6]=dot(  r_hat , ( p1 - ray.origin ) ) / ndD;
-    tvec[7]=dot(  r_hat , ( p3 - ray.origin ) ) / ndD;
-    pvec[6] = ray.origin+tvec[6]*ray.direction;
-    pvec[7] = ray.origin+tvec[7]*ray.direction;
+    tvec[6]=dot(  r_hat , ( p1 - xformed_origin ) ) / ndD;
+    tvec[7]=dot(  r_hat , ( p3 - xformed_origin ) ) / ndD;
+    pvec[6] = xformed_origin+tvec[6]*ray.direction;
+    pvec[7] = xformed_origin+tvec[7]*ray.direction;
   }
 
   // get hits that are in-bounds (should only be 2, report one with smallest t)
@@ -113,10 +115,12 @@ RT_PROGRAM void bounds (int object_dex, float result[6])
 {
   float3 mins = make_float3(dims[object_dex].min[0],dims[object_dex].min[1],dims[object_dex].min[2]);
   float3 maxs = make_float3(dims[object_dex].max[0],dims[object_dex].max[1],dims[object_dex].max[2]);
-  result[0] = -2*maxs.y/sqrt(3.0);
-  result[1] = -maxs.y;
-  result[2] = mins.x;
-  result[3] = 2*maxs.y/sqrt(3.0);
-  result[4] = maxs.y;
-  result[5] = maxs.x;
+  float3 loc  = make_float3(dims[object_dex].loc[0],dims[object_dex].loc[1],dims[object_dex].loc[2]);
+
+  result[0] = -2*maxs.y/sqrt(3.0) + loc.x;
+  result[1] =   -maxs.y           + loc.y;
+  result[2] =    mins.x           + loc.z;
+  result[3] =  2*maxs.y/sqrt(3.0) + loc.x;
+  result[4] =    maxs.y           + loc.y;
+  result[5] =    maxs.x           + loc.z;
 }

@@ -1186,12 +1186,17 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		geom_buffer -> setElementSize( sizeof(geom_data) );
 		geom_buffer_ptr = (geom_data*) geom_buffer->map();
 		for(int k=0 ; k<problem_geom.primitives[j].n_transforms ; k++){
-			geom_buffer_ptr[k].min[0]		= problem_geom.primitives[j].min[0] + problem_geom.primitives[j].transforms[k].dx;
-			geom_buffer_ptr[k].min[1]		= problem_geom.primitives[j].min[1] + problem_geom.primitives[j].transforms[k].dy;
-			geom_buffer_ptr[k].min[2]		= problem_geom.primitives[j].min[2] + problem_geom.primitives[j].transforms[k].dz;
-			geom_buffer_ptr[k].max[0]		= problem_geom.primitives[j].max[0] + problem_geom.primitives[j].transforms[k].dx;
-			geom_buffer_ptr[k].max[1]		= problem_geom.primitives[j].max[1] + problem_geom.primitives[j].transforms[k].dy;
-			geom_buffer_ptr[k].max[2]		= problem_geom.primitives[j].max[2] + problem_geom.primitives[j].transforms[k].dz;
+			// apply transforms to base primitive
+			geom_buffer_ptr[k].min[0]		= problem_geom.primitives[j].min[0];
+			geom_buffer_ptr[k].min[1]		= problem_geom.primitives[j].min[1];
+			geom_buffer_ptr[k].min[2]		= problem_geom.primitives[j].min[2];
+			geom_buffer_ptr[k].max[0]		= problem_geom.primitives[j].max[0];
+			geom_buffer_ptr[k].max[1]		= problem_geom.primitives[j].max[1];
+			geom_buffer_ptr[k].max[2]		= problem_geom.primitives[j].max[2];
+			geom_buffer_ptr[k].loc[0]		= problem_geom.primitives[j].transforms[k].dx;
+			geom_buffer_ptr[k].loc[1]		= problem_geom.primitives[j].transforms[k].dy;
+			geom_buffer_ptr[k].loc[2]		= problem_geom.primitives[j].transforms[k].dz;
+			// cell properties
 			geom_buffer_ptr[k].cellnum		= problem_geom.primitives[j].transforms[k].cellnum;
 			geom_buffer_ptr[k].matnum		= problem_geom.primitives[j].transforms[k].cellmat;
 			for(int z=0;z<problem_geom.get_material_count();z++){  // resolve the material number (user input) to material ID (index) to be used in the phyics routines

@@ -217,13 +217,13 @@ int main(){
 
 	// trace geom if requested
 	// make new context that fits the reqested image size, trace, then destroy to free resources
-	unsigned geom_width  = 1024; 
-	unsigned geom_height = 1024;
-	unsigned N_geom = geom_width*geom_height;
-	optix_stuff geom_optix ( N_geom , 4 );
-	geom_optix.init(geom,0,"Sbvh");
-	geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
-	geom_optix.~optix_stuff();
+	//unsigned geom_width  = 1024; 
+	//unsigned geom_height = 1024;
+	//unsigned N_geom = geom_width*geom_height;
+	//optix_stuff geom_optix ( N_geom , 4 );
+	//geom_optix.init(geom,0,"Sbvh");
+	//geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
+	//geom_optix.~optix_stuff();
 
 
 	/////////////////////////////////////////////////////////////////
@@ -244,7 +244,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.set_run_param(40,20);  //run, skip
+	hist.set_run_param(1,1);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");
