@@ -5,7 +5,7 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-inline __device__ void sample_therm(float temp, float E0, float awr, float* rn, float* muout , float* vel){
+inline __device__ float sample_therm(float* rn, float* mu, float* vel, const float temp, const float E0, const float awr){
 
 	unsigned n;
 	float k 	= 8.617332478e-5;
@@ -13,7 +13,7 @@ inline __device__ void sample_therm(float temp, float E0, float awr, float* rn, 
 	float ycn 	= sqrtf(E0*ar);
 	float x2 	= 0.0;  // set so the first iterations of the while loops will execute
 	float s 	= 2.0;
-	float z2, c, r1;
+	float z2, c, r1, rnd2;
 	float rnd1  = rn[0];
 
 	for (n = 0; n < 100 ; n++)
@@ -23,21 +23,20 @@ inline __device__ void sample_therm(float temp, float E0, float awr, float* rn, 
 		        
 		while (rnd1*rnd1 > x2){
 
-			if (rand1*(ycn + 1.12837917) > ycn)
+			if (get_rand(&rnd1)*(ycn + 1.12837917) > ycn)
 			{
-				rnd1 = get_rand(rnd1);
-				z2 = -log(rnd1*rnd1));
+				r1 = get_rand(&rnd1);
+				z2 = -log(r1*get_rand(&rnd1));
 			}
 			else
 			{
 				while (s > 1.0) {
-					rnd1 = get_rand(rnd1);
-					rnd2 = get_rand(rnd1);
+					rnd1 = get_rand(&rnd1);
+					rnd2 = get_rand(&rnd1);
 					r1 = rnd1*rnd1;
 					s = r1 + rnd2*rnd2;
-					rnd1 = rnd2;
 				}    
-				z2 = -r1*log(s)/s - log(RandF(id));
+				z2 = -r1*log(s)/s - log(get_rand(&rnd1));
 			}
 			
 			z = sqrt(z2);
@@ -48,9 +47,10 @@ inline __device__ void sample_therm(float temp, float E0, float awr, float* rn, 
 			rnd1 = RandF(id)*(ycn + z);
 		}
 
-	rn[0]  		= get_rand(rnd2);
-	vel[0] 		= sqrtf(z2/ar);
-	muout[0] 	= c;
+	rn[0] 	= get_rand(&rnd1);
+	val[0] 	= sqrtf(z2/ar);
+	mu[0] 	= c;
+
 }
 
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
