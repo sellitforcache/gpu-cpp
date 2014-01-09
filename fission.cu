@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include <stdio.h>
 #include "datadef.h"
+#include "LCRNG.cuh"
 
 __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
 
@@ -29,7 +30,8 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 	if (this_rxn == 18){
 		// load nu from arrays
 		unsigned 	this_dex 	= index[tid];
-		float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 11 ];
+		float 		rn1 		= rn_bank[ tid ];
+		rn_bank[tid] = get_rand(rn1);
 	
 		//load nu value, since e search has alrady been done!
 		memcpy(&nu, &scatterdat[this_dex], sizeof(float));

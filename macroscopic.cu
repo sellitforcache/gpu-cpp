@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include <stdio.h>
 #include "datadef.h"
+#include "LCRNG.cuh"
 
 __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active, source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
@@ -17,8 +18,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	unsigned 	this_mat 		= matnum[tid];
 	unsigned 	dex 			= index[tid];   
 	float 		this_E  		= E[tid];
-	float 		rn1 			= rn_bank[tid*RNUM_PER_THREAD + 0];
-	float 		rn2 			= rn_bank[tid*RNUM_PER_THREAD + 1];
+	float 		rn 				= rn_bank[tid];
 	float 		samp_dist 		= 0.0;
 	float 		cum_prob 		= 0.0;
 	unsigned 	tope 			= 999999999;
@@ -38,7 +38,8 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	}
 
 	// compute the interaction length
-	samp_dist = -logf(rn1)/macro_t_total;
+	samp_dist = -logf(rn)/macro_t_total;
+	rn = get_rand(rn);
 
 	// determine the isotope which the reaction occurs
 	for(int k=0; k<n_isotopes; k++){
@@ -47,15 +48,17 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
 		cum_prob += ( ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * material_matrix[n_isotopes*this_mat+k] ) / macro_t_total;
 		if( k==n_isotopes-1 & cum_prob<1.0){cum_prob=1.0;}  //sometimes roundoff makes this a problem
-		if(rn2 <= cum_prob){
+		if(rn <= cum_prob){
 			// reactions happen in isotope k
 			tope = k;
 			break;
 		}
 	}
 	if(tope == 999999999){ 
-		printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u rn2=%12.10E cum_prob=%12.10E\n",tope, this_E, dex, this_mat, rn2, cum_prob);
+		printf("ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u rn2=%12.10E cum_prob=%12.10E\n",tope, this_E, dex, this_mat, rn, cum_prob);
 	}
+	//rn has been used, must increment
+	rn = get_rand(rn);
 
 	//printf("tid=%d, samp_dist=% 10.8E\n",tid,samp_dist);
 
@@ -63,6 +66,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	space[tid].samp_dist 	= samp_dist;
 	space[tid].macro_t 		= macro_t_total;
 	isonum[tid] 			= tope;
+	rn_bank[tid] 			= rn;
 
 
 }

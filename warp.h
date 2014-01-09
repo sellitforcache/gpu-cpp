@@ -2759,6 +2759,9 @@ void whistory::reset_cycle(float keff_cycle){
 	cudaMemcpy( d_rxn,			rxn,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_active,		remap,		N*sizeof(unsigned),		cudaMemcpyHostToDevice );
 
+	// update RNG seeds
+	update_RNG();
+
 }
 void whistory::reset_fixed(){
 
@@ -2881,7 +2884,7 @@ void whistory::run(){
 			//if(Nrun<=50){print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
 
 			// update random number bank
-			update_RNG();
+			//update_RNG();
 
 			//printf("%u\n",Nrun);
 

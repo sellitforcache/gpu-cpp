@@ -3,6 +3,7 @@
 #include "datadef.h"
 #include "wfloat3.h"
 #include "binary_search.h"
+#include "LCRNG.cuh"
 
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
@@ -32,14 +33,14 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
-	float 		rn1 		= rn_bank[ tid*RNUM_PER_THREAD + 3];
-	float 		rn2 		= rn_bank[ tid*RNUM_PER_THREAD + 4];
-	float 		rn3 		= rn_bank[ tid*RNUM_PER_THREAD + 5];
-	float 		rn4 		= rn_bank[ tid*RNUM_PER_THREAD + 6];
-	float 		rn5 		= rn_bank[ tid*RNUM_PER_THREAD + 7];
-	float 		rn6 		= rn_bank[ tid*RNUM_PER_THREAD + 8];
-	float 		rn7 		= rn_bank[ tid*RNUM_PER_THREAD + 9];
-	float 		rn8 		= rn_bank[ tid*RNUM_PER_THREAD + 10];
+	float 		rn1 		= rn_bank[ tid];
+	float 		rn2 		= get_rand(rn1);
+	float 		rn3 		= get_rand(rn2);
+	float 		rn4 		= get_rand(rn3);
+	float 		rn5 		= get_rand(rn4);
+	float 		rn6 		= get_rand(rn5);
+	float 		rn7 		= get_rand(rn6);
+	float 		rn8 		= get_rand(rn7);
 	//float 		rn9 		= rn_bank[ tid*RNUM_PER_THREAD + 11];
 
 	// internal kernel variables
@@ -134,6 +135,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	space[tid].xhat = hats_new.x;
 	space[tid].yhat = hats_new.y;
 	space[tid].zhat = hats_new.z;
+	rn_bank[tid] 	= get_rand(rn8);
 
 
 }
