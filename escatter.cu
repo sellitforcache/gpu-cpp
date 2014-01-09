@@ -5,6 +5,54 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
+inline __device__ void sample_therm(float temp, float E0, float awr, float* rn, float* muout , float* vel){
+
+	unsigned n;
+	float k 	= 8.617332478e-5;
+	float ar 	= awr/(k*temp);
+	float ycn 	= sqrtf(E0*ar);
+	float x2 	= 0.0;  // set so the first iterations of the while loops will execute
+	float s 	= 2.0;
+	float z2, c, r1;
+	float rnd1  = rn[0];
+
+	for (n = 0; n < 100 ; n++)
+	{
+	/***** Rejection by target velocity ************************************/
+	/* Ryan Bergmann - taken from Serpent2 targetvelocity.c routine*/
+		        
+		while (rnd1*rnd1 > x2){
+
+			if (rand1*(ycn + 1.12837917) > ycn)
+			{
+				rnd1 = get_rand(rnd1);
+				z2 = -log(rnd1*rnd1));
+			}
+			else
+			{
+				while (s > 1.0) {
+					rnd1 = get_rand(rnd1);
+					rnd2 = get_rand(rnd1);
+					r1 = rnd1*rnd1;
+					s = r1 + rnd2*rnd2;
+					rnd1 = rnd2;
+				}    
+				z2 = -r1*log(s)/s - log(RandF(id));
+			}
+			
+			z = sqrt(z2);
+			c = 2.0*RandF(id) - 1.0;
+			
+			x2 = ycn*ycn + z2 - 2*ycn*z*c;
+			
+			rnd1 = RandF(id)*(ycn + z);
+		}
+
+	rn[0]  		= get_rand(rnd2);
+	vel[0] 		= sqrtf(z2/ar);
+	muout[0] 	= c;
+}
+
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
 
@@ -22,7 +70,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//constants
 	const float  pi           =   3.14159265359 ;
 	const float  m_n          =   1.00866491600 ; // u
-	const float  temp         =   0.02585202857e-6;    // MeV
+	const float  temp         =   300;    // K
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
 	// load history data
@@ -47,9 +95,9 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		mu, phi, next_E, last_E;
     unsigned 	vlen, next_vlen, offset, k; 
     unsigned  	isdone = 0;
-	float  		E_target     		=   1.2 * temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
-	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
-	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
+	//float  		E_target     		=   1.2 * temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
+	//float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
+	//float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target;
@@ -62,6 +110,15 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
 	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
 	hats_target.z = mu;
+
+	//sample therm dist if low E
+	if(this_E <= 4.0e-4 ){
+		speed_target = sample_therm(temp,this_E,this_awr,&rn8);
+	}
+	else{
+		speed_target = 0.0;
+	}
+	__syncthreads();
 	
 	// make speed vectors
 	v_n_lf = hats_old    * speed_n;

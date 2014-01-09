@@ -1229,30 +1229,34 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 
 	//get aspect ratio and make N-compatible corresponding heights and widths
 	float aspect = width_in / height_in;
+	float mu, theta;
+	float pi=3.14159;
 	unsigned width  = sqrtf(N*aspect); 
 	unsigned height = sqrtf(N/aspect);
 	std::cout << "width  = " << width << "\n";
 	std::cout << "height = " << height << "\n";
 
-	// init the starting points to be across the z=0 plane and pointing downwards
-	FILE* positionsfile = fopen("positionsfile","w");
+	// init the starting points to be across the z=0 plane and pointing downwards or isotropically random, should produce the same results
+	//FILE* positionsfile = fopen("positionsfile","w");
 	source_point * positions_local = new source_point[width*height];
 	float dx = (42.0-(-42.0))/width;
 	float dy = (42.0-(-42.0))/height;
 	unsigned index;
 	for(int j=0;j<height;j++){
 		for(int k=0;k<width;k++){
+			mu = 2.0*rand()-1.0;
+			theta = 2.0*pi*rand();
 			index = j * width + k;
 			positions_local[index].x = -42.0 + dx/2 + k*dx;
 			positions_local[index].y = -42.0 + dy/2 + j*dy;
 			positions_local[index].z = 0.0;
-			positions_local[index].xhat = 0.0;
-			positions_local[index].yhat = 0.0;
-			positions_local[index].zhat = -1.0;
+			positions_local[index].xhat = sqrtf(1-mu*mu) * cosf( theta ); //0.0;
+			positions_local[index].yhat = sqrtf(1-mu*mu) * sinf( theta ); //0.0;
+			positions_local[index].zhat =       mu; //-1.0;
 			positions_local[index].samp_dist = 50000.0; 
 		}
 	}
-	fclose(positionsfile);
+	//fclose(positionsfile);
 
 	// copy starting positions data to pointer
 	cudaMemcpy((void*)positions_ptr,positions_local,width*height*sizeof(source_point),cudaMemcpyHostToDevice);
