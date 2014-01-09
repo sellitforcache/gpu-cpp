@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include <stdio.h>
 #include "datadef.h"
+#include "LCRNG.cuh"
 
 __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata){
 
@@ -31,8 +32,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	// reset self then write elsewhere
 
 	//read in values
-	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 ];
-	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 ];
+	rn1 = rn_bank[ tid ];
+	rn2 = get_rand(rn1);
 	offset = 5;
 	//printf("rxn %u eptr %p\n",this_rxn,this_array);
 	memcpy(&last_E,   	&this_array[0], sizeof(float));
@@ -93,8 +94,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
 
 	//sample isotropic directions
-	rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 ];
-	rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 ];
+	rn1 = get_rand(rn2);
+	rn2 = get_rand(rn1);
 	mu  = 2.0*rn1-1.0; 
 	phi = 2.0*pi*rn2;
 	
@@ -122,8 +123,10 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + (k+1)*4];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + (k+1)*4];
+		rn1 = get_rand(rn2);
+		rn2 = get_rand(rn1);
+		//rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + (k+1)*4];
+		//rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + (k+1)*4];
 		//sample energy dist
 		sampled_E = 0.0;
 		if(  rn2 >= r ){   //sample last E
@@ -171,8 +174,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
 
 		//sample isotropic directions
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + (k+1)*4];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + (k+1)*4];
+		rn1 = get_rand(rn2);
+		rn2 = get_rand(rn1);
 		mu  = 2.0*rn1-1.0; 
 		phi = 2.0*pi*rn2;
 	
@@ -204,6 +207,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 	}
 
+	rn_bank[tid] = get_rand(rn2);
 
 }
 

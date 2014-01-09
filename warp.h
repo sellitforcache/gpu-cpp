@@ -1503,7 +1503,7 @@ void whistory::init(){
 	// CUDA stuff
 	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
 	NUM_THREADS = 256;
-	RNUM_PER_THREAD = 30;
+	RNUM_PER_THREAD = 1;
 	blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	cudaSetDevice(compute_device);
 	std::cout << "\e[1;32m" << "Compute device set to "<< compute_device << ". Available devices shown below:" <<"\e[m \n";

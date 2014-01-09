@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "datadef.h"
 #include "wfloat3.h"
+#include "LCRNG.cuh"
 
 __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata, source_point* space_out, float* E_out, float * awr_list){
 
@@ -36,6 +37,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 
 	//read in values
 	offset = 5;
+	rn2 = rn_bank[tid];
 	//printf("rxn %u eptr %p\n",this_rxn,this_array);
 	memcpy(&last_E,   	&this_array[0], sizeof(float));
 	memcpy(&next_E,   	&this_array[1], sizeof(float));
@@ -54,8 +56,8 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
-		rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + k*4];
-		rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + k*4];
+		rn1 = get_rand(rn2);
+		rn2 = get_rand(rn1);
 		//sample energy dist
 		sampled_E = 0.0;
 		if(  rn2 >= r ){   //sample last E
@@ -110,8 +112,8 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 
 		if(this_rxn==18){
 			//sample isotropic directions
-			rn1 = rn_bank[ tid*RNUM_PER_THREAD + 13 + k*4];
-			rn2 = rn_bank[ tid*RNUM_PER_THREAD + 14 + k*4];
+			rn1 = get_rand(rn2);
+			rn2 = get_rand(rn1);
 			mu  = 2.0*rn1-1.0; 
 			phi = 2.0*pi*rn2;
 			x = sqrtf(1.0-(mu*mu))*cosf(phi);
@@ -148,6 +150,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		rxn  	 [ data_dex ]		= this_rxn;
 		index 	 [ data_dex ] 		= dex;
 		isonum   [ data_dex ]  		= this_tope;
+		rn_bank  [tid] = get_rand(rn2);
 		if(this_rxn==18){
 			E_out 	 [ data_dex ] 		= sampled_E;
 		}
