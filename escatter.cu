@@ -5,53 +5,107 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-inline __device__ float sample_therm(float* rn, float* mu, float* vel, const float temp, const float E0, const float awr){
+inline __device__ void sample_therm(float* rn, float* muout, float* vt, const float temp, const float E0, const float awr){
 
-	unsigned n;
-	float k 	= 8.617332478e-5;
-	float ar 	= awr/(k*temp);
-	float ycn 	= sqrtf(E0*ar);
-	float x2 	= 0.0;  // set so the first iterations of the while loops will execute
-	float s 	= 2.0;
-	float z2, c, r1, rnd2;
-	float rnd1  = rn[0];
+	// taken from OpenMC's sample_target_velocity subroutine in src/physics.F90
 
-	for (n = 0; n < 100 ; n++)
-	{
-	/***** Rejection by target velocity ************************************/
-	/* Ryan Bergmann - taken from Serpent2 targetvelocity.c routine*/
-		        
-		while (rnd1*rnd1 > x2){
+	float k 	= 8.617332478e-11; //MeV/k
+	float pi 	= 3.14159;
+	float id  	= rn[0];
+	//float mu,c,beta_vn,beta_vt,beta_vt_sq,r1,r2,alpha,accept_prob;
+	//unsigned n;
+	//
+	//beta_vn = sqrtf(awr * E0 / (temp*k) );
+//
+	//alpha = 1.0/(1.0 + sqrtf(pi)*beta_vn/2.0);
+//
+	//for(n=0;n<100;n++){
+//
+	//	r1 = get_rand(&id);
+	//	r2 = get_rand(&id);
+//
+	//	if (get_rand(&id) < alpha) {
+	//		beta_vt_sq = -logf(r1*r2);
+	//	}
+	//	else{
+	//		c = cosf(pi/2.0 * get_rand(&id));
+	//		beta_vt_sq = -logf(r1) - logf(r2)*c*c;
+	//	}
+//
+	//	beta_vt = sqrtf(beta_vt_sq);
+//
+	//	mu = 2.0*get_rand(&id) - 1.0;
+//
+	//	accept_prob = sqrtf(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) / (beta_vn + beta_vt);
+//
+	//	if ( get_rand(&id) < accept_prob){break;}
+	//}
 
-			if (get_rand(&rnd1)*(ycn + 1.12837917) > ycn)
-			{
-				r1 = get_rand(&rnd1);
-				z2 = -log(r1*get_rand(&rnd1));
-			}
-			else
-			{
-				while (s > 1.0) {
-					rnd1 = get_rand(&rnd1);
-					rnd2 = get_rand(&rnd1);
-					r1 = rnd1*rnd1;
-					s = r1 + rnd2*rnd2;
-				}    
-				z2 = -r1*log(s)/s - log(get_rand(&rnd1));
-			}
-			
-			z = sqrt(z2);
-			c = 2.0*RandF(id) - 1.0;
-			
-			x2 = ycn*ycn + z2 - 2*ycn*z*c;
-			
-			rnd1 = RandF(id)*(ycn + z);
-		}
+//	// old method
+	float rn1, rn2, rn3, c, co;
+	rn1=get_rand(&id);
+	rn2=get_rand(&id);
+	rn3=get_rand(&id);
+	//printf("%6.4E %6.4E %6.4E %6.4E\n",id,rn1,rn2,rn3);
+	co = cosf(pi/2.0*rn3);
+	c  = 4.0 * sqrtf( awr/(2.0*k*temp*pi) ); 
+	vt[0] = c * sqrtf( -logf(rn1) - logf(rn2)*co*co ) ;
+	//c=2.0*get_rand(&id)-1.0;
 
-	rn[0] 	= get_rand(&rnd1);
-	val[0] 	= sqrtf(z2/ar);
-	mu[0] 	= c;
+	//vt[0] = sqrtf(beta_vt_sq*temp*k/awr);
+	rn[0] = get_rand(&id);
+	//muout[0] = mu;
+	//printf("n=%u\n",n);
 
 }
+
+inline __device__ wfloat3 rotate_angle(float* rn, wfloat3 uvw0, float mu){
+
+    wfloat3 uvw;  //rotated directional cosine
+
+    float phi    ;// azimuthal angle
+    float sinphi ;// sine of azimuthal angle
+    float cosphi ;// cosine of azimuthal angle
+    float a      ;// sqrt(1 - mu^2)
+    float b      ;// sqrt(1 - w^2)
+    float u0     ;// original cosine in x direction
+    float v0     ;// original cosine in y direction
+    float w0     ;// original cosine in z direction
+    float id  	= rn[0];
+    float pi 	= 3.14159;
+
+    // Copy original directional cosines
+    u0 = uvw0.x;
+    v0 = uvw0.y;
+    w0 = uvw0.z;
+
+    // Sample azimuthal angle in [0,2pi)
+    phi = 2.0 * pi * get_rand(&id);
+
+    // Precompute factors to save flops
+    sinphi = sinf(phi);
+    cosphi = cosf(phi);
+    a = sqrtf(max(0.0, 1.0 - mu*mu));
+    b = sqrtf(max(0.0, 1.0 - w0*w0));
+
+    // Need to treat special case where sqrt(1 - w**2) is close to zero by
+    // expanding about the v component rather than the w component
+    if (b > 1e-10) {
+      uvw.x = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b;
+      uvw.y = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b;
+      uvw.z = mu*w0 - a*b*cosphi;
+  	}
+    else{
+      b = sqrt(1.0 - v0*v0);
+      uvw.x = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b;
+      uvw.y = mu*v0 - a*b*cosphi;
+      uvw.z = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b;
+    }
+
+    rn[0] = id;
+    return uvw;
+
+ }
 
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
@@ -70,6 +124,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//constants
 	const float  pi           =   3.14159265359 ;
 	const float  m_n          =   1.00866491600 ; // u
+	const float  kb			  =   8.617332478e-11; //MeV/k
 	const float  temp         =   300;    // K
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
@@ -95,25 +150,25 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		mu, phi, next_E, last_E;
     unsigned 	vlen, next_vlen, offset, k; 
     unsigned  	isdone = 0;
-	//float  		E_target     		=   1.2 * temp * ( -logf(rn1) - logf(rn2)*cosf(pi/2*rn3)*cosf(pi/2*rn3) );
-	//float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
-	//float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
+	float 		speed_target;     	//=   sqrtf(2.0*E_target/(this_awr*m_n));
+	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
-	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target;
+	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target, rotation_hat;
 	float 		mu0,mu1,cdf0,cdf1;
 	//float 		v_rel,E_rel;
 
-	// make target isotropic
-	mu  = (2.0*rn4) - 1.0;
+	//make target isotropic
 	phi = 2.0*pi*rn5;
+	mu  = (2.0*rn4) - 1.0;
 	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
 	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
 	hats_target.z = mu;
 
 	//sample therm dist if low E
-	if(this_E <= 4.0e-4 ){
-		speed_target = sample_therm(temp,this_E,this_awr,&rn8);
+	if(this_E <= 400*kb*temp ){
+		sample_therm(&rn8,&mu,&speed_target,temp,this_E,this_awr);
+		//hats_target = rotate_angle(&rn8,hats_old,mu);
 	}
 	else{
 		speed_target = 0.0;
@@ -169,11 +224,13 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	hats_old = v_n_cm / v_n_cm.norm2();
 	//  create a perpendicular roation vector 
 	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-	wfloat3 rotation_hat = hats_target.cross( v_n_cm );
+	rotation_hat = hats_target.cross( v_n_cm );
 	rotation_hat = rotation_hat / rotation_hat.norm2();
 	//  do rotations, polar first, then azimuthal
 	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
 	v_n_cm.rodrigues_rotation( hats_old,     phi       );
+
+	//v_n_cm = rotate_angle(&rn8,v_n_cm,mu);
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
