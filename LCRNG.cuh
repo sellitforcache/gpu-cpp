@@ -10,7 +10,7 @@ since 32-bit math is being used, 30 bits are used here
 	unsigned c   		= 1;						// constant add
 	unsigned prn_mod    = 536870912;  				// 2^30
 	unsigned prn_mask   = prn_mod - 1; 				// 2^30-1
-	float prn_norm   	= 9.313225746154785e-10;	// 2^-30
+	float prn_norm   	= 1.862645149230957e-09;	// 2^-30
 	in[0] = (a * in[0] +  c) & prn_mask;   			// mod by truncation
 	return prn_norm*in[0];   						// return normalized float
 }
