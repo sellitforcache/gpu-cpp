@@ -7,18 +7,15 @@
 
 inline __device__ void sample_therm(float* rn, float* muout, float* vt, const float temp, const float E0, const float awr){
 
-	// taken from OpenMC's sample_target_velocity subroutine in src/physics.F90
+	// adapted from OpenMC's sample_target_velocity subroutine in src/physics.F90
 
 	float k 	= 8.617332478e-11; //MeV/k
 	float pi 	= 3.14159265359 ;
-	//float id  	= rn[0];
 	float mu,c,beta_vn,beta_vt,beta_vt_sq,r1,r2,alpha,accept_prob;
 	unsigned n;
-	
-	beta_vn = sqrtf(awr * 1.00866491600 * E0 / (2.0*temp*k) );
-	
+
+	beta_vn = sqrtf(awr * 1.00866491600 * E0 / (temp*k) );
 	alpha = 1.0/(1.0 + sqrtf(pi)*beta_vn/2.0);
-	//printf("%6.4E\n",alpha);
 	
 	for(n=0;n<100;n++){
 	
@@ -43,9 +40,8 @@ inline __device__ void sample_therm(float* rn, float* muout, float* vt, const fl
 	}
 
 	vt[0] = sqrtf(beta_vt_sq*2.0*k*temp/(awr*1.00866491600));
-	//rn[0] = id;
 	muout[0] = mu;
-	printf("%6.4E %6.4E\n",vt[0],mu);
+	//printf("%6.4E %6.4E\n",vt[0],mu);
 
 }
 
@@ -126,7 +122,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
-	float 		rn1 		= rn_bank[ tid];
+	float 		rn1 		= get_rand(rn_bank[tid]);
 	float 		rn2 		= get_rand(rn1);
 	float 		rn3 		= get_rand(rn2);
 	float 		rn4 		= get_rand(rn3);
