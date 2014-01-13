@@ -10,51 +10,42 @@ inline __device__ void sample_therm(float* rn, float* muout, float* vt, const fl
 	// taken from OpenMC's sample_target_velocity subroutine in src/physics.F90
 
 	float k 	= 8.617332478e-11; //MeV/k
-	float pi 	= 3.14159;
-	float id  	= rn[0];
+	float pi 	= 3.14159265359 ;
+	//float id  	= rn[0];
 	float mu,c,beta_vn,beta_vt,beta_vt_sq,r1,r2,alpha,accept_prob;
 	unsigned n;
 	
-	beta_vn = sqrtf(awr * E0 / (temp*k) );
+	beta_vn = sqrtf(awr * 1.00866491600 * E0 / (2.0*temp*k) );
 	
 	alpha = 1.0/(1.0 + sqrtf(pi)*beta_vn/2.0);
+	//printf("%6.4E\n",alpha);
 	
 	for(n=0;n<100;n++){
 	
-		r1 = get_rand(&id);
-		r2 = get_rand(&id);
+		r1 = get_rand(rn);
+		r2 = get_rand(rn);
 	
-		if (get_rand(&id) < alpha) {
+		if (get_rand(rn) < alpha) {
 			beta_vt_sq = -logf(r1*r2);
 		}
 		else{
-			c = cosf(pi/2.0 * get_rand(&id));
+			c = cosf(pi/2.0 * get_rand(rn) );
 			beta_vt_sq = -logf(r1) - logf(r2)*c*c;
 		}
 	
 		beta_vt = sqrtf(beta_vt_sq);
 	
-		mu = 2.0*get_rand(&id) - 1.0;
+		mu = 2.0*get_rand(rn) - 1.0;
 	
 		accept_prob = sqrtf(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) / (beta_vn + beta_vt);
 	
-		if ( get_rand(&id) < accept_prob){break;}
+		if ( get_rand(rn) < accept_prob){break;}
 	}
 
-//	// old method
-//	float rn1, rn2, rn3, c, co;
-//	rn1=get_rand(&id);
-//	rn2=get_rand(&id);
-//	rn3=get_rand(&id);
-//	//printf("%6.4E %6.4E %6.4E %6.4E\n",id,rn1,rn2,rn3);
-//	co = cosf(pi/2.0*rn3);
-//	vt[0] = sqrtf( (k * temp * 	2.0 / awr ) * ( -logf(rn1) - logf(rn2)*co*co) ) ;
-	//c=2.0*get_rand(&id)-1.0;
-
-	vt[0] = sqrtf(beta_vt_sq*temp*k/awr);
-	rn[0] = get_rand(&id);
+	vt[0] = sqrtf(beta_vt_sq*2.0*k*temp/(awr*1.00866491600));
+	//rn[0] = id;
 	muout[0] = mu;
-	//printf("n=%u\n",n);
+	printf("%6.4E %6.4E\n",vt[0],mu);
 
 }
 
@@ -143,6 +134,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		rn6 		= get_rand(rn5);
 	float 		rn7 		= get_rand(rn6);
 	float 		rn8 		= get_rand(rn7);
+	float 		rn9 		= get_rand(rn8);
 	//float 		rn9 		= rn_bank[ tid*RNUM_PER_THREAD + 11];
 
 	// internal kernel variables
@@ -166,13 +158,13 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	//sample therm dist if low E
 	if(this_E <= 400*kb*temp ){
-		sample_therm(&rn8,&mu,&speed_target,temp,this_E,this_awr);
-		//hats_target = rotate_angle(&rn8,hats_old,mu);
-		rotation_hat = hats_old.cross( hats_target );
-		rotation_hat = rotation_hat / rotation_hat.norm2();
-		hats_target = hats_old;
-		hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
-		hats_target.rodrigues_rotation( hats_old,     phi       );
+		sample_therm(&rn9,&mu,&speed_target,temp,this_E,this_awr);
+		hats_target = rotate_angle(&rn9,hats_old,mu);
+		//rotation_hat = hats_old.cross( hats_target );
+		//rotation_hat = rotation_hat / rotation_hat.norm2();
+		//hats_target = hats_old;
+		//hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
+		//hats_target.rodrigues_rotation( hats_old,     phi       );
 	}
 	else{
 		speed_target = 0.0;
