@@ -9,7 +9,6 @@
 #include <cudpp_hash.h>
 #include <Python.h>
 #include <png++/png.hpp>
-#include <cmath>
 #include <assert.h>
 #include <time.h>
 
@@ -1377,7 +1376,7 @@ class whistory {
 	float * 		xs_data_Q;
     float *         E;
     float *         Q;
-    float *         rn_bank;
+    unsigned *		rn_bank;
     float * 		awr_list;
     float * 		tally_score;
     unsigned * 		tally_count;
@@ -1546,7 +1545,7 @@ void whistory::init(){
 	space 				= new source_point 	[Ndataset];
 	E 					= new float 		[Ndataset];
 	Q 					= new float 		[Ndataset];
-	rn_bank  			= new float 		[Ndataset*RNUM_PER_THREAD];
+	rn_bank  			= new unsigned 		[Ndataset*RNUM_PER_THREAD];
 	tally_score 		= new float 		[n_tally];
 	tally_count 		= new unsigned 		[n_tally];
 	index     			= new unsigned 		[Ndataset];
@@ -1686,12 +1685,12 @@ void whistory::init_RNG(){
 	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
 	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
-	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
-	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
+	curandGenerate( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
+	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD *sizeof(unsigned) , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
 void whistory::update_RNG(){
 
-	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
+	curandGenerate( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 
 }
 void whistory::init_CUDPP(){
@@ -2690,7 +2689,7 @@ void whistory::sample_fissile_points(){
 	while (current_index < N){
 		
 		// advance RN bank
-		curandGenerateUniform( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
+		curandGenerate( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
 		
 		// set uniformly random positions on GPU
 		set_positions_rand ( NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
@@ -2734,7 +2733,7 @@ void whistory::sample_fissile_points(){
 	fclose(positionsfile);
 
 	// advance RN bank
-	curandGenerateUniform( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
+	curandGenerate( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
 
 }
 void whistory::reset_cycle(float keff_cycle){

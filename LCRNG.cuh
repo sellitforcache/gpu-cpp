@@ -1,23 +1,16 @@
-inline __device__ float get_rand(float in)
+inline __device__ float get_rand(unsigned* in)
 {
 /*
-increments the random number with LCRNG
+increments the random number with LCRNG 
+adapated from openmc again
+values from http://www.ams.org/journals/mcom/1999-68-225/S0025-5718-99-00996-5/S0025-5718-99-00996-5.pdf
+since 32-bit math is being used, 30 bits are used here
 */
-	double m = 2147483647;
-    double a = 21474;
-    double c = 2147483587;
-    float out = fmod( a * m * in + c, m ) / m ;
-    return out;
-}
-
-inline __device__ float get_rand(float* in)
-{
-/*
-increments the random number with LCRNG
-*/
-	double m = 2147483647;
-    double a = 21474;
-    double c = 2147483587;
-    in[0] = fmod( a * m * in[0] + c, m ) / m ;
-    return in[0];
+	unsigned a   		= 116646453;		 		// multiplier
+	unsigned c   		= 1;						// constant add
+	unsigned prn_mod    = 536870912;  				// 2^30
+	unsigned prn_mask   = prn_mod - 1; 				// 2^30-1
+	float prn_norm   	= 9.313225746154785e-10;	// 2^-30
+	in[0] = (a * in[0] +  c) & prn_mask;   			// mod by truncation
+	return prn_norm*in[0];   						// return normalized float
 }

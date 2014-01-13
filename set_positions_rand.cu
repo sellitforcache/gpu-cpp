@@ -1,34 +1,35 @@
 #include <cuda.h>
 #include <stdio.h>
 #include "datadef.h"
+#include "LCRNG.cuh"
 
-__global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD, source_point * positions_ptr , float * rn_bank , float x_min , float y_min , float z_min , float x_max , float y_max , float z_max ){
+__global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD, source_point * positions_ptr , unsigned * rn_bank , float x_min , float y_min , float z_min , float x_max , float y_max , float z_max ){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid>=N){return;}
 
 	//const float rn1   =  rn_bank[ (tid * RNUM_PER_THREAD) + 0];
 	//const float rn2   =  rn_bank[ (tid * RNUM_PER_THREAD) + 1];
-	const float rn3   =  rn_bank[ (tid * RNUM_PER_THREAD) + 0];
-	const float rn4   =  rn_bank[ (tid * RNUM_PER_THREAD) + 1];
-	const float rn5   =  rn_bank[ (tid * RNUM_PER_THREAD) + 2];
 	//const float pi    =   3.14159265359 ;
 	//const float mu    = ( rn1 ) * 2.0 - 1.0;
 	//const float theta = ( rn2 ) * 2.0 * pi ;
+	unsigned 	rn = rn_bank[tid];
 
 	positions_ptr[tid].samp_dist =     500;   
-	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * rn3 + x_min );  
-	positions_ptr[tid].y         =     0.9 * ( ( y_max - y_min ) * rn4 + y_min );  
-	positions_ptr[tid].z         =     0.9 * ( ( z_max - z_min ) * rn5 + z_min ); 
+	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * get_rand(&rn) + x_min );  
+	positions_ptr[tid].y         =     0.9 * ( ( y_max - y_min ) * get_rand(&rn) + y_min );  
+	positions_ptr[tid].z         =     0.9 * ( ( z_max - z_min ) * get_rand(&rn) + z_min ); 
 	positions_ptr[tid].xhat      =     0.0;//sqrtf(1-mu*mu) * cosf( theta );
 	positions_ptr[tid].yhat      =     0.0;//sqrtf(1-mu*mu) * sinf( theta );
 	positions_ptr[tid].zhat      =    -1.0;//      mu;
   
 	//printf("tid=%d, rn1=%10.8E, rn2=%10.8E, x=%6.3f, y=%6.3f, z=%6.3f, xhat=%6.3f, yhat=%6.3f, zhat=%6.3f \n",tid,rn1,rn2,positions_ptr[tid].x,positions_ptr[tid].y,positions_ptr[tid].z,positions_ptr[tid].xhat,positions_ptr[tid].yhat,positions_ptr[tid].zhat);
 
+	rn_bank[tid]	=	rn;
+
 }
 
-void set_positions_rand( unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, source_point * d_space , float * d_rn_bank, float * outer_cell_dims){
+void set_positions_rand( unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, source_point * d_space , unsigned * d_rn_bank, float * outer_cell_dims){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 

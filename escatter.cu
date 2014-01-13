@@ -5,7 +5,7 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-inline __device__ void sample_therm(float* rn, float* muout, float* vt, const float temp, const float E0, const float awr){
+inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const float temp, const float E0, const float awr){
 
 	// adapted from OpenMC's sample_target_velocity subroutine in src/physics.F90
 
@@ -57,7 +57,6 @@ inline __device__ wfloat3 rotate_angle(float* rn, wfloat3 uvw0, float mu){
     float u0     ;// original cosine in x direction
     float v0     ;// original cosine in y direction
     float w0     ;// original cosine in z direction
-    float id  	= rn[0];
     float pi 	= 3.14159;
 
     // Copy original directional cosines
@@ -66,7 +65,7 @@ inline __device__ wfloat3 rotate_angle(float* rn, wfloat3 uvw0, float mu){
     w0 = uvw0.z;
 
     // Sample azimuthal angle in [0,2pi)
-    phi = 2.0 * pi * get_rand(&id);
+    phi = 2.0 * pi * get_rand(rn);
 
     // Precompute factors to save flops
     sinphi = sinf(phi);
@@ -88,12 +87,11 @@ inline __device__ wfloat3 rotate_angle(float* rn, wfloat3 uvw0, float mu){
       uvw.z = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b;
     }
 
-    rn[0] = id;
     return uvw;
 
  }
 
-__global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
+__global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -122,45 +120,33 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
-	float 		rn1 		= get_rand(rn_bank[tid]);
-	float 		rn2 		= get_rand(rn1);
-	float 		rn3 		= get_rand(rn2);
-	float 		rn4 		= get_rand(rn3);
-	float 		rn5 		= get_rand(rn4);
-	float 		rn6 		= get_rand(rn5);
-	float 		rn7 		= get_rand(rn6);
-	float 		rn8 		= get_rand(rn7);
-	float 		rn9 		= get_rand(rn8);
-	//float 		rn9 		= rn_bank[ tid*RNUM_PER_THREAD + 11];
+	unsigned	rn 			= rn_bank[tid];
 
 	// internal kernel variables
 	float 		mu, phi, next_E, last_E;
     unsigned 	vlen, next_vlen, offset, k; 
     unsigned  	isdone = 0;
-	float 		speed_target;     	//=   sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
-	//float 		a 					= 	this_awr/(this_awr+1.0);
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target, rotation_hat;
 	float 		mu0,mu1,cdf0,cdf1;
 	//float 		v_rel,E_rel;
 
 	//make target isotropic
-	phi = 2.0*pi*rn5;
+	phi = 2.0*pi*get_rand(&rn);
 	mu  = (2.0*rn4) - 1.0;
 	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
 	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
 	hats_target.z = mu;
 
 	//sample therm dist if low E
-	if(this_E <= 400*kb*temp ){
-		sample_therm(&rn9,&mu,&speed_target,temp,this_E,this_awr);
-		hats_target = rotate_angle(&rn9,hats_old,mu);
-		//rotation_hat = hats_old.cross( hats_target );
-		//rotation_hat = rotation_hat / rotation_hat.norm2();
-		//hats_target = hats_old;
-		//hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
-		//hats_target.rodrigues_rotation( hats_old,     phi       );
+	if(this_E <= 600*kb*temp ){
+		sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
+		rotation_hat = hats_old.cross( hats_target );
+		rotation_hat = rotation_hat / rotation_hat.norm2();
+		hats_target = hats_old;
+		hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
+		hats_target.rodrigues_rotation( hats_old,     phi       );
 	}
 	else{
 		speed_target = 0.0;
@@ -182,7 +168,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	phi = 2.0*pi*rn7;
 	offset=4;
 	if(this_Sarray == 0x0){
-		mu= 2*rn6-1; 
+		mu= 2*get_rand(&rn)-1; 
 		printf("null pointer in escatter!,dex %u tope %u E %6.4E\n",this_dex,this_tope,this_E);
 	}
 	else{  // 
@@ -193,8 +179,8 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
 		float r = (this_E-last_E)/(next_E-last_E);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
-		if(  rn8 >= r ){   //sample last E
-			k = binary_search(&this_Sarray[offset+vlen], rn6, vlen);
+		if(  get_rand(&rn) >= r ){   //sample last E
+			k = binary_search(&this_Sarray[offset+vlen], get_rand(&rn), vlen);
 			cdf0 = this_Sarray[ (offset+vlen) +k  ];
 			cdf1 = this_Sarray[ (offset+vlen) +k+1];
 			mu0  = this_Sarray[ (offset)      +k  ];
@@ -202,7 +188,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
 		}
 		else{   // sample E+1
-			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], rn6, next_vlen);
+			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], get_rand(&rn), next_vlen);
 			cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
 			cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
 			mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
@@ -215,14 +201,12 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
 	//  create a perpendicular roation vector 
-	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
 	rotation_hat = hats_target.cross( v_n_cm );
 	rotation_hat = rotation_hat / rotation_hat.norm2();
 	//  do rotations, polar first, then azimuthal
 	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
 	v_n_cm.rodrigues_rotation( hats_old,     phi       );
 
-	//v_n_cm = rotate_angle(&rn8,v_n_cm,mu);
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
