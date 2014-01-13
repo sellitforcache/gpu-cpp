@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include <stdio.h>
 #include "datadef.h"
+#include "LCRNG.cuh"
 
 __global__ void rebase_yield_kernel(unsigned N, unsigned RNUM_PER_THREAD, float keff, unsigned* rn_bank, unsigned* yield){
 

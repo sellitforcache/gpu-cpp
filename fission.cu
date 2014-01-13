@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
+__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
 
 	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
@@ -20,6 +20,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 	unsigned 	this_yield 	= 0;
 	unsigned 	inu 		= 0;
 	float 		nu 			= 0.0;
+	unsigned	rn 			= rn_bank[ tid ];
 
 	//only do reactions with secondary neutrons
 	if (rxn[tid] == 18 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 41){}
@@ -30,14 +31,12 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 	if (this_rxn == 18){
 		// load nu from arrays
 		unsigned 	this_dex 	= index[tid];
-		float 		rn1 		= rn_bank[ tid ];
-		rn_bank[tid] = get_rand(rn1);
 	
 		//load nu value, since e search has alrady been done!
 		memcpy(&nu, &scatterdat[this_dex], sizeof(float));
 		inu = (unsigned) nu;
 	
-		if((float)inu+rn1 <= nu){
+		if((float)inu+get_rand(&rn) <= nu){
 			this_yield = inu+1;
 		}
 		else{
@@ -54,13 +53,14 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 
 	// write output and terminate history
 	yield[tid] = this_yield;
+	rn_bank[tid] = rn;
 	if(RUN_FLAG==1){
 		done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
 	}
 
 }
 
-void fission( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , float * rn_bank, unsigned* done, float** scatterdat){
+void fission( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 

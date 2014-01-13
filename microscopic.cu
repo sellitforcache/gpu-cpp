@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active, unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active, unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -21,7 +21,8 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	unsigned 	tope_ending;
 	unsigned 	this_dex;
 	float 		this_E  		= E[tid];
-	float 		rn 				= rn_bank[tid];
+	unsigned	rn 				= rn_bank[tid];
+	float 		rn1 			= get_rand(&rn);
 	float 		cum_prob 		= 0.0;
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
@@ -55,7 +56,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
 		cum_prob += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) / xs_total;
-		if(rn <= cum_prob){
+		if(rn1 <= cum_prob){
 			// reactions happen in reaction k
 			this_rxn = xs_MT_numbers[k];
 			//printf("tope %u beg/end %u %u rxn %u cum_prob %6.4E rn1 %6.4E this_E %6.4E (tot,es,91,abs) %6.4E %6.4E %6.4E %6.4E\n",this_tope,tope_beginning,tope_ending,this_rxn,cum_prob,rn1,this_E,xs_data_MT[n_columns* dex    + 0],xs_data_MT[n_columns* dex    + 1],xs_data_MT[n_columns* dex    + 46],xs_data_MT[n_columns* dex    + 47]);
@@ -64,7 +65,6 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 			break;
 		}
 	}
-	rn = get_rand(rn);
 
 	if(this_rxn == 999999999){ // there is a gap in between the last MT and the total cross section, remap the rn to fit into the available data (effectively rescales the total cross section so everything adds up to it, if things aren't samples the first time around)
 		printf("REACTION NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u rxn=%u cum_prob=%6.4E\n",this_tope, this_E, dex, this_rxn, cum_prob);
@@ -99,7 +99,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 }
 
-void microscopic( unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active,unsigned* isonum, unsigned * index, float * main_E_grid, float * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+void microscopic( unsigned NUM_THREADS,  unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active,unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 

@@ -1408,7 +1408,7 @@ class whistory {
 	float * 		d_xs_data_Q;
 	float *         d_E;
 	float *         d_Q;
-	float *         d_rn_bank;
+	unsigned *         d_rn_bank;
 	float * 		d_awr_list;
 	float * 		d_tally_score;
 	unsigned * 		d_tally_count;

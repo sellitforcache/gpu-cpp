@@ -5,7 +5,7 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
+__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -23,7 +23,6 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//constants
 	const float  pi           =   3.14159265359 ;
 	const float  m_n          =   1.00866491600 ; // u
-	const float  temp         =   0.025865214e-6;    // MeV
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
 	// load history data
@@ -35,11 +34,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		this_awr	= awr_list[this_tope];
 	float * 	this_Sarray = scatterdat[this_dex];
 	//float * 	this_Earray =  energydat[this_dex];
-	float 		rn4 		= rn_bank[ tid];
-	float 		rn5 		= get_rand(rn4);
-	float 		rn6 		= get_rand(rn5);
-	float 		rn7 		= get_rand(rn6);
-	float 		rn8 		= get_rand(rn7);
+	unsigned 	rn 			= rn_bank[ tid];
+	float 		rn1 		= get_rand(&rn);
 
 	// internal kernel variables
 	float 		mu, phi, next_E, last_E;
@@ -55,8 +51,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//float 		v_rel,E_rel;
 
 	// make target isotropic
-	mu  = (2.0*rn4) - 1.0;
-	phi = 2.0*pi*rn5;
+	mu  = (2.0*get_rand(&rn)) - 1.0;
+	phi = 2.0*pi*get_rand(&rn);
 	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
 	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
 	hats_target.z = mu;
@@ -73,10 +69,10 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	v_t_cm = v_t_lf - v_cm;
 	
 	// sample new phi, mu_cm
-	phi = 2.0*pi*rn7;
+	phi = 2.0*pi*get_rand(&rn);
 	offset=4;
 	if(this_Sarray == 0x0){
-		mu= 2*rn6-1; 
+		mu= 2*get_rand(&rn)-1; 
 		printf("null pointer in iscatter!,dex %u tope %u E %6.4E\n",this_dex,this_tope,this_E);
 	}
 	else{  // 
@@ -86,22 +82,23 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
 		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
 		float r = (this_E-last_E)/(next_E-last_E);
+		rn1 = get_rand(&rn);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
-		if(  rn8 >= r ){   //sample last E
-			k = binary_search(&this_Sarray[offset+vlen], rn6, vlen);
+		if(  get_rand(&rn) >= r ){   //sample last E
+			k = binary_search(&this_Sarray[offset+vlen], rn1, vlen);
 			cdf0 = this_Sarray[ (offset+vlen) +k  ];
 			cdf1 = this_Sarray[ (offset+vlen) +k+1];
 			mu0  = this_Sarray[ (offset)      +k  ];
 			mu1  = this_Sarray[ (offset)      +k+1];
-			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn1-cdf0)+mu0; 
 		}
 		else{   // sample E+1
-			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], rn6, next_vlen);
+			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], rn1, next_vlen);
 			cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
 			cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
 			mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
 			mu1  = this_Sarray[ (offset+2*vlen)           +k+1];
-			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn1-cdf0)+mu0; 
 		}
 	}
 
@@ -133,11 +130,11 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	space[tid].xhat = hats_new.x;
 	space[tid].yhat = hats_new.y;
 	space[tid].zhat = hats_new.z;
-	rn_bank[tid] 	= get_rand(rn8);
+	rn_bank[tid] 	= rn;
 
 }
 
-void iscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
+void iscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 

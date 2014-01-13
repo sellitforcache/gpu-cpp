@@ -117,7 +117,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	}
 
 	// histogram interpolation
-	E0 = e0 + (rn7-cdf0)/pdf0;
+	E0 = e0 + (get_rand(&rn)-cdf0)/pdf0;
 	//lin-lin interpolation
 	//float m   = (pdf1 - pdf0)/(e1-e0);
 	//float arg = pdf0*pdf0 + 2.0 * m * (rn7-cdf0);
@@ -135,7 +135,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//sampled_E = E0;
 
 	// find mu
-	if(rn8>R){
+	if(get_rand(&rn)>R){
 		float T = (2.0*get_rand(&rn)-1.0)*sinhf(A);
 		mu = logf(T+sqrtf(T*T+1.0))/A;
 	}

@@ -45,7 +45,7 @@ inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const
 
 }
 
-inline __device__ wfloat3 rotate_angle(float* rn, wfloat3 uvw0, float mu){
+inline __device__ wfloat3 rotate_angle(unsigned* rn, wfloat3 uvw0, float mu){
 
     wfloat3 uvw;  //rotated directional cosine
 
@@ -129,12 +129,12 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target, rotation_hat;
-	float 		mu0,mu1,cdf0,cdf1;
+	float 		mu0,mu1,cdf0,cdf1,speed_target,rn1;
 	//float 		v_rel,E_rel;
 
 	//make target isotropic
 	phi = 2.0*pi*get_rand(&rn);
-	mu  = (2.0*rn4) - 1.0;
+	mu  = (2.0*get_rand(&rn)) - 1.0;
 	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
 	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
 	hats_target.z = mu;
@@ -165,7 +165,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	v_t_cm = v_t_lf - v_cm;	
 
 	// sample new phi, mu_cm
-	phi = 2.0*pi*rn7;
+	phi = 2.0*pi*get_rand(&rn);
 	offset=4;
 	if(this_Sarray == 0x0){
 		mu= 2*get_rand(&rn)-1; 
@@ -178,22 +178,23 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
 		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
 		float r = (this_E-last_E)/(next_E-last_E);
+		rn1 = get_rand(&rn);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
 		if(  get_rand(&rn) >= r ){   //sample last E
-			k = binary_search(&this_Sarray[offset+vlen], get_rand(&rn), vlen);
+			k = binary_search(&this_Sarray[offset+vlen], rn1, vlen);
 			cdf0 = this_Sarray[ (offset+vlen) +k  ];
 			cdf1 = this_Sarray[ (offset+vlen) +k+1];
 			mu0  = this_Sarray[ (offset)      +k  ];
 			mu1  = this_Sarray[ (offset)      +k+1];
-			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn1-cdf0)+mu0; 
 		}
 		else{   // sample E+1
-			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], get_rand(&rn), next_vlen);
+			k = binary_search(&this_Sarray[offset+2*vlen+next_vlen], rn1, next_vlen);
 			cdf0 = this_Sarray[ (offset+2*vlen+next_vlen) +k  ];
 			cdf1 = this_Sarray[ (offset+2*vlen+next_vlen) +k+1];
 			mu0  = this_Sarray[ (offset+2*vlen)           +k  ];
 			mu1  = this_Sarray[ (offset+2*vlen)           +k+1];
-			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn6-cdf0)+mu0; 
+			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn1-cdf0)+mu0; 
 		}
 	}
 
@@ -225,12 +226,12 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	space[tid].xhat = hats_new.x;
 	space[tid].yhat = hats_new.y;
 	space[tid].zhat = hats_new.z;
-	rn_bank[tid] 	= get_rand(rn8);
+	rn_bank[tid] 	= rn;
 
 
 }
 
-void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, float * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, unsigned* done, float** scatterdat){
+void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, unsigned* done, float** scatterdat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 

@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , float* rn_bank, float**  energydata){
+__global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , unsigned* rn_bank, float**  energydata){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -19,6 +19,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;
 	source_point 	this_space 	= space[tid];
+	unsigned 		rn 			= rn_bank[tid];
 
 	// internal data
 	float 		Emin=1e-11;
@@ -32,8 +33,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	// reset self then write elsewhere
 
 	//read in values
-	rn1 = rn_bank[ tid ];
-	rn2 = get_rand(rn1);
+	rn1 = get_rand(&rn);
+	rn2 = get_rand(&rn);
 	offset = 5;
 	//printf("rxn %u eptr %p\n",this_rxn,this_array);
 	memcpy(&last_E,   	&this_array[0], sizeof(float));
@@ -94,8 +95,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
 
 	//sample isotropic directions
-	rn1 = get_rand(rn2);
-	rn2 = get_rand(rn1);
+	rn1 = get_rand(&rn);
+	rn2 = get_rand(&rn);
 	mu  = 2.0*rn1-1.0; 
 	phi = 2.0*pi*rn2;
 	
@@ -123,8 +124,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
-		rn1 = get_rand(rn2);
-		rn2 = get_rand(rn1);
+		rn1 = get_rand(&rn);
+		rn2 = get_rand(&rn);
 		//rn1 = rn_bank[ tid*RNUM_PER_THREAD + 11 + (k+1)*4];
 		//rn2 = rn_bank[ tid*RNUM_PER_THREAD + 12 + (k+1)*4];
 		//sample energy dist
@@ -174,8 +175,8 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 		sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
 
 		//sample isotropic directions
-		rn1 = get_rand(rn2);
-		rn2 = get_rand(rn1);
+		rn1 = get_rand(&rn);
+		rn2 = get_rand(&rn);
 		mu  = 2.0*rn1-1.0; 
 		phi = 2.0*pi*rn2;
 	
@@ -207,11 +208,11 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 
 	}
 
-	rn_bank[tid] = get_rand(rn2);
+	rn_bank[tid] = rn;
 
 }
 
-void pop_secondaries( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , float* d_rn_bank, float ** energydata){
+void pop_secondaries( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , unsigned* d_rn_bank, float ** energydata){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
