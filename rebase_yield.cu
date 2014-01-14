@@ -14,14 +14,15 @@ __global__ void rebase_yield_kernel(unsigned N, unsigned RNUM_PER_THREAD, float 
 	unsigned 	rn 			=	rn_bank[tid];
 	float 		new_yield 	=	(float)this_yield / keff;
 	unsigned 	i_new_yield	=	(unsigned) new_yield;
+	float 		rn1 		=	get_rand(&rn);
 
-	if((float)i_new_yield+get_rand(&rn) < new_yield){
+	if((float)i_new_yield+rn1 < new_yield){
 		this_yield = i_new_yield+1;
 	}
 	else{
 		this_yield = i_new_yield;
 	}
-	////printf("%u %6.4E %6.4E %u %u %6.4E\n",yield[tid],keff,new_yield,i_new_yield,this_yield,rn1);
+	//printf("%u %6.4E %6.4E %u %u %6.4E\n",yield[tid],keff,new_yield,i_new_yield,this_yield,rn1);
 
 	yield[tid] 	= 	this_yield;
 	rn_bank[tid]= 	rn;

@@ -26,7 +26,8 @@ void absorb( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned* ac
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	
-	absorb_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, active, rxn , done);
+	absorb_kernel <<< blks, NUM_THREADS >>> (  N, active, rxn , done);
+	//absorb_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, active, rxn , done);
 	cudaThreadSynchronize();
 
 }

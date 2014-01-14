@@ -230,7 +230,7 @@ int main(){
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
-	int N = 1e5;
+	int N = 2e5;
 	whistory hist ( N , geom );
 	hist.set_device(0);
 	hist.init();

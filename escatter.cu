@@ -142,6 +142,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//sample therm dist if low E
 	if(this_E <= 600*kb*temp ){
 		sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
+		//hats_target = rotate_angle(&rn,hats_old,mu);
 		rotation_hat = hats_old.cross( hats_target );
 		rotation_hat = rotation_hat / rotation_hat.norm2();
 		hats_target = hats_old;
@@ -207,6 +208,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//  do rotations, polar first, then azimuthal
 	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
 	v_n_cm.rodrigues_rotation( hats_old,     phi       );
+	//v_n_cm = rotate_angle(&rn,hats_old,mu) * v_n_cm.norm2();
 
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
@@ -235,7 +237,8 @@ void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned R
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	escatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
+	escatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
+	//escatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

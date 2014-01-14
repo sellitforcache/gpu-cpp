@@ -2845,10 +2845,10 @@ void whistory::run(){
 
 			// run macroscopic kernel to find interaction length and reaction isotope
 			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
-			printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+
 			// run optix to detect the nearest surface and move particle there, sets rxn to 888 if leaked!
 			trace(1);
 
@@ -2863,12 +2863,18 @@ void whistory::run(){
 			
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			cudaThreadSynchronize();
-			if(iteration_total>2){print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);}
+			//if(iteration_total>2){print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);}
+			//printf("0 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			escatter( stream[0], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
+			//printf("1 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			iscatter( stream[1], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			//printf("2 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			cscatter( stream[2], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			//printf("3 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			absorb  ( stream[3], NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
+			//printf("4 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			fission ( stream[4], NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+			//printf("5 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			cudaDeviceSynchronize();
 
 			if(RUN_FLAG==0){  //fixed source

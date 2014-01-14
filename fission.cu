@@ -53,7 +53,7 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 
 	// write output and terminate history
 	yield[tid] = this_yield;
-	rn_bank[tid] = rn;
+	if (this_rxn == 18){rn_bank[tid] = rn;}
 	if(RUN_FLAG==1){
 		done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
 	}
@@ -64,7 +64,8 @@ void fission( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RN
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	fission_kernel <<< blks, NUM_THREADS , 0 , stream >>> (   N,  RNUM_PER_THREAD, RUN_FLAG, active, rxn , index, yield , rn_bank, done, scatterdat);
+	fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, RUN_FLAG, active, rxn , index, yield , rn_bank, done, scatterdat);
+	//fission_kernel <<< blks, NUM_THREADS , 0 , stream >>> (   N,  RNUM_PER_THREAD, RUN_FLAG, active, rxn , index, yield , rn_bank, done, scatterdat);
 	cudaThreadSynchronize();
 
 }
