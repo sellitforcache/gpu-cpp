@@ -46,7 +46,7 @@ RT_PROGRAM void closest_hit()
 
 	// write in first hit
 	if(payload.do_first_hit==1){     // if this is the first hit and a transport trace, set first hit and current position
-			payload.surf_dist       = int_dist;
+			payload.surf_dist       = int_dist; //rtPrintf("int_dist %6.4E\n",int_dist);
 			payload.cell_first      = cellnum;
 			payload.do_first_hit    = 0;
 			payload.hitbuff[0]      = this_buff;

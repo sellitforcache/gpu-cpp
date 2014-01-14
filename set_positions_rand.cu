@@ -14,11 +14,14 @@ __global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD,
 	//const float mu    = ( rn1 ) * 2.0 - 1.0;
 	//const float theta = ( rn2 ) * 2.0 * pi ;
 	unsigned 	rn = rn_bank[tid];
+	float rn1 = get_rand(&rn);
+	float rn2 = get_rand(&rn);
+	float rn3 = get_rand(&rn);
 
 	positions_ptr[tid].samp_dist =     500;   
-	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * get_rand(&rn) + x_min );  
-	positions_ptr[tid].y         =     0.9 * ( ( y_max - y_min ) * get_rand(&rn) + y_min );  
-	positions_ptr[tid].z         =     0.9 * ( ( z_max - z_min ) * get_rand(&rn) + z_min ); 
+	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * rn1 + x_min );  
+	positions_ptr[tid].y         =     0.9 * ( ( y_max - y_min ) * rn2 + y_min );  
+	positions_ptr[tid].z         =     0.9 * ( ( z_max - z_min ) * rn3 + z_min ); 
 	positions_ptr[tid].xhat      =     0.0;//sqrtf(1-mu*mu) * cosf( theta );
 	positions_ptr[tid].yhat      =     0.0;//sqrtf(1-mu*mu) * sinf( theta );
 	positions_ptr[tid].zhat      =    -1.0;//      mu;

@@ -38,7 +38,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	}
 
 	// compute the interaction length
-	samp_dist = -logf(rn)/macro_t_total;
+	samp_dist = -logf(get_rand(&rn))/macro_t_total;
 	float rn1 = get_rand(&rn);
 
 	// determine the isotope which the reaction occurs

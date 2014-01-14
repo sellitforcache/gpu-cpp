@@ -1108,6 +1108,8 @@ void optix_stuff::make_geom_xform(wgeometry problem_geom){
 
 	}
 
+	std::cout << "Done setting up transform-based instancing\n";
+
 }
 void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
@@ -1115,7 +1117,6 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
 	Group 				top_level_group;
 	Variable 			top_object;
-	//Acceleration 		top_level_acceleration;
 	Acceleration 		this_accel;
 
 	Buffer 				geom_buffer;
@@ -1123,8 +1124,6 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	geom_data*			geom_buffer_ptr;
 
 	GeometryGroup 		this_geom_group;
-	//Variable 			this_geom_min;
-	//Variable 			this_geom_max;
 	Geometry 			this_geom;
 	GeometryInstance 	ginst;
 	Material 			material;
@@ -1133,10 +1132,6 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	Program  			closest_hit_program;
 	Transform 			this_transform;
 	Acceleration  		acceleration;
-	//Variable			this_geom_buffer_var;
-	//Variable			cellnum_var;
-	//Variable			cellmat_var;
-	//Variable			cellfissile_var;
 
 	char 				path_to_ptx[512];
 	unsigned 			cellnum,cellmat;
@@ -1183,6 +1178,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		// create internal optix buffer and copy "transform" data, as well as cellnum, matnum, and isfiss into the buffer stuct
 		geom_buffer = context->createBuffer(RT_BUFFER_INPUT,RT_FORMAT_USER,problem_geom.primitives[j].n_transforms);
 		geom_buffer -> setElementSize( sizeof(geom_data) );
+		this_geom["geom_data"] -> set( geom_buffer );
 		geom_buffer_ptr = (geom_data*) geom_buffer->map();
 		for(int k=0 ; k<problem_geom.primitives[j].n_transforms ; k++){
 			// apply transforms to base primitive
@@ -2884,7 +2880,9 @@ void whistory::run(){
 
 			// remap threads to still active data
 			Nrun = map_active();
-			//if(Nrun<=50){print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done);}
+			//if(Nrun<=50){
+			//	print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);
+			//};
 
 			// update random number bank
 			//update_RNG();

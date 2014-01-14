@@ -12,5 +12,6 @@ since 32-bit math is being used, 30 bits are used here
 	unsigned prn_mask   = prn_mod - 1; 				// 2^30-1
 	float prn_norm   	= 1.862645149230957e-09;	// 2^-30
 	in[0] = (a * in[0] +  c) & prn_mask;   			// mod by truncation
+	//printf("%10.8E\n",prn_norm*in[0]);
 	return prn_norm*in[0];   						// return normalized float
 }

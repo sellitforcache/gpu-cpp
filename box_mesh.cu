@@ -19,12 +19,16 @@ RT_PROGRAM void intersect(int object_dex)
   float3 loc  = make_float3(dims[object_dex].loc[0],dims[object_dex].loc[1],dims[object_dex].loc[2]);
   float3 xformed_origin = ray.origin - loc;
 
+  //rtPrintf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",xformed_origin.x,xformed_origin.y,xformed_origin.z,mins.x,mins.y,mins.z,maxs.x,maxs.y,maxs.z);
+
   float3 t0 = (mins - xformed_origin)/ray.direction;
   float3 t1 = (maxs - xformed_origin)/ray.direction;
   float3 near = fminf(t0, t1);
-  float3 far = fmaxf(t0, t1);
-  float tmin = fmaxf( near );
-  float tmax = fminf( far );
+  float3 far  = fmaxf(t0, t1);
+  float tmin  = fmaxf( near );
+  float tmax  = fminf( far );
+
+  //rtPrintf("%6.4E %6.4E\n",tmin,tmax);
 
   if(tmin <= tmax) {
     bool check_second = true;
@@ -37,7 +41,7 @@ RT_PROGRAM void intersect(int object_dex)
     } 
     if(check_second) {
       if( rtPotentialIntersection( tmax ) ) {
-        cellnum     = dims[object_dex].cellnum;
+         cellnum     = dims[object_dex].cellnum;
          cellmat     = dims[object_dex].matnum;
          cellfissile = dims[object_dex].is_fissile;
         rtReportIntersection(0);

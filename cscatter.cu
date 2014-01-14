@@ -46,7 +46,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target;
-	float 		cdf0,cdf1,e0,e1,A,R,pdf0,pdf1;
+	float 		cdf0,cdf1,e0,e1,A,R,pdf0,pdf1,rn1;
 	//float 		v_rel,E_rel;
 
 	// make target isotropic
@@ -85,10 +85,11 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//unsigned svlen,next_svlen,len;
 	//printf("law=%u vlen/next= %u %u, E-last/this/next= %6.4E %6.4E %6.4E\n",law,vlen,next_vlen,last_E,this_E,next_E);
 	sampled_E = 0.0;
+	rn1 = get_rand(&rn);
 	if(  get_rand(&rn) >= r ){   //sample last E
 		diff = last_e_end - last_e_start;
 		e_start = last_e_start;
-		n = binary_search( &this_Earray[ offset + vlen ] , get_rand(&rn), vlen);
+		n = binary_search( &this_Earray[ offset + vlen ] , rn1, vlen);
 		//printf("n %u vlen %u rn7 %6.4E\n",n,vlen,rn7);
 		cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
 		cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
@@ -103,7 +104,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	else{
 		diff = next_e_end - next_e_start;
 		e_start = next_e_start;
-		n = binary_search( &this_Earray[ offset + 3*vlen + next_vlen] , get_rand(&rn), next_vlen);
+		n = binary_search( &this_Earray[ offset + 3*vlen + next_vlen] , rn1, next_vlen);
 		//printf("n %u next_vlen %u rn7 %6.4E\n",n,next_vlen,rn7);
 		cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
 		cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
@@ -117,7 +118,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	}
 
 	// histogram interpolation
-	E0 = e0 + (get_rand(&rn)-cdf0)/pdf0;
+	E0 = e0 + (rn1-cdf0)/pdf0;
 	//lin-lin interpolation
 	//float m   = (pdf1 - pdf0)/(e1-e0);
 	//float arg = pdf0*pdf0 + 2.0 * m * (rn7-cdf0);
@@ -135,13 +136,13 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//sampled_E = E0;
 
 	// find mu
+	rn1 = get_rand(&rn);
 	if(get_rand(&rn)>R){
-		float T = (2.0*get_rand(&rn)-1.0)*sinhf(A);
+		float T = (2.0*rn1-1.0)*sinhf(A);
 		mu = logf(T+sqrtf(T*T+1.0))/A;
 	}
 	else{
-		float rn9 = get_rand(&rn);
-		mu = logf(rn9*expf(A)+(1.0-rn9)*expf(-A))/A;
+		mu = logf(rn1*expf(A)+(1.0-rn1)*expf(-A))/A;
 	}
 
 	// sample new phi

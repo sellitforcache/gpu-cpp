@@ -54,7 +54,6 @@ RT_PROGRAM void camera()
       else{ // surface is closer 
          if (payload.cell_first==outer_cell){ // first check if BC
             if(boundary_condition == 0){
-              //rtPrintf("leaked - old rxn %u\n",rxn_buffer[launch_index]);
               rxn  = 888;  //  set leak code
               done = 1;   // set done flag
               // move out of geometry to "interaction point"
@@ -109,14 +108,16 @@ RT_PROGRAM void camera()
             payload.cont=0; 
             cellnum_buffer[launch_index]==outer_cell;
       }
-      while(payload.cont){
-         ray_origin = make_float3(payload.x,payload.y,payload.z);
-         ray = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
-         rtTrace(top_object, ray, payload);      
+      else{
+        while(payload.cont){
+           ray_origin = make_float3(payload.x,payload.y,payload.z);
+           ray = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
+           rtTrace(top_object, ray, payload);      
+        }
+        cellnum_buffer[launch_index] = payload.hitbuff[0].cell;
+        // if number 4 requested, then write fissile flag to matnum instead of matnum
+        //rtPrintf("cellnum,matnum,is_fissile = %d %d %d \n",payload.hitbuff[0].cell,payload.hitbuff[0].mat,payload.hitbuff[0].fiss);
       }
-      cellnum_buffer[launch_index] = payload.hitbuff[0].cell;
-      // if number 4 requested, then write fissile flag to matnum instead of matnum
-      //rtPrintf("cellnum,matnum,is_fissile = %d %d %d \n",payload.hitbuff[0].cell,payload.hitbuff[0].mat,payload.hitbuff[0].fiss);
       if(trace_type == 2){
         matnum_buffer[launch_index]=payload.hitbuff[0].mat;
       }
