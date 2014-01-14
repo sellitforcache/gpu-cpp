@@ -244,7 +244,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.set_run_param(2,1);  //run, skip
+	hist.set_run_param(20,10);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");

@@ -1,8 +1,8 @@
 #
-CC =  /usr/local/Cellar/gcc46/4.6.4/bin/gcc-4.6
-CXX = /usr/local/Cellar/gcc46/4.6.4/bin/g++-4.6
-OPTIX = /Developer/OptiX
-NVCC = nvcc -ccbin=/usr/local/Cellar/gcc46/4.6.4/bin
+CC =  gcc
+CXX = g++
+OPTIX = /usr/local/OptiX-3.0.1
+NVCC = nvcc
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64
 NVCC_FLAGS = -m64  -use_fast_math
@@ -12,7 +12,7 @@ OPTIX_LIBS = -loptix
 CUDPP_PATH = /usr/local/cudpp-2.1/
 CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
-PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers
+PYTHON_FLAGS = -I/usr/local/anaconda/include -L/usr/local/anaconda/lib/python2.7
 PYTHON_LIBS = -lpython2.7
 PNG_FLAGS = -L/
 PNG_LIBS = -lpng15
@@ -145,7 +145,7 @@ flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
 
 gpu: $(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 
+	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 
 
 debug: 	$(ptx_objects) $(COBJS)
 	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -g -G -o $@ 
