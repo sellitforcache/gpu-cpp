@@ -33,8 +33,11 @@ class cross_section_data:
 		datapath = '/usr/local/SERPENT/xsdata/endfb7/acedata/'
 		
 		for tope in self.isotope_list:
-			tope_number = nucname.mcnp(tope)
-			librarypath=glob.glob(datapath+str(tope_number)+'[A-Z]*[0-9]*.ace')[0]
+			#tope_number = nucname.mcnp(tope)
+			#print tope
+			#print nucname.mcnp(tope)
+			#print glob.glob(datapath+str(tope_number)+'[A-Z]*[0-9]*.ace')
+			librarypath=glob.glob(datapath+str(tope)+'[A-Z]*[0-9]*.ace')[0]
 			self.libraries.append(ace.Library(librarypath))
 
 		for lib in self.libraries:

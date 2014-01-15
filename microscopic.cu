@@ -14,7 +14,6 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	if(done[tid]){return;}
 
 	// load from array
-	unsigned  	RNUM_PER_THREAD = 15;
 	unsigned 	this_tope 		= isonum[tid];
 	unsigned 	dex 			= index[tid];
 	unsigned 	tope_beginning;

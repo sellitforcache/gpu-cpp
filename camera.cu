@@ -63,10 +63,16 @@ RT_PROGRAM void camera()
               z = positions_buffer[launch_index].z + samp_dist*positions_buffer[launch_index].zhat;
             }
             else if(boundary_condition == 1){
-              rtPrintf("CRAPPPPPPPPP\n");
+              rxn  = 777;  //  set reflected code
+              done = 0;   // set done flag
+              // move out of geometry to boudary and reflect angles
+              cellnum = payload.cell_first;
+              x = positions_buffer[launch_index].x + samp_dist * positions_buffer[launch_index].xhat;
+              y = positions_buffer[launch_index].y + samp_dist * positions_buffer[launch_index].yhat;
+              z = positions_buffer[launch_index].z + samp_dist * positions_buffer[launch_index].zhat;
             }
             else{
-              rtPrintf("DOUBLE CRAPPPPPPPPP\n");
+              rtPrintf("Unknown boundary condition %u specified.\n",boundary_condition);
             }
          }
          else{

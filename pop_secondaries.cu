@@ -15,7 +15,7 @@ __global__ void pop_secondaries_kernel(unsigned N, unsigned RNUM_PER_THREAD, uns
 	unsigned 		this_yield 	= yield[tid];
 	unsigned 		dex  		= index[tid];
 	float 			this_E 		= E[tid];
-	unsigned 		this_rxn 	= rxn[tid];
+	//unsigned 		this_rxn 	= rxn[tid];
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;
 	source_point 	this_space 	= space[tid];

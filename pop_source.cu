@@ -23,7 +23,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	unsigned 		data_dex 	= 0;
 	source_point 	this_space 	= space[tid];
 	wfloat3 		hats_old(this_space.xhat,this_space.yhat,this_space.zhat);
-	float 			this_awr	= awr_list[this_tope];
+	//float 			this_awr	= awr_list[this_tope];
 	//printf("tid %u rxn %u space % 6.4E % 6.4E % 6.4E\n",tid,this_rxn,this_space.x,this_space.y,this_space.z);
 
 	// internal data

@@ -1481,7 +1481,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 // do problem gemetry stuff first
 	problem_geom = problem_geom_in;
 	// set tally vector length
-	n_tally = 1024;
+	n_tally = 2048;
 	RUN_FLAG = 1;
 	// device data stuff
 	N = Nin;
