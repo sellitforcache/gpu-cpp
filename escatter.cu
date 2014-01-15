@@ -45,51 +45,51 @@ inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const
 
 }
 
-inline __device__ wfloat3 rotate_angle(unsigned* rn, wfloat3 uvw0, float mu){
-
-    wfloat3 uvw;  //rotated directional cosine
-
-    float phi    ;// azimuthal angle
-    float sinphi ;// sine of azimuthal angle
-    float cosphi ;// cosine of azimuthal angle
-    float a      ;// sqrt(1 - mu^2)
-    float b      ;// sqrt(1 - w^2)
-    float u0     ;// original cosine in x direction
-    float v0     ;// original cosine in y direction
-    float w0     ;// original cosine in z direction
-    float pi 	= 3.14159;
-
-    // Copy original directional cosines
-    u0 = uvw0.x;
-    v0 = uvw0.y;
-    w0 = uvw0.z;
-
-    // Sample azimuthal angle in [0,2pi)
-    phi = 2.0 * pi * get_rand(rn);
-
-    // Precompute factors to save flops
-    sinphi = sinf(phi);
-    cosphi = cosf(phi);
-    a = sqrtf(max(0.0, 1.0 - mu*mu));
-    b = sqrtf(max(0.0, 1.0 - w0*w0));
-
-    // Need to treat special case where sqrt(1 - w**2) is close to zero by
-    // expanding about the v component rather than the w component
-    if (b > 1e-10) {
-      uvw.x = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b;
-      uvw.y = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b;
-      uvw.z = mu*w0 - a*b*cosphi;
-  	}
-    else{
-      b = sqrtf(1.0 - v0*v0);
-      uvw.x = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b;
-      uvw.y = mu*v0 - a*b*cosphi;
-      uvw.z = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b;
-    }
-
-    return uvw;
-
- }
+//inline __device__ wfloat3 rotate_angle(unsigned* rn, wfloat3 uvw0, float mu){
+//
+//    wfloat3 uvw;  //rotated directional cosine
+//
+//    float phi    ;// azimuthal angle
+//    float sinphi ;// sine of azimuthal angle
+//    float cosphi ;// cosine of azimuthal angle
+//    float a      ;// sqrt(1 - mu^2)
+//    float b      ;// sqrt(1 - w^2)
+//    float u0     ;// original cosine in x direction
+//    float v0     ;// original cosine in y direction
+//    float w0     ;// original cosine in z direction
+//    float pi 	= 3.14159;
+//
+//    // Copy original directional cosines
+//    u0 = uvw0.x;
+//    v0 = uvw0.y;
+//    w0 = uvw0.z;
+//
+//    // Sample azimuthal angle in [0,2pi)
+//    phi = 2.0 * pi * get_rand(rn);
+//
+//    // Precompute factors to save flops
+//    sinphi = sinf(phi);
+//    cosphi = cosf(phi);
+//    a = sqrtf(max(0.0, 1.0 - mu*mu));
+//    b = sqrtf(max(0.0, 1.0 - w0*w0));
+//
+//    // Need to treat special case where sqrt(1 - w**2) is close to zero by
+//    // expanding about the v component rather than the w component
+//    if (b > 1e-10) {
+//      uvw.x = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b;
+//      uvw.y = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b;
+//      uvw.z = mu*w0 - a*b*cosphi;
+//  	}
+//    else{
+//      b = sqrtf(1.0 - v0*v0);
+//      uvw.x = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b;
+//      uvw.y = mu*v0 - a*b*cosphi;
+//      uvw.z = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b;
+//    }
+//
+//    return uvw;
+//
+// }
 
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
@@ -167,9 +167,10 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	// sample new phi, mu_cm
 	phi = 2.0*pi*get_rand(&rn);
+	rn1 = get_rand(&rn);
 	offset=4;
 	if(this_Sarray == 0x0){
-		mu= 2*get_rand(&rn)-1; 
+		mu= 2.0*rn1-1.0; 
 		printf("null pointer in escatter!,dex %u tope %u E %6.4E\n",this_dex,this_tope,this_E);
 	}
 	else{  // 
@@ -179,7 +180,6 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
 		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
 		float r = (this_E-last_E)/(next_E-last_E);
-		rn1 = get_rand(&rn);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
 		if(  get_rand(&rn) >= r ){   //sample last E
 			k = binary_search(&this_Sarray[offset+vlen], rn1, vlen);
@@ -237,8 +237,8 @@ void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned R
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	escatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
-	//escatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
+	//escatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
+	escatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

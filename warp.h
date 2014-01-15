@@ -1680,7 +1680,7 @@ void whistory::init_host(){
 void whistory::init_RNG(){
 	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
-	curandSetPseudoRandomGeneratorSeed( rand_gen , 1234ULL );
+	curandSetPseudoRandomGeneratorSeed( rand_gen , 123456789ULL );
 	curandGenerate( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD *sizeof(unsigned) , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
@@ -2685,8 +2685,8 @@ void whistory::sample_fissile_points(){
 	while (current_index < N){
 		
 		// advance RN bank
-		curandGenerate( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
-		
+		update_RNG();
+
 		// set uniformly random positions on GPU
 		set_positions_rand ( NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
 		
@@ -2729,7 +2729,7 @@ void whistory::sample_fissile_points(){
 	fclose(positionsfile);
 
 	// advance RN bank
-	curandGenerate( rand_gen , d_rn_bank , Ndataset*RNUM_PER_THREAD );
+	update_RNG();
 
 }
 void whistory::reset_cycle(float keff_cycle){
@@ -2777,7 +2777,7 @@ void whistory::reset_fixed(){
 	//set position, direction, energy
 	sample_fixed_source( NUM_THREADS, N, RNUM_PER_THREAD, d_active, d_rn_bank, d_E, d_space);
 
-	// update RNGs
+	// update RNG seeds
 	update_RNG();
 
 }
@@ -2840,7 +2840,6 @@ void whistory::run(){
 			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// find what material we are in
-			//if(iteration_total==1){write_xs_data("xsdata");exit(0);}
 			trace(2);
 
 			// run macroscopic kernel to find interaction length and reaction isotope
@@ -2852,29 +2851,21 @@ void whistory::run(){
 			// run optix to detect the nearest surface and move particle there, sets rxn to 888 if leaked!
 			trace(1);
 
-			if(converged){
-				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
-			}
-
 			// run tally kernel to compute spectra
 			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
 			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+			if(converged){
+				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+			}
 			
 			
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			cudaThreadSynchronize();
-			//if(iteration_total>2){print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);}
-			//printf("0 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			escatter( stream[0], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
-			//printf("1 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			iscatter( stream[1], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			//printf("2 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			cscatter( stream[2], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			//printf("3 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			absorb  ( stream[3], NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
-			//printf("4 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			fission ( stream[4], NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
-			//printf("5 CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			cudaDeviceSynchronize();
 
 			if(RUN_FLAG==0){  //fixed source
@@ -2888,7 +2879,7 @@ void whistory::run(){
 			// remap threads to still active data
 			Nrun = map_active();
 			//if(Nrun<=50){
-			//	print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield);
+			//	print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield, d_rn_bank);
 			//};
 
 			// update random number bank

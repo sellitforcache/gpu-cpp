@@ -10,7 +10,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active,
 	if (done[tid]){return;}
 	//if (!mask[tid]){return;}
 
-	int k;
+	//int k;
 	float 		my_E   			= E[tid];
 	float 		macro_t 		= space[tid].macro_t;
 	unsigned 	my_bin_index 	= 0;
@@ -19,7 +19,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active,
 	const float Emin 	=  1.0e-11;
 	float log_spacing 	= (log10f(Emax)-(-11.0))/(Ntally-2+1);//(log10f(Emax)-log10f(Emin))/(Ntally-2+1);
 	float multiplier  	= powf(10,log_spacing);
-	float this_bin,next_bin;
+	//float this_bin,next_bin;
 
 	// determine bin number
 	my_bin_index = logf(my_E/Emin)/logf(multiplier);

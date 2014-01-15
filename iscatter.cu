@@ -69,9 +69,10 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	
 	// sample new phi, mu_cm
 	phi = 2.0*pi*get_rand(&rn);
+	rn1 = get_rand(&rn);
 	offset=4;
 	if(this_Sarray == 0x0){
-		mu= 2*get_rand(&rn)-1; 
+		mu= 2.0*rn1-1.0; 
 		printf("null pointer in iscatter!,dex %u tope %u E %6.4E\n",this_dex,this_tope,this_E);
 	}
 	else{  // 
@@ -81,7 +82,6 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		memcpy(&vlen, 		&this_Sarray[2], sizeof(float));
 		memcpy(&next_vlen, 	&this_Sarray[3], sizeof(float));
 		float r = (this_E-last_E)/(next_E-last_E);
-		rn1 = get_rand(&rn);
 		//printf("(last,this,next) = %6.4E %6.4E %6.4E, prob=%6.4E, (this,next)_vlen= %u %u\n",last_E,this_E,next_E,(next_E-this_E)/(next_E-last_E),vlen,next_vlen);
 		if(  get_rand(&rn) >= r ){   //sample last E
 			k = binary_search(&this_Sarray[offset+vlen], rn1, vlen);
@@ -137,8 +137,8 @@ void iscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned R
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
-	//iscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	//iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	iscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }

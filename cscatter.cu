@@ -25,7 +25,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//constants
 	const float  pi           =   3.14159265359 ;
 	const float  m_n          =   1.00866491600 ; // u
-	const float  temp         =   0.025865214e-6;    // MeV
+	//const float  temp         =   0.025865214e-6;    // MeV
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
 	// load history data
@@ -46,7 +46,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		E_new				=   0.0;
 	//float 		a 					= 	this_awr/(this_awr+1.0);
 	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target;
-	float 		cdf0,cdf1,e0,e1,A,R,pdf0,pdf1,rn1;
+	float 		cdf0,e0,A,R,pdf0,rn1;
+	//float		cdf1,pdf1,e1;
 	//float 		v_rel,E_rel;
 
 	// make target isotropic
@@ -92,11 +93,11 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		n = binary_search( &this_Earray[ offset + vlen ] , rn1, vlen);
 		//printf("n %u vlen %u rn7 %6.4E\n",n,vlen,rn7);
 		cdf0 		= this_Earray[ (offset +   vlen ) + n+0];
-		cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
+		//cdf1 		= this_Earray[ (offset +   vlen ) + n+1];
 		pdf0		= this_Earray[ (offset + 2*vlen ) + n+0];
-		pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
+		//pdf1		= this_Earray[ (offset + 2*vlen ) + n+1];
 		e0  		= this_Earray[ (offset          ) + n+0];
-		e1  		= this_Earray[ (offset          ) + n+1]; 
+		//e1  		= this_Earray[ (offset          ) + n+1]; 
 		offset = 4;
 		A = this_Sarray[ (offset)      + n ];
 		R = this_Sarray[ (offset+vlen) + n ];
@@ -107,11 +108,11 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		n = binary_search( &this_Earray[ offset + 3*vlen + next_vlen] , rn1, next_vlen);
 		//printf("n %u next_vlen %u rn7 %6.4E\n",n,next_vlen,rn7);
 		cdf0 		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+0];
-		cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
+		//cdf1  		= this_Earray[ (offset + 3*vlen +   next_vlen ) + n+1];
 		pdf0		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+0];
-		pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
+		//pdf1		= this_Earray[ (offset + 3*vlen + 2*next_vlen ) + n+1];
 		e0   		= this_Earray[ (offset + 3*vlen               ) + n+0];
-		e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
+		//e1   		= this_Earray[ (offset + 3*vlen               ) + n+1];
 		offset = 4;
 		A = this_Sarray[ (offset+2*vlen)           +n  ] ;
 		R = this_Sarray[ (offset+2*vlen+next_vlen) +n  ];
@@ -189,8 +190,8 @@ void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned R
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	cscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
-	//cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	//cscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }

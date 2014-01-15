@@ -230,7 +230,7 @@ int main(){
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
-	int N = 2e5;
+	int N = 1e5;
 	whistory hist ( N , geom );
 	hist.set_device(0);
 	hist.init();
@@ -244,7 +244,7 @@ int main(){
 	hist.set_run_type("criticality");
 	//hist.converge(10);
 	hist.set_tally_cell(999);
-	hist.set_run_param(20,10);  //run, skip
+	hist.set_run_param(40,20);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);
 	hist.write_xs_data("xsdata");
