@@ -5,8 +5,6 @@
 
 __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
-
-	//PLACEHOLDER FOR FISSIONS, NEED TO READ NU TABLES LATER
 	
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds

@@ -207,22 +207,22 @@ int main(){
 	// pin cell with water, zirc, and UO2 
 	//unsigned 	topes_fuel[3]={92235,92238,8016};
 	//float    	fracs_fuel[3]={0.01,  0.99,   2};
-	//unsigned 	topes_clad[5]={40090,40091,40092,40094,40095};
-	//float    	fracs_clad[5]={0.5145,0.1122,0.1715,0.1738,0.028};
+	////unsigned 	topes_clad[1]={40090};//,40091,40092,40094,40095};
+	////float    	fracs_clad[1]={1};//0.5145}//,0.1122,0.1715,0.1738,0.028};
 	//unsigned 	topes_water[2]={8016,1001};
 	//float    	fracs_water[2]={   1,   2};
 	//float 	 	dens_fuel  = 10.54;
 	//float 		dens_clad  = 1.0;
 	//float 		dens_water = 6.52;
 	//geom.add_material(1,1,3,dens_fuel ,topes_fuel ,fracs_fuel );
-	//geom.add_material(2,0,5,dens_clad ,topes_clad ,fracs_clad );
-	//geom.add_material(3,0,2,dens_water,topes_water,fracs_water);
+	////geom.add_material(2,0,1,dens_clad ,topes_clad ,fracs_clad );
+	//geom.add_material(2,0,2,dens_water,topes_water,fracs_water);
 	//tallyname = "pincell.tally";
 
 	//pin cell
 	//geom.add_primitive();
 	//geom.primitives[0].type=0;
-	//geom.primitives[0].material=3;
+	//geom.primitives[0].material=2;
 	//geom.primitives[0].min[0]=-50;
 	//geom.primitives[0].min[1]=-50;
 	//geom.primitives[0].min[2]=-50;
@@ -283,20 +283,20 @@ int main(){
 
 	// trace geom if requested
 	// make new context that fits the reqested image size, trace, then destroy to free resources
-	unsigned geom_width  = 1024; 
-	unsigned geom_height = 1024;
-	unsigned N_geom = geom_width*geom_height;
-	optix_stuff geom_optix ( N_geom , 4 );
-	geom_optix.init(geom,0,"Sbvh");
-	geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
-	geom_optix.~optix_stuff();
+	//unsigned geom_width  = 1024; 
+	//unsigned geom_height = 1024;
+	//unsigned N_geom = geom_width*geom_height;
+	//optix_stuff geom_optix ( N_geom , 4 );
+	//geom_optix.init(geom,0,"Sbvh");
+	//geom_optix.trace_geometry(geom_width,geom_height,"geom.png");
+	//geom_optix.~optix_stuff();
 
 
 	/////////////////////////////////////////////////////////////////
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
-	int N = 2e5;
+	int N = 1e5;
 	whistory hist ( N , geom );
 	hist.set_device(0);
 	hist.init();

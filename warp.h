@@ -854,11 +854,9 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	// set geom type  0=primitive instancing, 1=transform instancing
 	GEOM_FLAG = 0;
 
-	//get device info
-	int deviceId = compute_device;
-  	int computeCaps[2];
-  	if (RTresult code = rtDeviceGetAttribute(0, RT_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY, sizeof(computeCaps), &computeCaps))
-  		throw Exception::makeException(code, 0);
+  	//int computeCaps[2];
+  	//if (RTresult code = rtDeviceGetAttribute(deviceId, RT_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY, sizeof(computeCaps), &computeCaps))
+  	//	throw Exception::makeException(code, 0);
   	//for(unsigned int index = 1; index < Context::getDeviceCount(); ++index) {
 	//	int computeCapsB[2];
 	//	if (RTresult code = rtDeviceGetAttribute(index, RT_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY, sizeof(computeCaps), &computeCapsB))
@@ -869,8 +867,19 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	//	}
   	//}
 
-	// Set up context
+	// create context
 	context = Context::create();
+	//get device info
+	unsigned deviceId = compute_device;
+	unsigned deviceCount = context -> getDeviceCount();
+	assert(deviceId<deviceCount);
+	context -> setDevices(&deviceId, &deviceId+1);  // iterator_start, iterator_end
+	unsigned enabled_count = context -> getEnabledDeviceCount();
+	std::vector<int> enabled_ids = context -> getEnabledDevices();
+	printf("OptiX using device ");
+	for(unsigned h=0;h<enabled_count;h++){printf("%u ",enabled_ids[h]);}
+	printf("\n");
+	//set up scene info
   	context->setRayTypeCount( 1u );
   	context->setEntryPointCount( 1u );
   	context["radiance_ray_type"]->setUint( 0u );
@@ -879,7 +888,6 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	printf_size = context->getPrintBufferSize();
 	context->setPrintBufferSize(printf_size*10);
 	context->setExceptionEnabled( RT_EXCEPTION_ALL, 1);
-	context->setDevices(&deviceId, &deviceId+1);  //accel previously set up
 
 	// set stack size
 	stack_size = context->getStackSize();
@@ -1108,8 +1116,6 @@ void optix_stuff::make_geom_xform(wgeometry problem_geom){
 
 	}
 
-	std::cout << "Done setting up transform-based instancing\n";
-
 }
 void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
@@ -1213,8 +1219,6 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 
 	}
 
-	std::cout << "Done setting up primitive-based instancing\n";
-
 }
 void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::string filename){
 
@@ -1289,7 +1293,11 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 
 }
 void optix_stuff::print(){
+	std::string instancing;
+	if(GEOM_FLAG){instancing="transform";}
+	else         {instancing="primitive";}
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
+	std::cout << "  Using [1;31m"<< instancing <<"\e[m -based instancing\n";
 	std::cout << "  Device set to "<<compute_device<<"\n";
 	std::cout << "  Acceleration set to "<<accel_type<<"/"<<traverse_type<<"\n";
 	std::cout << "  stack  size = " << context->getStackSize() << " bytes\n";
@@ -1302,7 +1310,7 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 	color[1] = sin(normed_value*3.14159); //green
 	color[2] = 1.0-normed_value;          //blue
 
-	//bring up to 256 bits?
+	//bring up to 256?
 	color[0]=color[0]*256;
 	color[1]=color[1]*256;
 	color[2]=color[2]*256;
@@ -1481,7 +1489,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 // do problem gemetry stuff first
 	problem_geom = problem_geom_in;
 	// set tally vector length
-	n_tally = 2048;
+	n_tally = 1024;
 	RUN_FLAG = 1;
 	// device data stuff
 	N = Nin;
