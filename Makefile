@@ -5,18 +5,18 @@ OPTIX = /Developer/OptiX
 NVCC = nvcc -ccbin=/usr/local/Cellar/gcc46/4.6.4/bin
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64
-NVCC_FLAGS = -m64  -use_fast_math
+NVCC_FLAGS = -m64  -use_fast_math --compiler-options '-fPIC'
 CURAND_LIBS = -lcurand
-OPTIX_FLAGS = -I$(OPTIX)/include -L$(OPTIX)/lib64 
-OPTIX_LIBS = -loptix 
+OPTIX_FLAGS = -I$(OPTIX)/include/ -L$(OPTIX)/lib64 
+OPTIX_LIBS = -loptix
+CUDA_FLAGS = -I/usr/local/cuda/include -L/usr/local/cuda/lib
 CUDPP_PATH = /usr/local/cudpp-2.1/
 CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
 PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers
 PYTHON_LIBS = -lpython2.7
-PNG_FLAGS = -L/
+PNG_FLAGS = 
 PNG_LIBS = -lpng15
-LIBS =
 
 
 COBJS =	mt19937ar.o \
@@ -41,7 +41,10 @@ COBJS =	mt19937ar.o \
 		pop_source.o \
 		rebase_yield.o \
 		flip_done.o \
-		main.o
+		whistory.o \
+		wgeometry.o \
+		optix_stuff.o \
+		primitive.o
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -57,10 +60,10 @@ ptx_objects = 	camera.ptx \
 
 all:  	$(ptx_objects) \
 		$(COBJS) \
-		gpu \
+		libwarp.so 
 
 clean:
-	rm -f *.ptx *.o gpu debug
+	rm -f *.ptx *.o *.so gpu debug
 
 camera.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
@@ -94,9 +97,6 @@ hex_mesh.ptx:
 
 mt19937ar.o:
 	$(CXX) $(C_FLAGS) -c -O mt19937ar.cpp
-
-main.o:
-	$(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) -c -O main.cpp
 
 print_banner.o:
 	$(NVCC) $(NVCC_FLAGS) -c -O print_banner.cpp
@@ -161,8 +161,23 @@ rebase_yield.o:
 flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
 
-gpu: $(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 
+whistory.o:
+	$(CXX) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
 
-debug: 	$(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -g -G -o $@ 
+wgeometry.o:
+	$(CXX) -m64  -c wgeometry.cpp
+
+primitive.o:
+	$(CXX) -m64  -c primitive.cpp
+
+optix_stuff.o:
+	$(CXX) -m64  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
+
+libwarp.so: $(ptx_objects) $(COBJS)
+	$(NVCC) --shared -m64  -use_fast_math --compiler-options '-fPIC' $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
+
+gpu: libwarp.so
+	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp main.cpp -o $@
+
+warp.py: libwarp.so
+	swig warp.i
