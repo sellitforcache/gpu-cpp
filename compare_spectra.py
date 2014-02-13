@@ -32,7 +32,7 @@ if   case=='water':
 elif case=='isowater':
 	tally      = numpy.loadtxt('isowater.tally')
 	tallybins  = numpy.loadtxt('isowater.tallybins')
-	serpdata   = get_serpent_det('../serpent-benchmark/nonfiss_mono2_iso_det0.m')
+	serpdata   = get_serpent_det('../serpent-benchmark/nonfiss_mono2_det0.m')
 elif case== 'carbon':
 	tally      = numpy.loadtxt('carbon.tally')
 	tallybins  = numpy.loadtxt('carbon.tallybins')
