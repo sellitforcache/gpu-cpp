@@ -1457,7 +1457,7 @@ void whistory::run(){
 		}
 		else if (converged){
 			it = (float) iteration;
-			keff  = (it/(it+1)) * keff + (1/(it+1)) * keff_cycle;
+			keff  = ( 1.0 / (it+1.0) )*( keff_cycle + it*keff );
 			iteration++;
 		}
 		else{
@@ -1477,7 +1477,7 @@ void whistory::run(){
 		//std::cin.ignore();
 
 		// set convergence flag
-		if( iteration_total==n_skip-1){ 
+		if( iteration_total-1 == n_skip){ 
 				converged=1;
 		}
 
