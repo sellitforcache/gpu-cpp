@@ -44,7 +44,8 @@ COBJS =	mt19937ar.o \
 		whistory.o \
 		wgeometry.o \
 		optix_stuff.o \
-		primitive.o
+		primitive.o \
+		copy_to_device.o
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -161,6 +162,9 @@ rebase_yield.o:
 flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
 
+copy_to_device.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c copy_to_device.cu
+
 whistory.o:
 	$(CXX) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
 
@@ -170,7 +174,7 @@ wgeometry.o:
 primitive.o:
 	$(CXX) -m64  -c primitive.cpp
 
-optix_stuff.o:
+optix_stuff.o: copy_to_device.o
 	$(CXX) -m64  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
 
 libwarp.so: $(ptx_objects) $(COBJS)
@@ -178,6 +182,9 @@ libwarp.so: $(ptx_objects) $(COBJS)
 
 gpu: libwarp.so
 	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp main.cpp -o $@
+
+optixtest: libwarp.so
+	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp -loptix optixtest.cpp -o $@
 
 warp.py: libwarp.so
 	swig warp.i

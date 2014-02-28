@@ -2,6 +2,7 @@
 void print_banner();
 
 // device calls
+void copy_to_device(void*,void*,unsigned);
 void set_positions_rand( unsigned, unsigned, unsigned, source_point * , unsigned *  , float  * );
 void copy_points(unsigned , unsigned , unsigned , unsigned*  , unsigned  , unsigned *  , source_point *  , source_point * , float*, float*);
 void sample_fission_spectra(unsigned , unsigned , unsigned , unsigned* , unsigned* , unsigned* , unsigned* , float * , float *, source_point* , float** );

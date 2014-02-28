@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <time.h>
 #include <string.h>
-#include <cuda.h>
 #include <png++/png.hpp>
 #include "datadef.h"
 #include "primitive.h"
@@ -17,6 +16,9 @@
 //							OptiX stuff
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
+
+void copy_to_device(void*,void*,unsigned);
+
 
 optix_stuff::optix_stuff(){}
 optix_stuff::optix_stuff(unsigned Nin,unsigned mult){
@@ -505,6 +507,52 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 //	delete image_local;
 //	delete colormap;
 //	delete positions_local;
+//
+}
+float optix_stuff::trace_test(){
+
+	float mu, theta;
+	float pi=3.14159;
+
+	//FILE* positionsfile = fopen("positionsfile","w");
+	source_point * positions_local = new source_point[N];
+	unsigned index;
+	float x_min = outer_cell_dims[0];
+	float y_min = outer_cell_dims[1];
+	float z_min = outer_cell_dims[2];
+	float x_max = outer_cell_dims[3];
+	float y_max = outer_cell_dims[4];
+	float z_max = outer_cell_dims[5];
+	//printf("mins/maxes : %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",x_min,y_min,z_min,x_max,y_max,z_max);
+	for(index=0;index<N;index++){
+			mu 								 = 2.0*get_rand()-1.0;
+			theta							 = 2.0*pi*get_rand();
+			positions_local[index].samp_dist =  500000;   
+			positions_local[index].x         =     0.9 * ( ( x_max - x_min ) * get_rand() + x_min );  
+			positions_local[index].y         =     0.9 * ( ( y_max - y_min ) * get_rand() + y_min );  
+			positions_local[index].z         =     0.9 * ( ( z_max - z_min ) * get_rand() + z_min ); 
+			positions_local[index].xhat      =     sqrtf(1-mu*mu) * cosf( theta );
+			positions_local[index].yhat      =     sqrtf(1-mu*mu) * sinf( theta );
+			positions_local[index].zhat      =     mu;
+			//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
+	}
+	//fclose(positionsfile);
+
+	// copy starting positions data to pointer
+	copy_to_device((void*)positions_ptr,positions_local,N*sizeof(source_point));
+	
+	// trace with first surf to build accel
+	std::cout << "\e[1;32m" << "First trace to build accel struct..." << "\e[m \n";
+	trace(1);
+
+	//trace and time
+	std::cout << "\e[1;32m" << "Timing trace " << N << " particles... " ;
+	float time_out = ((float)clock())/((float)CLOCKS_PER_SEC);
+	trace(2);
+	time_out = ((float)clock())/((float)CLOCKS_PER_SEC) - time_out; 
+	std::cout << "\e[1;32m" << " done in " << time_out << " seconds \e[m \n";
+
+	return time_out;
 
 }
 void optix_stuff::print(){
@@ -512,7 +560,7 @@ void optix_stuff::print(){
 	if(GEOM_FLAG){instancing="transform";}
 	else         {instancing="primitive";}
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
-	std::cout << "  Using [1;31m"<< instancing <<"\e[m -based instancing\n";
+	std::cout << "  Using \e[1;31m"<< instancing <<"\e[m-based instancing\n";
 	std::cout << "  Device set to "<<compute_device<<"\n";
 	std::cout << "  Acceleration set to "<<accel_type<<"/"<<traverse_type<<"\n";
 	std::cout << "  stack  size = " << context->getStackSize() << " bytes\n";
@@ -529,5 +577,10 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 	color[0]=color[0]*256;
 	color[1]=color[1]*256;
 	color[2]=color[2]*256;
+
+}
+float optix_stuff::get_rand(){
+
+	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
 }

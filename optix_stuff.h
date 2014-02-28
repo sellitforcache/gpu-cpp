@@ -29,5 +29,7 @@ public:
 	void set_trace_type(unsigned);
 	void print();
 	void trace_geometry(unsigned,unsigned,std::string);
+	float trace_test();
 	void make_color(float*,unsigned,unsigned,unsigned);
+	float get_rand();
 };
