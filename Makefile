@@ -45,7 +45,7 @@ COBJS =	mt19937ar.o \
 		wgeometry.o \
 		optix_stuff.o \
 		primitive.o \
-		copy_to_device.o
+		device_copies.o
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -64,7 +64,7 @@ all:  	$(ptx_objects) \
 		libwarp.so 
 
 clean:
-	rm -f *.ptx *.o *.so gpu debug
+	rm -f *.ptx *.o *.so gpu debug optixtest
 
 camera.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
@@ -162,8 +162,8 @@ rebase_yield.o:
 flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
 
-copy_to_device.o:
-	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c copy_to_device.cu
+device_copies.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c device_copies.cu
 
 whistory.o:
 	$(CXX) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
@@ -174,7 +174,7 @@ wgeometry.o:
 primitive.o:
 	$(CXX) -m64  -c primitive.cpp
 
-optix_stuff.o: copy_to_device.o
+optix_stuff.o: device_copies.o
 	$(CXX) -m64  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
 
 libwarp.so: $(ptx_objects) $(COBJS)
