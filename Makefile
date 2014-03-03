@@ -166,16 +166,16 @@ device_copies.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c device_copies.cu
 
 whistory.o:
-	$(CXX) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
+	$(CXX) -m64 -fPIC  $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
 
 wgeometry.o:
-	$(CXX) -m64  -c wgeometry.cpp
+	$(CXX) -m64 -fPIC  -c wgeometry.cpp
 
 primitive.o:
-	$(CXX) -m64  -c primitive.cpp
+	$(CXX) -m64 -fPIC  -c primitive.cpp
 
 optix_stuff.o: device_copies.o
-	$(CXX) -m64  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
+	$(CXX) -m64 -fPIC  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
 
 libwarp.so: $(ptx_objects) $(COBJS)
 	$(NVCC) --shared -m64  -use_fast_math --compiler-options '-fPIC' $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
