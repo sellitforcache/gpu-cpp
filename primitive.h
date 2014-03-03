@@ -9,8 +9,8 @@ class primitive
 	void add_transform(unsigned,unsigned,float,float,float,float,float); //set own material
 	void print_transform();
 	void print_transform(int);
-	void make_hex_array(int,float,float,unsigned);
 	void make_hex_array(int,float,float,float,unsigned);
+	void make_hex_array(int,float,float,float,float,unsigned);
 	float       min[3];
 	float       max[3];
 	float       location[3];

@@ -151,12 +151,12 @@ void primitive::print_transform(int tnum){
 }
 /**
 */
-void primitive::make_hex_array(int n, float x, float y, unsigned starting_index){
+void primitive::make_hex_array(int n, float x, float y, float PD_ratio, unsigned starting_index){
 
 	wtransform this_transform;
 
 	int k, j, num, cnt;
-	float offsetx, offsety, fnum, lattr, PD_ratio;
+	float offsetx, offsety, fnum, lattr;
 
 	// get strting cell number as the one set for the last
 	//wtransform this_transform = transforms.back();
@@ -167,7 +167,6 @@ void primitive::make_hex_array(int n, float x, float y, unsigned starting_index)
 
 	num=n;
 	cnt=0;
-	PD_ratio=1.164;
 	lattr = PD_ratio * (2.0 * max[1]) / sqrt(3.0);
 	offsety=(n-1)*lattr*1.5;
 
@@ -204,12 +203,12 @@ void primitive::make_hex_array(int n, float x, float y, unsigned starting_index)
 	make_hex_array makes hex arrays
 	@param n edge length in primitives
 */
-void primitive::make_hex_array(int n, float x, float y, float phi, unsigned starting_index){
+void primitive::make_hex_array(int n, float offsetx, float offsety, float PD_ratio, float phi, unsigned starting_index){
 
 	wtransform this_transform;
 
 	int k, j, num, cnt;
-	float offsetx, offsety, fnum, lattr, PD_ratio;
+	float x, y, fnum, lattr;
 
 	// get strting cell number as the one set for the last
 	//wtransform this_transform = transforms.back();
@@ -220,27 +219,26 @@ void primitive::make_hex_array(int n, float x, float y, float phi, unsigned star
 
 	num=n;
 	cnt=0;
-	PD_ratio=1.164;
-	lattr = PD_ratio * (2.0 * max[1]) / sqrt(3.0);
-	offsety=(n-1)*lattr*1.5;
+	lattr = PD_ratio * (2.0 * max[1]) / sqrt(3.0); //only for hexs and cylinders, boxes don't have a radius
+	y=(n-1)*lattr*1.5;
 
 	//row
 	for (k=0;k<(2*n-1);k++){
 		fnum=num-1;
-		offsetx=-(sqrt(3.0)*lattr)*(fnum/2.0);
+		x=-(sqrt(3.0)*lattr)*(fnum/2.0);
 		//column
 		for(j=0;j<num;j++){
 
     		this_transform.cellnum=starting_index+cnt;
     		this_transform.cellmat=material;
-    		this_transform.dx=offsetx;
-    		this_transform.dy=offsety;
+    		this_transform.dx=offsetx+x;
+    		this_transform.dy=offsety+y;
     		this_transform.dz=0;
     		this_transform.theta=0;
     		this_transform.phi=phi;
     		transforms.push_back(this_transform);
     		cnt++;
-    		offsetx+=sqrt(3.0)*lattr;
+    		x+=sqrt(3.0)*lattr;
 		}
 
 		if ( k < n-1 ){
@@ -248,7 +246,7 @@ void primitive::make_hex_array(int n, float x, float y, float phi, unsigned star
 		else{
 		 	num--;   }
 
-		offsety-=lattr*1.5;
+		y-=lattr*1.5;
 
 	}
 
