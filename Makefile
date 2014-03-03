@@ -4,7 +4,7 @@ CXX = /usr/local/Cellar/gcc46/4.6.4/bin/g++-4.6
 OPTIX = /Developer/OptiX
 NVCC = nvcc -ccbin=/usr/local/Cellar/gcc46/4.6.4/bin
 ARCH = -arch sm_30
-C_FLAGS = -O3 -m64
+C_FLAGS = -O3 -m64 -fPIC
 NVCC_FLAGS = -m64  -use_fast_math --compiler-options '-fPIC'
 CURAND_LIBS = -lcurand
 OPTIX_FLAGS = -I$(OPTIX)/include/ -L$(OPTIX)/lib64 
@@ -166,19 +166,19 @@ device_copies.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c device_copies.cu
 
 whistory.o:
-	$(CXX) -m64 -fPIC  $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
+	$(CXX) $(C_FLAGS)  $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
 
 wgeometry.o:
-	$(CXX) -m64 -fPIC  -c wgeometry.cpp
+	$(CXX) $(C_FLAGS)  -c wgeometry.cpp
 
 primitive.o:
-	$(CXX) -m64 -fPIC  -c primitive.cpp
+	$(CXX) $(C_FLAGS)  -c primitive.cpp
 
 optix_stuff.o: device_copies.o
 	$(CXX) -m64 -fPIC  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
 
 libwarp.so: $(ptx_objects) $(COBJS)
-	$(NVCC) --shared -m64  -use_fast_math --compiler-options '-fPIC' $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
+	$(NVCC) --shared $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
 
 gpu: libwarp.so
 	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp main.cpp -o $@
