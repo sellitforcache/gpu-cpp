@@ -41,7 +41,11 @@ COBJS =	mt19937ar.o \
 		pop_source.o \
 		rebase_yield.o \
 		flip_done.o \
-		main.o
+		whistory.o \
+		wgeometry.o \
+		optix_stuff.o \
+		primitive.o \
+		device_copies.o
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -54,12 +58,13 @@ ptx_objects = 	camera.ptx \
 				cylinder_mesh.ptx \
 				hex_mesh.ptx\
 
+
 all:  	$(ptx_objects) \
 		$(COBJS) \
-		gpu \
+		libwarp.so 
 
 clean:
-	rm -f *.ptx *.o gpu debug
+	rm -f *.ptx *.o *.so gpu debug optixtest
 
 camera.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx camera.cu
@@ -93,9 +98,6 @@ hex_mesh.ptx:
 
 mt19937ar.o:
 	$(CXX) $(C_FLAGS) -c -O mt19937ar.cpp
-
-main.o:
-	$(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) -c -O main.cpp
 
 print_banner.o:
 	$(NVCC) $(NVCC_FLAGS) -c -O print_banner.cpp
@@ -160,8 +162,29 @@ rebase_yield.o:
 flip_done.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c flip_done.cu
 
-gpu: $(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -o $@ 
+device_copies.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c device_copies.cu
 
-debug: 	$(ptx_objects) $(COBJS)
-	 $(NVCC) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS) -g -G -o $@ 
+whistory.o:
+	$(CXX) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
+
+wgeometry.o:
+	$(CXX) -m64  -c wgeometry.cpp
+
+primitive.o:
+	$(CXX) -m64  -c primitive.cpp
+
+optix_stuff.o: device_copies.o
+	$(CXX) -m64  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
+
+libwarp.so: $(ptx_objects) $(COBJS)
+	$(NVCC) --shared -m64  -use_fast_math --compiler-options '-fPIC' $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
+
+gpu: libwarp.so
+	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp main.cpp -o $@
+
+optixtest: libwarp.so
+	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp -loptix optixtest.cpp -o $@
+
+warp.py: libwarp.so
+	swig warp.i
