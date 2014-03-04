@@ -25,24 +25,24 @@ int main(int argc, char** argv){
 
 
 	//simple geom
-	geom.add_primitive();
-	geom.primitives[0].type=0;
-	geom.primitives[0].material=1;
-	geom.primitives[0].min[0]=-42.0;
-	geom.primitives[0].min[1]=-42.0;
-	geom.primitives[0].min[2]=-42.0;
-	geom.primitives[0].max[0]= 42.0;
-	geom.primitives[0].max[1]= 42.0;
-	geom.primitives[0].max[2]= 42.0;
-	geom.primitives[0].add_transform();
-	geom.primitives[0].transforms[0].cellnum = 999;
-	geom.primitives[0].transforms[0].dx      = 0;
-	geom.primitives[0].transforms[0].dy      = 0;
-	geom.primitives[0].transforms[0].dz      = 0;
-	geom.primitives[0].transforms[0].theta   = 0;
-	geom.primitives[0].transforms[0].phi     = 0;
-	geom.set_outer_cell(999);
-	tallyname = "simple";
+	//geom.add_primitive();
+	//geom.primitives[0].type=0;
+	//geom.primitives[0].material=1;
+	//geom.primitives[0].min[0]=-42.0;
+	//geom.primitives[0].min[1]=-42.0;
+	//geom.primitives[0].min[2]=-42.0;
+	//geom.primitives[0].max[0]= 42.0;
+	//geom.primitives[0].max[1]= 42.0;
+	//geom.primitives[0].max[2]= 42.0;
+	//geom.primitives[0].add_transform();
+	//geom.primitives[0].transforms[0].cellnum = 999;
+	//geom.primitives[0].transforms[0].dx      = 0;
+	//geom.primitives[0].transforms[0].dy      = 0;
+	//geom.primitives[0].transforms[0].dz      = 0;
+	//geom.primitives[0].transforms[0].theta   = 0;
+	//geom.primitives[0].transforms[0].phi     = 0;
+	//geom.set_outer_cell(999);
+	//tallyname = "simple";
 
 	// assembly geom
 	//geom.add_primitive();
@@ -54,7 +54,7 @@ int main(int argc, char** argv){
 	//geom.primitives[0].max[0]= 20.0;
 	//geom.primitives[0].max[1]= 1.0;
 	//geom.primitives[0].max[2]= -10.0;
-	//geom.primitives[0].make_hex_array(15,0.0,0.0,3.14159/2,0);  
+	//geom.primitives[0].make_hex_array(15,0.0,0.0,1.164,0.0,0);  
 	//geom.add_primitive();
 	//geom.primitives[1].type=2;
 	//geom.primitives[1].material=2;
@@ -98,7 +98,7 @@ int main(int argc, char** argv){
 	//geom.primitives[0].max[0]= 20.0;
 	//geom.primitives[0].max[1]= 1.0;
 	//geom.primitives[0].max[2]= -10.0;
-	//geom.primitives[0].make_hex_array(25,0.0,0.0,3.14159/2,0);  
+	//geom.primitives[0].make_hex_array(25,0.0,0.0,1.164,0.0,0);  
 	//geom.add_primitive();
 	//geom.primitives[1].type=2;
 	//geom.primitives[1].material=2;
