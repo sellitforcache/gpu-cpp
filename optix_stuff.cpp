@@ -574,10 +574,7 @@ float optix_stuff::trace_test(){
 	{
 	    for (size_t x = 0; x < image.get_width(); ++x)
 	    {
-	    	//mincell=0;
-	    	//maxcell=3;
 	    	make_color(colormap,image_local[y*width+x],mincell,maxcell);
-	    	//printf("%u %u %6.3f %6.3f %6.3f\n",mincell,maxcell,colormap[0],colormap[1],colormap[2]);
 	        image[y][x] = png::rgb_pixel(colormap[0],colormap[1],colormap[2]);
 	    }
 	}

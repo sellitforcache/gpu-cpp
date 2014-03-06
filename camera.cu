@@ -112,7 +112,7 @@ RT_PROGRAM void camera()
       // check if bc
       if (payload.cell_first==outer_cell){
             payload.cont=0; 
-            cellnum_buffer[launch_index]==outer_cell;
+            cellnum_buffer[launch_index]=outer_cell;
       }
       else{
         while(payload.cont){
@@ -121,7 +121,7 @@ RT_PROGRAM void camera()
            rtTrace(top_object, ray, payload);      
         }
         cellnum_buffer[launch_index] = payload.hitbuff[0].cell;
-        // if number 4 requested, then write fissile flag to matnum instead of matnum
+        // if number 3 requested, then write fissile flag to matnum instead of matnum
         //rtPrintf("cellnum,matnum,is_fissile = %d %d %d \n",payload.hitbuff[0].cell,payload.hitbuff[0].mat,payload.hitbuff[0].fiss);
       }
       if(trace_type == 2){
