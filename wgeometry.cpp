@@ -149,6 +149,7 @@ void wgeometry::set_outer_cell(unsigned ocell){
 			this_cell = primitives[j].transforms[k].cellnum;
 			if (this_cell==outer_cell){break;}
 		}
+		if (this_cell==outer_cell){break;}
 	}
 	if (this_cell!=outer_cell) {
 		std::cout << "Cell " << ocell << " not found, outer cell not set!!!" << "\n";

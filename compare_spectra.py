@@ -101,6 +101,10 @@ elif case== 'homfuel':
 	tally      = numpy.loadtxt('homfuel.tally')
 	tallybins  = numpy.loadtxt('homfuel.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/homfuel_crit_det0.m')
+elif case== 'uh2o-pincell':
+	tally      = numpy.loadtxt('uh2o-pincell.tally')
+	tallybins  = numpy.loadtxt('uh2o-pincell.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/uh2o-pincell_det0.m')
 
 
 

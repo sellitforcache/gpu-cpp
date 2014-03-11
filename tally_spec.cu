@@ -17,23 +17,9 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned* active,
 
 	const float Emax 	= 20.00000;
 	const float Emin 	=  1.0e-11;
-	float log_spacing 	= (log10f(Emax)-(-11.0))/(Ntally-2+1);//(log10f(Emax)-log10f(Emin))/(Ntally-2+1);
-	float multiplier  	= powf(10,log_spacing);
-	//float this_bin,next_bin;
 
 	// determine bin number
-	my_bin_index = logf(my_E/Emin)/logf(multiplier);
-//	this_bin=Emin;
-//	for(k=0;k<Ntally;k++){
-//		next_bin=multiplier*this_bin;
-//		if(my_E>this_bin & my_E<=next_bin){
-//			my_bin_index=k;
-//			break;
-//		}
-//		this_bin=next_bin;
-//	}
-
-	//printf("macro_t=%6.4E my_bin_index=%u: score there = %10.8E, count there = %u \n",macro_t,my_bin_index,tally_score[my_bin_index],tally_count[my_bin_index]);
+	my_bin_index = logf(my_E/Emin)/logf(Emax/Emin)*(Ntally-1);
 
 	//score the bins atomicly, could be bad if many neutrons are in a single bin since this will serialize their operations
 	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
