@@ -29,7 +29,7 @@ whistory::whistory(int Nin, wgeometry problem_geom_in){
 // do problem gemetry stuff first
 	problem_geom = problem_geom_in;
 	// set tally vector length
-	n_tally = 2048;
+	n_tally = 1024;
 	RUN_FLAG = 1;
 	// device data stuff
 	N = Nin;
@@ -1400,10 +1400,8 @@ void whistory::run(){
 			trace(1);
 
 			// run tally kernel to compute spectra
-			make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
-			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
 			if(converged){
-				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
+				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum);
 			}
 			
 			
@@ -1517,14 +1515,11 @@ void whistory::write_tally(unsigned tallynum, std::string filename){
 	float Emin = 1e-11;
 	float Emax = 20.0;
 	float edge = 0.0;
-	float log_spacing 	= (log10f(Emax)-(-11.0))/(n_tally-2+1);//(log10f(Emax)-log10f(Emin))/(Ntally-2+1);
-	float multiplier  	= powf(10,log_spacing);
 	filename=filename+"bins";
 	tfile = fopen(filename.c_str(),"w");
-	edge=Emin;
-	for (int k=0;k<n_tally+1;k++){
+	for (int k=0;k<=n_tally;k++){
+		edge = Emin*powf((Emax/Emin), ((float)k)/ ((float)n_tally) );
 		fprintf(tfile,"%10.8E\n",edge);
-		edge = edge*multiplier;
 	}
 	fclose(tfile);
 
