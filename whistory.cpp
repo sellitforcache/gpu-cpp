@@ -1400,7 +1400,7 @@ void whistory::run(){
 			trace(1);
 
 			// run tally kernel to compute spectra
-			//make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
+			make_mask( NUM_THREADS, Nrun, d_mask, d_cellnum, tally_cell, tally_cell);
 			//cudaMemcpy(d_mask,ones,N*sizeof(unsigned),cudaMemcpyHostToDevice);
 			if(converged){
 				tally_spec( NUM_THREADS,   Nrun,  n_tally,  d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_mask);
@@ -1477,7 +1477,7 @@ void whistory::run(){
 		//std::cin.ignore();
 
 		// set convergence flag
-		if( iteration_total-1 == n_skip){ 
+		if( iteration_total == n_skip){ 
 				converged=1;
 		}
 

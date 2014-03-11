@@ -13,14 +13,26 @@ int main(int argc, char** argv){
 	wgeometry geom;
 
 	// assembly mats
-	unsigned topes      [2] = {92235,92238};//,8016,1001};
-	float    fracs_fuel [2] = {1,  0};//,   0,   0};
-	float 	 fracs_water[2] = {   0,     1};//,   1,   2};
+	unsigned n_topes    = 4;
+	unsigned topes      [n_topes];
+	float    fracs_fuel [n_topes];
+	float 	 fracs_water[n_topes];
+	topes[0] = 92235;
+	topes[1] = 92238;
+	topes[2] = 8016;
+	topes[3] = 1001;
+	fracs_fuel[0] = 1;  
+	fracs_fuel[1] = 0;   
+	fracs_fuel[2] = 0;   
+	fracs_fuel[3] = 0;
+	fracs_water[0] = 0;  
+	fracs_water[1] = 0;   
+	fracs_water[2] = 1;   
+	fracs_water[3] = 2;
 	float    dens_fuel = 5;
 	float 	 dens_water = 3;
-	geom.add_material(1,1,2,dens_fuel, topes,fracs_fuel);
-	geom.add_material(2,0,2,dens_water,topes,fracs_water);
-	geom.add_material(3,0,2,dens_water,topes,fracs_water);
+	geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
+	geom.add_material(2,0,n_topes,dens_water,topes,fracs_water);
 	tallyname = "assembly.tally";
 
 

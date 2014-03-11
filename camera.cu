@@ -126,6 +126,7 @@ RT_PROGRAM void camera()
       }
       if(trace_type == 2){
         matnum_buffer[launch_index]=payload.hitbuff[0].mat;
+        //rtPrintf("matnum=%u\n",matnum_buffer[launch_index]);
       }
       else if(trace_type == 3){
         matnum_buffer[launch_index]=payload.hitbuff[0].fiss;

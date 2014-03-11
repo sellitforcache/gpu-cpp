@@ -188,6 +188,8 @@ void optix_stuff::init(wgeometry problem_geom, unsigned compute_device_in, std::
 	// set min and max cell numbers
 	mincell = problem_geom.get_minimum_cell();
 	maxcell = problem_geom.get_maximum_cell();
+	// get material numbers
+	n_materials = problem_geom.get_material_count();
 	// try to init optix
 	try {
 		init_internal(problem_geom, compute_device_in, accel_type_in);	
@@ -438,7 +440,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 	}
 
 }
-void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::string filename){
+void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::string type,std::string filename){
 
 //	std::cout << "\e[1;32m" << "Plotting Geometry... " << "\e[m \n";
 //
@@ -512,6 +514,8 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 }
 float optix_stuff::trace_test(){
 
+	std::string type = "material";
+
 	float mu, theta;
 	float pi=3.14159;
 
@@ -565,7 +569,8 @@ float optix_stuff::trace_test(){
 
 	//copy to local buffer
 	unsigned * image_local = new unsigned[width*height];
-	copy_from_device(image_local,(void*)cellnum_ptr,width*height*sizeof(unsigned));
+	if(type.compare("cell")==0){			copy_from_device(image_local,(void*)cellnum_ptr,width*height*sizeof(unsigned));}
+	else if (type.compare("material")==0){	copy_from_device(image_local,(void*)matnum_ptr,width*height*sizeof(unsigned));}
 
 	// make image
 	png::image< png::rgb_pixel > image(height, width);
@@ -574,7 +579,8 @@ float optix_stuff::trace_test(){
 	{
 	    for (size_t x = 0; x < image.get_width(); ++x)
 	    {
-	    	make_color(colormap,image_local[y*width+x],mincell,maxcell);
+	    	if(type.compare("cell")==0){			make_color(colormap,image_local[y*width+x],mincell,maxcell);}
+	    	else if (type.compare("material")==0){	make_color(colormap,image_local[y*width+x],0  ,n_materials);}
 	        image[y][x] = png::rgb_pixel(colormap[0],colormap[1],colormap[2]);
 	    }
 	}

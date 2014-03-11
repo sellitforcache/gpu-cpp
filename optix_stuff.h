@@ -5,6 +5,7 @@ class optix_stuff{
 	std::string accel_type, traverse_type;
 	unsigned mincell;
 	unsigned maxcell;
+	unsigned n_materials;
 	unsigned compute_device;
 	unsigned GEOM_FLAG;
 	void make_geom_xform(wgeometry);
@@ -28,7 +29,7 @@ public:
 	void trace(unsigned);
 	void set_trace_type(unsigned);
 	void print();
-	void trace_geometry(unsigned,unsigned,std::string);
+	void trace_geometry(unsigned,unsigned,std::string,std::string);
 	float trace_test();
 	void make_color(float*,unsigned,unsigned,unsigned);
 	float get_rand();

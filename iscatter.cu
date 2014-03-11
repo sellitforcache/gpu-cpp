@@ -5,6 +5,47 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
+inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const float temp, const float E0, const float awr){
+
+	// adapted from OpenMC's sample_target_velocity subroutine in src/physics.F90
+
+	float k 	= 8.617332478e-11; //MeV/k
+	float pi 	= 3.14159265359 ;
+	float mu,c,beta_vn,beta_vt,beta_vt_sq,r1,r2,alpha,accept_prob;
+	unsigned n;
+
+	beta_vn = sqrtf(awr * 1.00866491600 * E0 / (temp*k) );
+	alpha = 1.0/(1.0 + sqrtf(pi)*beta_vn/2.0);
+	
+	for(n=0;n<100;n++){
+	
+		r1 = get_rand(rn);
+		r2 = get_rand(rn);
+	
+		if (get_rand(rn) < alpha) {
+			beta_vt_sq = -logf(r1*r2);
+		}
+		else{
+			c = cosf(pi/2.0 * get_rand(rn) );
+			beta_vt_sq = -logf(r1) - logf(r2)*c*c;
+		}
+	
+		beta_vt = sqrtf(beta_vt_sq);
+	
+		mu = 2.0*get_rand(rn) - 1.0;
+	
+		accept_prob = sqrtf(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) / (beta_vn + beta_vt);
+	
+		if ( get_rand(rn) < accept_prob){break;}
+	}
+
+	vt[0] = sqrtf(beta_vt_sq*2.0*k*temp/(awr*1.00866491600));
+	muout[0] = mu;
+	//printf("%6.4E %6.4E\n",vt[0],mu);
+
+}
+
+
 __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
@@ -25,6 +66,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  m_n          =   1.00866491600 ; // u
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
+	const float  temp         =   300;    // K
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
 	unsigned 	this_dex	= index[tid];
@@ -45,7 +87,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	float 		speed_target     	=   sqrtf(2.0*E_target/(this_awr*m_n));
 	float  		speed_n          	=   sqrtf(2.0*this_E/m_n);
 	float 		E_new				=   0.0;
-	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target;
+	wfloat3 	v_n_cm,v_t_cm,v_n_lf,v_t_lf,v_cm, hats_new, hats_target,  rotation_hat;
 	float 		mu0,mu1,cdf0,cdf1;
 	//float 		v_rel,E_rel;
 
@@ -55,6 +97,21 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	hats_target.x = sqrtf(1.0-(mu*mu))*cosf(phi);
 	hats_target.y = sqrtf(1.0-(mu*mu))*sinf(phi); 
 	hats_target.z = mu;
+
+	//sample therm dist if low E
+	//if(this_E <= 600*kb*temp ){
+		sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
+		//hats_target = rotate_angle(&rn,hats_old,mu);
+		rotation_hat = hats_old.cross( hats_target );
+		rotation_hat = rotation_hat / rotation_hat.norm2();
+		hats_target = hats_old;
+		hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
+		hats_target.rodrigues_rotation( hats_old,     phi       );
+	//}
+	//else{
+	//	speed_target = 0.0;
+	//}
+	//__syncthreads();
 	
 	// make speed vectors
 	v_n_lf = hats_old    * speed_n;
@@ -105,7 +162,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	hats_old = v_n_cm / v_n_cm.norm2();
 	//  create a perpendicular roation vector 
 	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-	wfloat3 rotation_hat = hats_target.cross( v_n_cm );
+	hats_target.cross( v_n_cm );
 	rotation_hat = rotation_hat / rotation_hat.norm2();
 	//  do rotations, polar first, then azimuthal
 	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );

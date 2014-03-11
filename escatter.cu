@@ -140,7 +140,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	hats_target.z = mu;
 
 	//sample therm dist if low E
-	if(this_E <= 600*kb*temp ){
+	//if(this_E <= 600*kb*temp ){
 		sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
 		//hats_target = rotate_angle(&rn,hats_old,mu);
 		rotation_hat = hats_old.cross( hats_target );
@@ -148,11 +148,11 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		hats_target = hats_old;
 		hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
 		hats_target.rodrigues_rotation( hats_old,     phi       );
-	}
-	else{
-		speed_target = 0.0;
-	}
-	__syncthreads();
+	//}
+	//else{
+	//	speed_target = 0.0;
+	//}
+	//__syncthreads();
 	
 	// make speed vectors
 	v_n_lf = hats_old    * speed_n;
