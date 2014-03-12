@@ -149,7 +149,7 @@ ax.set_ylabel('Relative error')
 ax.set_title('Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n 1x1x1m block of UO2/water @ 3 g/cc')
 #pylab.ylim([0,.25])
 ax.set_xlim([1e-11,20])
-ax.set_ylim([-1,1])
+ax.set_ylim([-1e-1,1e-1])
 ax.grid(True)
 if len(sys.argv)==2:
 	pylab.show()
