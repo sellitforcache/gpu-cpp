@@ -33,6 +33,7 @@ struct source_point{
     float yhat;
     float zhat; 
     float samp_dist;
+    float surf_dist;
     float macro_t;
 };
 
