@@ -44,6 +44,7 @@ void wgeometry::update(){
 	n_box        = 0;
 	n_cyl        = 0;
 	n_hex        = 0;
+	n_sph 		 = 0;
 	n_transforms = 0;
 	for(int k=0;k<n_primitives;k++){
 		if (primitives[k].n_transforms==0){
@@ -57,6 +58,9 @@ void wgeometry::update(){
 		}
 		else if(primitives[k].type==2){
 				n_hex+=primitives[k].n_transforms;
+		}
+		else if(primitives[k].type==3){
+				n_sph+=primitives[k].n_transforms;
 		}
 		n_transforms+=primitives[k].n_transforms;
 	}
@@ -108,6 +112,7 @@ void wgeometry::print_summary(){
 	std::cout << "rectangular prisms = " << n_box << "\n";
 	std::cout << "cylinders          = " << n_cyl << "\n";
 	std::cout << "hexagons           = " << n_hex << "\n";
+	std::cout << "spheres            = " << n_sph << "\n";
 	std::cout << "total primitives   = " << n_primitives << "\n";
 	std::cout << "total transforms   = " << n_transforms << "\n";
 	std::cout << "outer cell         = " << outer_cell << "\n";

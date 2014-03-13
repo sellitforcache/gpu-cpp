@@ -2,6 +2,7 @@ class wgeometry {
 	unsigned 	n_box;
 	unsigned 	n_cyl;
 	unsigned 	n_hex;
+	unsigned 	n_sph;
 	unsigned 	n_primitives;
 	unsigned 	n_transforms;
 	unsigned 	outer_cell;

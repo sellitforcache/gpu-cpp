@@ -57,6 +57,7 @@ ptx_objects = 	camera.ptx \
 				box_mesh.ptx \
 				cylinder_mesh.ptx \
 				hex_mesh.ptx\
+				sphere_mesh.ptx\
 
 
 all:  	$(ptx_objects) \
@@ -95,6 +96,9 @@ cylinder_mesh.ptx:
 
 hex_mesh.ptx:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx hex_mesh.cu
+
+sphere_mesh.ptx:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) $(OPTIX_FLAGS) $(OPTIX_LIBS) -ptx sphere_mesh.cu
 
 mt19937ar.o:
 	$(CXX) $(C_FLAGS) -c -O mt19937ar.cpp

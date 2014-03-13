@@ -2,7 +2,7 @@
 
 class optix_stuff{
 	optix::Context 	context;
-	std::string accel_type, traverse_type;
+	std::string accel_type, traverse_type, image_type;
 	unsigned mincell;
 	unsigned maxcell;
 	unsigned n_materials;
@@ -33,4 +33,5 @@ public:
 	float trace_test();
 	void make_color(float*,unsigned,unsigned,unsigned);
 	float get_rand();
+	void set_image_type(std::string);
 };

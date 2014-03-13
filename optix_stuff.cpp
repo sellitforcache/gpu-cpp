@@ -72,6 +72,9 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	// set geom type  0=primitive instancing, 1=transform instancing
 	GEOM_FLAG = 0;
 
+	//set image type
+	image_type = "cell";
+
   	//int computeCaps[2];
   	//if (RTresult code = rtDeviceGetAttribute(deviceId, RT_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY, sizeof(computeCaps), &computeCaps))
   	//	throw Exception::makeException(code, 0);
@@ -384,6 +387,7 @@ void optix_stuff::make_geom_prim(wgeometry problem_geom){
 		if      (problem_geom.primitives[j].type == 0)	{sprintf( path_to_ptx, "%s", "box_mesh.ptx" );}
 		else if (problem_geom.primitives[j].type == 1)	{sprintf( path_to_ptx, "%s", "cylinder_mesh.ptx" );}
 		else if (problem_geom.primitives[j].type == 2)	{sprintf( path_to_ptx, "%s", "hex_mesh.ptx" );}
+		else if (problem_geom.primitives[j].type == 3)	{sprintf( path_to_ptx, "%s", "sphere_mesh.ptx" );}
 		bounding_box_program = context->createProgramFromPTXFile( path_to_ptx, "bounds" );
 		intersection_program = context->createProgramFromPTXFile( path_to_ptx, "intersect" );
 		this_geom -> setBoundingBoxProgram ( bounding_box_program );
@@ -514,8 +518,6 @@ void optix_stuff::trace_geometry(unsigned width_in,unsigned height_in,std::strin
 }
 float optix_stuff::trace_test(){
 
-	std::string type = "material";
-
 	float mu, theta;
 	float pi=3.14159;
 
@@ -569,8 +571,8 @@ float optix_stuff::trace_test(){
 
 	//copy to local buffer
 	unsigned * image_local = new unsigned[width*height];
-	if(type.compare("cell")==0){			copy_from_device(image_local,(void*)cellnum_ptr,width*height*sizeof(unsigned));}
-	else if (type.compare("material")==0){	copy_from_device(image_local,(void*)matnum_ptr,width*height*sizeof(unsigned));}
+	if(image_type.compare("cell")==0){			copy_from_device(image_local,(void*)cellnum_ptr,width*height*sizeof(unsigned));}
+	else if (image_type.compare("material")==0){	copy_from_device(image_local,(void*)matnum_ptr,width*height*sizeof(unsigned));}
 
 	// make image
 	png::image< png::rgb_pixel > image(height, width);
@@ -579,8 +581,8 @@ float optix_stuff::trace_test(){
 	{
 	    for (size_t x = 0; x < image.get_width(); ++x)
 	    {
-	    	if(type.compare("cell")==0){			make_color(colormap,image_local[y*width+x],mincell,maxcell);}
-	    	else if (type.compare("material")==0){	make_color(colormap,image_local[y*width+x],0  ,n_materials);}
+	    	if(image_type.compare("cell")==0){			make_color(colormap,image_local[y*width+x],mincell,maxcell);}
+	    	else if (image_type.compare("material")==0){	make_color(colormap,image_local[y*width+x],0  ,n_materials);}
 	        image[y][x] = png::rgb_pixel(colormap[0],colormap[1],colormap[2]);
 	    }
 	}
@@ -644,5 +646,15 @@ void optix_stuff::make_color(float* color, unsigned x, unsigned min, unsigned ma
 float optix_stuff::get_rand(){
 
 	return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+}
+void optix_stuff::set_image_type(std::string string_in){
+
+	if(string_in.compare("material") | string_in.compare("material") ){
+		std::cout << "\"" << string_in << "\" is not a valid option for image type, must be \"cell\" or \"material\"";
+	}
+	else{
+		image_type = string_in;
+	}
 
 }
