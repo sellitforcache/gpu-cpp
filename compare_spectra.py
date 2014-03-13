@@ -105,6 +105,10 @@ elif case== 'uh2o-pincell':
 	tally      = numpy.loadtxt('uh2o-pincell.tally')
 	tallybins  = numpy.loadtxt('uh2o-pincell.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/uh2o-pincell_det0.m')
+elif case== 'godiva':
+	tally      = numpy.loadtxt('godiva.tally')
+	tallybins  = numpy.loadtxt('godiva.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/godiva_det0.m')
 
 
 
