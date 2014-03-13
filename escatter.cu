@@ -108,7 +108,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//constants
 	const float  pi           =   3.14159265359 ;
 	const float  m_n          =   1.00866491600 ; // u
-	const float  kb			  =   8.617332478e-11; //MeV/k
+	//const float  kb			  =   8.617332478e-11; //MeV/k
 	const float  temp         =   300;    // K
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
@@ -213,6 +213,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
+	hats_new = hats_new / hats_new.norm2();  // get higher precision, make SURE vector is length one
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
@@ -220,6 +221,9 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if ( E_new <= E_cutoff | E_new > E_max ){
 		isdone=1;
 	}
+
+	//printf("%u esatter hat length % 10.8E\n",tid,sqrtf(hats_new.x*hats_new.x+hats_new.y*hats_new.y+hats_new.z*hats_new.z));
+
 
 	//printf("speed target = %6.4E, speed=%6.4E, Eold,Enew = %10.8E %10.8E\n",speed_target, speed_n,this_E,E_new);
 	// write results

@@ -107,6 +107,7 @@ void whistory::init(){
 	total_bytes_energy  = 0;
 	//copy any info needed
 	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
+	outer_cell = optix_obj.get_outer_cell();
 	xs_isotope_string = problem_geom.isotope_list;
 	// init host values
 	init_host();
@@ -191,7 +192,7 @@ void whistory::init_host(){
 		space[k].xhat 		= 0.0;
 		space[k].yhat 		= 0.0;
 		space[k].zhat 		= 0.0;
-		space[k].samp_dist 	= 10000.0;
+		space[k].surf_dist 	= 10000.0;
 		space[k].macro_t 	= 0.0;
 		E[k]				= 2.5;
 		Q[k]				= 0.0;
@@ -212,7 +213,7 @@ void whistory::init_host(){
 		space[k].xhat 		= 0.0;
 		space[k].yhat 		= 0.0;
 		space[k].zhat 		= 0.0;
-		space[k].samp_dist 	= 10000.0;
+		space[k].surf_dist 	= 10000.0;
 		space[k].macro_t 	= 0.0;
 		E[k]				= 0.0;
 		Q[k]				= 0.0;
@@ -1391,7 +1392,7 @@ void whistory::run(){
 			trace(2);
 
 			// run macroscopic kernel to find interaction length, macro_t, and reaction isotope, move to interactino length, set resample flag, 
-			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_space, d_isonum, d_index, d_matnum, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
+			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, outer_cell, d_active, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
@@ -1429,6 +1430,9 @@ void whistory::run(){
 			//update_RNG();
 
 			//printf("%u\n",Nrun);
+
+			//std::cout << "cycle done, press enter to continue...\n";
+			//std::cin.ignore();
 
 
 		}
@@ -1472,7 +1476,7 @@ void whistory::run(){
 		//std::cin.ignore();
 
 		// set convergence flag
-		if( iteration_total == n_skip){ 
+		if( iteration_total == n_skip-1){ 
 				converged=1;
 		}
 

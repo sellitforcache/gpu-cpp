@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* active, source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
+__global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned outer_cell, unsigned* active, source_point * space, unsigned* isonum, unsigned* cellnum, unsigned * index, unsigned * matnum, unsigned* rxn, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -16,11 +16,23 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	// load from arrays
 	unsigned 	this_mat 		= matnum[tid];
 	unsigned 	dex 			= index[tid];   
-	float 		this_E  		= E[tid];
 	unsigned 	rn 				= rn_bank[tid];
+	unsigned 	cell 			= cellnum[tid];
+	float 		this_E  		= E[tid];
+	float		x 				= space[tid].x;
+	float		y 				= space[tid].y;
+	float		z 				= space[tid].z;
+	float		xhat 			= space[tid].xhat;
+	float		yhat 			= space[tid].yhat;
+	float		zhat 			= space[tid].zhat;
+	float		surf_dist 		= space[tid].surf_dist;
 	float 		samp_dist 		= 0.0;
 	float 		cum_prob 		= 0.0;
+	float 		diff			= 0.0;
 	unsigned 	tope 			= 999999999;
+	unsigned    this_rxn		= 0;
+	unsigned 	isdone 			= 0;
+
 
 	float macro_t_total = 0.0;
 	float e0 = main_E_grid[dex];
@@ -57,20 +69,45 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		printf("macro - ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u rn=%u cum_prob=%12.10E\n",tope, this_E, dex, this_mat, rn, cum_prob);
 	}
 
-	// write results out
-	space[tid].samp_dist 	= samp_dist;
+	// do surf/samp compare
+	//printf("hat length % 10.8E\n",sqrtf(xhat*xhat+yhat*yhat+zhat*zhat));
+	diff = samp_dist - surf_dist;
+	if( diff>0 ){  //move to surface, set resample flag
+		x += surf_dist * xhat;
+		y += surf_dist * yhat;
+		z += surf_dist * zhat;
+		this_rxn = 999;
+		//check if moved to BC and leaked
+		if (cell==outer_cell){
+			isdone = 1;
+			this_rxn  = 888;
+		}
+	}
+	else{  //move to sampled distance, null reaction
+		if( diff >= -1.2e-4 ){ samp_dist = surf_dist - 1.2e-4; }  //adjust if diff is within epsilon so the next trace will hit the surface!
+		x += samp_dist * xhat;
+		y += samp_dist * yhat;
+		z += samp_dist * zhat;
+	}
+
+	//write outputs
+	space[tid].x 			= x;
+	space[tid].y			= y;
+	space[tid].z			= z;
 	space[tid].macro_t 		= macro_t_total;
+	rxn[tid] 				= this_rxn;
 	isonum[tid] 			= tope;
 	rn_bank[tid] 			= rn;
+	done[tid] 				= isdone;
 
 
 }
 
-void macroscopic( unsigned NUM_THREADS,  unsigned N, unsigned Ntopes, unsigned n_col , unsigned* active, source_point * space, unsigned* isonum, unsigned * index, unsigned * matnum, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
+void macroscopic( unsigned NUM_THREADS,  unsigned N, unsigned Ntopes, unsigned n_col , unsigned outer_cell, unsigned* active, source_point * space, unsigned* isonum, unsigned* cellnum, unsigned * index, unsigned * matnum, unsigned* rxn, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, Ntopes, n_col, active, space, isonum, index, matnum, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
+	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, Ntopes, n_col, outer_cell, active, space, isonum, cellnum, index, matnum, rxn, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
 	cudaThreadSynchronize();
 
 }

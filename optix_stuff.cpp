@@ -171,7 +171,7 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	context["trace_type"]->setUint(1);
 
 	//set outer cell adn get its dimensions
-	context["outer_cell"]->setUint(problem_geom.get_outer_cell());
+	context["outer_cell"]->setUint(outer_cell);
 	outer_cell_type = problem_geom.get_outer_cell_dims(outer_cell_dims);
 
 	// make all geometry instances
@@ -191,6 +191,7 @@ void optix_stuff::init(wgeometry problem_geom, unsigned compute_device_in, std::
 	// set min and max cell numbers
 	mincell = problem_geom.get_minimum_cell();
 	maxcell = problem_geom.get_maximum_cell();
+	outer_cell = problem_geom.get_outer_cell();
 	// get material numbers
 	n_materials = problem_geom.get_material_count();
 	// try to init optix
@@ -548,7 +549,7 @@ float optix_stuff::trace_test(){
 			positions_local[index].xhat = sqrtf(1-mu*mu) * cosf( theta ); //0.0;
 			positions_local[index].yhat = sqrtf(1-mu*mu) * sinf( theta ); //0.0;
 			positions_local[index].zhat =       mu; //-1.0;
-			positions_local[index].samp_dist = 50000.0; 
+			positions_local[index].surf_dist = 50000.0; 
 			//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
 		}
 	}
@@ -559,7 +560,7 @@ float optix_stuff::trace_test(){
 			positions_local[index].xhat = 0.0;
 			positions_local[index].yhat = 0.0;
 			positions_local[index].zhat =-1.0;
-			positions_local[index].samp_dist = 50000.0; 
+			positions_local[index].surf_dist = 50000.0; 
 	}
 
 	// copy starting positions data to pointer
@@ -593,7 +594,7 @@ float optix_stuff::trace_test(){
 	for(index=0;index<N;index++){
 			mu 								 = 2.0*get_rand()-1.0;
 			theta							 = 2.0*pi*get_rand();
-			positions_local[index].samp_dist =  500000;   
+			positions_local[index].surf_dist =  500000;   
 			positions_local[index].x         =     0.9 * ( ( x_max - x_min ) * get_rand() + x_min );  
 			positions_local[index].y         =     0.9 * ( ( y_max - y_min ) * get_rand() + y_min );  
 			positions_local[index].z         =     0.9 * ( ( z_max - z_min ) * get_rand() + z_min ); 
@@ -658,3 +659,9 @@ void optix_stuff::set_image_type(std::string string_in){
 	}
 
 }
+unsigned optix_stuff::get_outer_cell(){
+
+	return outer_cell;
+
+}
+

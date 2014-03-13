@@ -5,6 +5,7 @@ class optix_stuff{
 	std::string accel_type, traverse_type, image_type;
 	unsigned mincell;
 	unsigned maxcell;
+	unsigned outer_cell;
 	unsigned n_materials;
 	unsigned compute_device;
 	unsigned GEOM_FLAG;
@@ -34,4 +35,5 @@ public:
 	void make_color(float*,unsigned,unsigned,unsigned);
 	float get_rand();
 	void set_image_type(std::string);
+	unsigned get_outer_cell();
 };

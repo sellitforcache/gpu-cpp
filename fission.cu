@@ -51,10 +51,8 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 
 	// write output and terminate history
 	yield[tid] = this_yield;
-	if (this_rxn == 18){rn_bank[tid] = rn;}
-	if(RUN_FLAG==1){
-		done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
-	}
+	done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
+	if (this_rxn == 18){rn_bank[tid] = rn;}  //rn was used for fission
 
 }
 

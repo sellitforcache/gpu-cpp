@@ -163,6 +163,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
+	hats_new = hats_new / hats_new.norm2(); // get higher precision, make SURE vector is length one
 	// calculate energy in lab frame
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
@@ -175,6 +176,8 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	//if(this_rxn==91){printf("%u % 6.4E %6.4E %6.4E %6.4E %u %u\n",this_rxn,mu,sampled_E,this_E,E_new, vlen, next_vlen);}
 	//if(this_rxn==91){printf("%6.4E %6.4E %6.4E\n",E_new,this_E,E_new/this_E);}
 	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,vlen,this_Sarray,this_Earray,E_new,sampled_E,A,R);
+
+	//printf("%u csatter hat length % 10.8E\n",tid,sqrtf(hats_new.x*hats_new.x+hats_new.y*hats_new.y+hats_new.z*hats_new.z));
 
 	// write results
 	done[tid]       = isdone;

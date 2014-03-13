@@ -172,6 +172,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
+	hats_new = hats_new / hats_new.norm2();  // get higher precision, make SURE vector is length one
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
@@ -179,6 +180,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	if ( E_new <= E_cutoff | E_new > E_max ){
 		isdone=1;
 	}
+
+	//printf("%u isatter hat length % 10.8E\n",tid,sqrtf(hats_new.x*hats_new.x+hats_new.y*hats_new.y+hats_new.z*hats_new.z));
 
 	// write results
 	done[tid]       = isdone;

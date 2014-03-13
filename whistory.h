@@ -35,6 +35,7 @@ class whistory {
 	// host data
 	unsigned 		RUN_FLAG;
 	unsigned 		qnodes_depth, qnodes_width;
+    unsigned        outer_cell;
 	unsigned 		n_materials;
 	unsigned 		n_isotopes;
 	unsigned 		n_tally;
