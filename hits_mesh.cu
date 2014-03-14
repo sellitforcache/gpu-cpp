@@ -23,8 +23,9 @@ RT_PROGRAM void closest_hit()
 	int index = -1;
 
 	// stop ray iterations if outer cell is hit
-	if(cellnum==outer_cell){
+	if(cellnum==outer_cell & payload.do_first_hit==0){
 		payload.cont=0;
+		return;
 	}
 
 	// write this cell's info into buffer element
@@ -56,20 +57,20 @@ RT_PROGRAM void closest_hit()
 	else if(payload.do_first_hit==0){		// this is a whereami trace, so find which cell we are in
 		// scan the hitbuff to see if this cell has been intersected already
 		for(j=0;j<10;j++){
-			if(payload.hitbuff[j].cell==this_buff.cell & cell_notfound){
+			if(payload.hitbuff[j].cell==this_buff.cell){
 				cell_notfound = 0;
 				end_notfound = 0;
 				index=j;
 				break;
 			}
-			if(payload.hitbuff[j].cell==-1 & cell_notfound & end_notfound){
+			if(payload.hitbuff[j].cell==-1 & cell_notfound){
 				end_notfound = 0;
 				index=j;
 				break;
 			}
 		}
 		if(end_notfound){
-			rtPrintf("hit buffer overrun! index=%d ,last entry %d %d %d \n",index,payload.hitbuff[9].cell,payload.hitbuff[9].mat,payload.hitbuff[9].fiss);
+			rtPrintf("hit buffer overrun! index=%d , cell %d entries %d %d %d %d %d %d %d %d %d %d \n",index,cellnum,payload.hitbuff[0].cell,payload.hitbuff[1].cell,payload.hitbuff[2].cell,payload.hitbuff[3].cell,payload.hitbuff[4].cell,payload.hitbuff[6].cell,payload.hitbuff[7].cell,payload.hitbuff[8].cell,payload.hitbuff[9].cell);
 			rtThrow(RT_EXCEPTION_USER + 0);  // throw user exception 0
 		}
 		else if(cell_notfound){  // append to end

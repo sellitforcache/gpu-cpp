@@ -221,7 +221,7 @@ int main(){
 	unsigned topes      [n_topes];
 	float    fracs_fuel [n_topes];
 	float 	 fracs_water[n_topes];
-	topes[0] = 92235;
+	topes[0] = 94239;
 	fracs_fuel[0] = 1;      
 	float    dens_fuel = 19.816;
 	geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
@@ -229,7 +229,7 @@ int main(){
 
 	//godiva geom
 	geom.add_primitive();
-	geom.primitives[0].type=1;
+	geom.primitives[0].type=3;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]= -5.1;
 	geom.primitives[0].min[1]= -5.1;
