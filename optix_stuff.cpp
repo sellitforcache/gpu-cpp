@@ -659,8 +659,8 @@ float optix_stuff::get_rand(){
 }
 void optix_stuff::set_image_type(std::string string_in){
 
-	if(string_in.compare("material") | string_in.compare("material") ){
-		std::cout << "\"" << string_in << "\" is not a valid option for image type, must be \"cell\" or \"material\"";
+	if(string_in.compare("material") & string_in.compare("cell") ){
+		std::cout << "\"" << string_in << "\" is not a valid option for image type, must be \"cell\" or \"material\"\n";
 	}
 	else{
 		image_type = string_in;

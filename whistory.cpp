@@ -1232,6 +1232,7 @@ void whistory::sample_fissile_points(){
 	// iterate
 	unsigned current_index = 0;
 	unsigned valid_N = 0;
+
 	while (current_index < N){
 		
 		// advance RN bank

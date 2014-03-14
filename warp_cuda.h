@@ -2,6 +2,7 @@
 
 // host calls
 void print_banner();
+void write_to_file(unsigned*,unsigned,std::string);
 
 // device calls
 void set_positions_rand( unsigned, unsigned, unsigned, source_point * , unsigned *  , float  * );

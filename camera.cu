@@ -56,13 +56,14 @@ RT_PROGRAM void camera()
 			rtTrace(top_object, ray, payload);      
 		}
 	}
-	if(trace_type == 2){ //write material to buffer normally
+	if(trace_type == 2){ //write material to buffer normally, write surface distance
 		positions_buffer[launch_index].surf_dist 	= payload.surf_dist;
 		matnum_buffer[launch_index] 				= payload.hitbuff[0].mat;
 		cellnum_buffer[launch_index] 				= payload.hitbuff[0].cell;
 	}
 	else if(trace_type == 3){  //write fissile flag if fissile query
 		matnum_buffer[launch_index] 				= payload.hitbuff[0].fiss;
+		//rtPrintf("matnum_buffer[%i] =%u\n",launch_index,matnum_buffer[launch_index]);
 		cellnum_buffer[launch_index] 				= payload.hitbuff[0].cell;
 		rxn_buffer[launch_index] 					= 18;
 	}

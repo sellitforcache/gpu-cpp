@@ -23,7 +23,10 @@ RT_PROGRAM void closest_hit()
 	int index = -1;
 
 	// stop ray iterations if outer cell is hit
-	if(cellnum==outer_cell & payload.do_first_hit==0){
+	if(cellnum==outer_cell){
+		payload.cont=0;
+	}
+	else if(cellnum==outer_cell & payload.do_first_hit==0){
 		payload.cont=0;
 		return;
 	}
@@ -57,13 +60,13 @@ RT_PROGRAM void closest_hit()
 	else if(payload.do_first_hit==0){		// this is a whereami trace, so find which cell we are in
 		// scan the hitbuff to see if this cell has been intersected already
 		for(j=0;j<10;j++){
-			if(payload.hitbuff[j].cell==this_buff.cell){
+			if(payload.hitbuff[j].cell==this_buff.cell & end_notfound){
 				cell_notfound = 0;
 				end_notfound = 0;
 				index=j;
 				break;
 			}
-			if(payload.hitbuff[j].cell==-1 & cell_notfound){
+			if(payload.hitbuff[j].cell==-1 & cell_notfound &end_notfound){
 				end_notfound = 0;
 				index=j;
 				break;

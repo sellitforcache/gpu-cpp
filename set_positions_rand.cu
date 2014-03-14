@@ -13,6 +13,8 @@ __global__ void set_positions_rand_kernel(unsigned N , unsigned RNUM_PER_THREAD,
 	float rn2 = get_rand(&rn);
 	float rn3 = get_rand(&rn);
 
+	//printf("outer cell dims %6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",x_min,x_max,y_min,y_max,z_min,z_max);
+
 	positions_ptr[tid].surf_dist =     500000;   
 	positions_ptr[tid].x         =     0.9 * ( ( x_max - x_min ) * rn1 + x_min );  
 	positions_ptr[tid].y         =     0.9 * ( ( y_max - y_min ) * rn2 + y_min );  

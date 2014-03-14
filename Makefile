@@ -45,7 +45,8 @@ COBJS =	mt19937ar.o \
 		wgeometry.o \
 		optix_stuff.o \
 		primitive.o \
-		device_copies.o
+		write_to_file.o \
+		device_copies.o \
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -168,6 +169,9 @@ flip_done.o:
 
 device_copies.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c device_copies.cu
+
+write_to_file.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c write_to_file.cu
 
 whistory.o:
 	$(CXX) $(C_FLAGS)  $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp

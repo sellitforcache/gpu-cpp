@@ -385,6 +385,7 @@ void wgeometry::make_material_table(){
 		//  multiply normalized fractions by average number density to get topes number density
 		for(int k=0;k<n_isotopes;k++){
 			concentrations_matrix[j*n_isotopes+k] = concentrations_matrix[j*n_isotopes+k] * N_avg;
+			printf("material = %d, isotope %d, dens = %6.5E\n",j,k,concentrations_matrix[j*n_isotopes+k]);
 		}
 	}
 }
