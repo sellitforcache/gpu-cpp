@@ -58,7 +58,7 @@ int main(int argc, char** argv){
 
 	//sphere geom
 	geom.add_primitive();
-	geom.primitives[0].type=3;
+	geom.primitives[0].type=1;
 	geom.primitives[0].material=2;
 	geom.primitives[0].min[0]=-18.0;
 	geom.primitives[0].min[1]=-18.0;
@@ -73,23 +73,7 @@ int main(int argc, char** argv){
 	geom.primitives[0].transforms[0].dz      = 0;
 	geom.primitives[0].transforms[0].theta   = 0;
 	geom.primitives[0].transforms[0].phi     = 0;
-	geom.add_primitive();
-	geom.primitives[1].type=0;
-	geom.primitives[1].material=1;
-	geom.primitives[1].min[0]=-42.0;
-	geom.primitives[1].min[1]=-42.0;
-	geom.primitives[1].min[2]=-42.0;
-	geom.primitives[1].max[0]= 42.0;
-	geom.primitives[1].max[1]= 42.0;
-	geom.primitives[1].max[2]= 42.0;
-	geom.primitives[1].add_transform();
-	geom.primitives[1].transforms[0].cellnum = 999;
-	geom.primitives[1].transforms[0].dx      = 0;
-	geom.primitives[1].transforms[0].dy      = 0;
-	geom.primitives[1].transforms[0].dz      = 0;
-	geom.primitives[1].transforms[0].theta   = 0;
-	geom.primitives[1].transforms[0].phi     = 0;
-	geom.set_outer_cell(999);
+	geom.set_outer_cell(1);
 	tallyname = "sphere";
 
 	// assembly geom

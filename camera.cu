@@ -44,12 +44,13 @@ RT_PROGRAM void camera()
 
 	// first trace to find closest hit
 	rtTrace(top_object, ray, payload);
-	positions_buffer[launch_index].surf_dist=payload.surf_dist;
 
 	// check if bc, if first hit is BC, then its in the outer cell
 	if (payload.cell_first==outer_cell){
 	 	payload.cont=0; 
 	 	cellnum_buffer[launch_index]=outer_cell;
+	 	matnum_buffer[launch_index]=payload.hitbuff[0].mat;
+	 	positions_buffer[launch_index].surf_dist=payload.surf_dist;
 	}
 	else{ // else find the cell it's entering
 		while(payload.cont){
