@@ -229,7 +229,7 @@ int main(){
 
 	//godiva geom
 	geom.add_primitive();
-	geom.primitives[0].type=3;
+	geom.primitives[0].type=1;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]= -5.1;
 	geom.primitives[0].min[1]= -5.1;

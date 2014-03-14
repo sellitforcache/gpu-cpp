@@ -67,13 +67,13 @@ int main(int argc, char** argv){
 	geom.primitives[0].max[1]= 18.0;
 	geom.primitives[0].max[2]= 18.0;
 	geom.primitives[0].add_transform();
-	geom.primitives[0].transforms[0].cellnum = 1;
+	geom.primitives[0].transforms[0].cellnum = 999;
 	geom.primitives[0].transforms[0].dx      = 0;
 	geom.primitives[0].transforms[0].dy      = 0;
 	geom.primitives[0].transforms[0].dz      = 0;
 	geom.primitives[0].transforms[0].theta   = 0;
 	geom.primitives[0].transforms[0].phi     = 0;
-	geom.set_outer_cell(1);
+	geom.set_outer_cell(999);
 	tallyname = "sphere";
 
 	// assembly geom

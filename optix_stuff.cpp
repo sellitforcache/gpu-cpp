@@ -553,7 +553,7 @@ float optix_stuff::trace_test(){
 			//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
 		}
 	}
-	for(index;index<N;index++){  //these are
+	for(index;index<N;index++){  //these are the end bits that don't fit into a square
 			positions_local[index].x = 0.0;
 			positions_local[index].y = 0.0;
 			positions_local[index].z = 0.0;
@@ -626,6 +626,7 @@ void optix_stuff::print(){
 	else         {instancing="primitive";}
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
 	std::cout << "  Using \e[1;31m"<< instancing <<"\e[m-based instancing\n";
+	std::cout << "  Image type se to \e[1;31m"<< image_type <<"\e[m\n";	
 	std::cout << "  Device set to "<<compute_device<<"\n";
 	std::cout << "  Acceleration set to "<<accel_type<<"/"<<traverse_type<<"\n";
 	std::cout << "  stack  size = " << context->getStackSize() << " bytes\n";

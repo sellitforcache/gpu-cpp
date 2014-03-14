@@ -46,6 +46,7 @@ void whistory::init(){
 	optix_obj.N=Ndataset;
 	optix_obj.stack_size_multiplier=1;
 	optix_obj.init(problem_geom,compute_device,accel_type);
+	optix_obj.set_image_type("cell");
 	optix_obj.print();
 	// CUDA stuff
 	std::cout << "\e[1;32m" << "Dataset size is "<< N << "\e[m \n";
