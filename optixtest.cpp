@@ -288,6 +288,7 @@ int main(int argc, char** argv){
 	}
 	optix_stuff optix_test ( N , 4 );
 	optix_test.init(geom,0,accel_type_in);
+	optix_test.set_image_type("cell");
 	optix_test.print();
 	double tracetime = optix_test.trace_test();
 	optix_test.~optix_stuff();

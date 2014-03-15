@@ -61,8 +61,8 @@ struct intersection_point {
     float       surf_dist;
     int         cell_first;
     int         cont;
-    int         do_first_hit;
     hit_buffer  hitbuff[10];
+    unsigned    buff_index;
 };
 
 // intersection point struct

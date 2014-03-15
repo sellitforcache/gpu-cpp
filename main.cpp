@@ -216,34 +216,34 @@ int main(){
 	//geom.primitives[0].transforms[0].theta   = 0;
 	//geom.primitives[0].transforms[0].phi     = 0;
 
-	// godiva mats
-	//unsigned n_topes    = 1;
-	//unsigned topes      [n_topes];
-	//float    fracs_fuel [n_topes];
-	//float 	 fracs_water[n_topes];
-	//topes[0] = 94239;
-	//fracs_fuel[0] = 1;      
-	//float    dens_fuel = 19.816;
-	//geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
-	//tallyname = "godiva.tally";
-
-	//godiva geom
-	//geom.add_primitive();
-	//geom.primitives[0].type=3;
-	//geom.primitives[0].material=1;
-	//geom.primitives[0].min[0]= -5.1;
-	//geom.primitives[0].min[1]= -5.1;
-	//geom.primitives[0].min[2]= -5.1;
-	//geom.primitives[0].max[0]=  5.1;
-	//geom.primitives[0].max[1]=  5.1;
-	//geom.primitives[0].max[2]=  5.1;
-	//geom.primitives[0].add_transform();
-	//geom.primitives[0].transforms[0].cellnum = 999;
-	//geom.primitives[0].transforms[0].dx      = 0;
-	//geom.primitives[0].transforms[0].dy      = 0;
-	//geom.primitives[0].transforms[0].dz      = 0;
-	//geom.primitives[0].transforms[0].theta   = 0;
-	//geom.primitives[0].transforms[0].phi     = 0;
+//	// godiva mats
+//	unsigned n_topes    = 1;
+//	unsigned topes      [n_topes];
+//	float    fracs_fuel [n_topes];
+//	float 	 fracs_water[n_topes];
+//	topes[0] = 94239;
+//	fracs_fuel[0] = 1;      
+//	float    dens_fuel = 19.816;
+//	geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
+//	tallyname = "godiva.tally";
+//
+//	//godiva geom
+//	geom.add_primitive();
+//	geom.primitives[0].type=0;
+//	geom.primitives[0].material=1;
+//	geom.primitives[0].min[0]= -5.1;
+//	geom.primitives[0].min[1]= -5.1;
+//	geom.primitives[0].min[2]= -5.1;
+//	geom.primitives[0].max[0]=  5.1;
+//	geom.primitives[0].max[1]=  5.1;
+//	geom.primitives[0].max[2]=  5.1;
+//	geom.primitives[0].add_transform();
+//	geom.primitives[0].transforms[0].cellnum = 999;
+//	geom.primitives[0].transforms[0].dx      = 0;
+//	geom.primitives[0].transforms[0].dy      = 0;
+//	geom.primitives[0].transforms[0].dz      = 0;
+//	geom.primitives[0].transforms[0].theta   = 0;
+//	geom.primitives[0].transforms[0].phi     = 0;
 
 	// pincell mats
 	unsigned n_topes    = 4;
@@ -262,7 +262,7 @@ int main(){
 	fracs_water[1] = 0;   
 	fracs_water[2] = 1;   
 	fracs_water[3] = 2;
-	float    dens_fuel = 5;
+	float    dens_fuel = 10;
 	float 	 dens_water = 3;
 	geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
 	geom.add_material(2,0,n_topes,dens_water,topes,fracs_water);
@@ -357,7 +357,7 @@ int main(){
 	/////////////////////////////////////
 
 	hist.set_run_type("criticality");
-	hist.set_tally_cell(1);
+	hist.set_tally_cell(999);
 	hist.set_run_param(40,20);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);

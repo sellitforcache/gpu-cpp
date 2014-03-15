@@ -28,7 +28,7 @@ RT_PROGRAM void camera()
 	
 	// init payload flags
 	payload.cont=1;
-	payload.do_first_hit=1;
+	payload.buff_index=0;
 	
 	// init ray
 	float3 ray_direction  = make_float3(positions_buffer[launch_index].xhat, positions_buffer[launch_index].yhat, positions_buffer[launch_index].zhat);
@@ -42,28 +42,22 @@ RT_PROGRAM void camera()
 		payload.hitbuff[cnt].fiss = -1;
 	}
 
-	// first trace to find closest hit
+	// first trace to find closest hit 
 	rtTrace(top_object, ray, payload);
+	positions_buffer[launch_index].surf_dist = payload.surf_dist;
 
-	// check if bc, if first hit is BC, then its in the outer cell or maybe missed, either way write in first values 
-	if (payload.cell_first==outer_cell | payload.cell_first==4294967295){
-	 	payload.cont=0; 	 	
-	}
-	else{ // else find the cell it's entering
-		while(payload.cont){
-			ray_origin = make_float3(payload.x,payload.y,payload.z);
-			ray = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
-			rtTrace(top_object, ray, payload);      
-		}
+	// find entering cell otherwise, trace will write 
+	while(payload.cont){
+		ray_origin = make_float3(payload.x,payload.y,payload.z);
+		ray = optix::make_Ray( ray_origin, ray_direction, 0, epsilon, RT_DEFAULT_MAX );
+		rtTrace(top_object, ray, payload);      
 	}
 	if(trace_type == 2){ //write material to buffer normally, write surface distance
-		positions_buffer[launch_index].surf_dist 	= payload.surf_dist;
 		matnum_buffer[launch_index] 				= payload.hitbuff[0].mat;
 		cellnum_buffer[launch_index] 				= payload.hitbuff[0].cell;
 	}
 	else if(trace_type == 3){  //write fissile flag if fissile query
 		matnum_buffer[launch_index] 				= payload.hitbuff[0].fiss;
-		//rtPrintf("matnum_buffer[%i] =%u\n",launch_index,matnum_buffer[launch_index]);
 		cellnum_buffer[launch_index] 				= payload.hitbuff[0].cell;
 		rxn_buffer[launch_index] 					= 18;
 	}

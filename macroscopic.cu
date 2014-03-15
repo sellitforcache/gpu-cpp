@@ -45,7 +45,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		t0 = xs_data_MT[n_columns* dex    + k];     //dex is the row number
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
 		macro_t_total += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * material_matrix[n_isotopes*this_mat+k];    //interpolated micro times number density
-		printf("mat %u - density of tope %u = %6.3E\n",this_mat,k,material_matrix[n_isotopes*this_mat+k]);
+		//printf("mat %u - density of tope %u = %6.3E\n",this_mat,k,material_matrix[n_isotopes*this_mat+k]);
 	}
 
 	// compute the interaction length
@@ -71,6 +71,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 	// do surf/samp compare
 	//printf("hat length % 10.8E\n",sqrtf(xhat*xhat+yhat*yhat+zhat*zhat));
+	// /printf("surf_dist %6.4E\n",surf_dist);
 	diff = samp_dist - surf_dist;
 	if( diff>0 ){  //move to surface, set resample flag
 		x += surf_dist * xhat;

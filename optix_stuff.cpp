@@ -546,9 +546,9 @@ float optix_stuff::trace_test(){
 			positions_local[index].x = x_min + dx/2 + k*dx;
 			positions_local[index].y = y_min + dy/2 + j*dy;
 			positions_local[index].z = 0.0;
-			positions_local[index].xhat = 	0.0;//sqrtf(1-mu*mu) * cosf( theta ); 
-			positions_local[index].yhat = 	0.0;//sqrtf(1-mu*mu) * sinf( theta ); 
-			positions_local[index].zhat = 	1.0;//mu; 
+			positions_local[index].xhat = 	sqrtf(1-mu*mu) * cosf( theta ); 
+			positions_local[index].yhat = 	sqrtf(1-mu*mu) * sinf( theta ); 
+			positions_local[index].zhat = 	mu; 
 			positions_local[index].surf_dist = 50000.0; 
 			//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
 		}
@@ -626,7 +626,7 @@ void optix_stuff::print(){
 	else         {instancing="primitive";}
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
 	std::cout << "  Using \e[1;31m"<< instancing <<"\e[m-based instancing\n";
-	std::cout << "  Image type se to \e[1;31m"<< image_type <<"\e[m\n";	
+	std::cout << "  Image type set to \e[1;31m"<< image_type <<"\e[m\n";	
 	std::cout << "  Device set to "<<compute_device<<"\n";
 	std::cout << "  Acceleration set to "<<accel_type<<"/"<<traverse_type<<"\n";
 	std::cout << "  stack  size = " << context->getStackSize() << " bytes\n";
@@ -663,6 +663,7 @@ void optix_stuff::set_image_type(std::string string_in){
 		std::cout << "\"" << string_in << "\" is not a valid option for image type, must be \"cell\" or \"material\"\n";
 	}
 	else{
+		//std::cout << "Image type set to \"" << string_in << "\"\n";
 		image_type = string_in;
 	}
 
