@@ -546,9 +546,9 @@ float optix_stuff::trace_test(){
 			positions_local[index].x = x_min + dx/2 + k*dx;
 			positions_local[index].y = y_min + dy/2 + j*dy;
 			positions_local[index].z = 0.0;
-			positions_local[index].xhat = 	sqrtf(1-mu*mu) * cosf( theta ); 
-			positions_local[index].yhat = 	sqrtf(1-mu*mu) * sinf( theta ); 
-			positions_local[index].zhat = 	mu; 
+			positions_local[index].xhat = 	0.0;//sqrtf(1-mu*mu) * cosf( theta ); 
+			positions_local[index].yhat = 	0.0;//sqrtf(1-mu*mu) * sinf( theta ); 
+			positions_local[index].zhat = 	1.0;//mu; 
 			positions_local[index].surf_dist = 50000.0; 
 			//printf("%6.4E %6.4E %6.4E %6.4E %6.4E %6.4E\n",positions_local[index].x,positions_local[index].y,positions_local[index].z,positions_local[index].xhat,positions_local[index].yhat,positions_local[index].zhat);
 		}

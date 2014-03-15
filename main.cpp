@@ -270,7 +270,7 @@ int main(){
 
 	//pin cell
 	geom.add_primitive(); //clad
-	geom.primitives[0].type=1;
+	geom.primitives[0].type=0;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]=-1;
 	geom.primitives[0].min[1]=-1;

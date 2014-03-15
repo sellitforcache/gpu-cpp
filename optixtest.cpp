@@ -228,7 +228,7 @@ int main(int argc, char** argv){
 
 	//pin cell
 	geom.add_primitive(); //pin
-	geom.primitives[0].type=1;
+	geom.primitives[0].type=2;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]=-1;
 	geom.primitives[0].min[1]=-1;
@@ -246,11 +246,11 @@ int main(int argc, char** argv){
 	geom.add_primitive();  //clad 
 	geom.primitives[1].type=0;
 	geom.primitives[1].material=2;
-	geom.primitives[1].min[0]=-1.2;
-	geom.primitives[1].min[1]=-1.2;
+	geom.primitives[1].min[0]=-2.2;
+	geom.primitives[1].min[1]=-2.2;
 	geom.primitives[1].min[2]=-20.2;
-	geom.primitives[1].max[0]= 1.2;
-	geom.primitives[1].max[1]= 1.2;
+	geom.primitives[1].max[0]= 2.2;
+	geom.primitives[1].max[1]= 2.2;
 	geom.primitives[1].max[2]= 20.2;
 	geom.primitives[1].add_transform();
 	geom.primitives[1].transforms[0].cellnum = 999;

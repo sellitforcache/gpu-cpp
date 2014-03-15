@@ -21,6 +21,8 @@ __global__ void copy_points_kernel( unsigned Nout, unsigned * Nvalid , unsigned 
 	positions_out[index_out].zhat 	= positions_in[index_in].zhat;
 	E_out[index_out] 				= E_in[index_in];
 
+	printf("good point %6.4E %6.4E %6.4E\n",positions_out[index_out].x,positions_out[index_out].y,positions_out[index_out].z);
+
 
 }
 
