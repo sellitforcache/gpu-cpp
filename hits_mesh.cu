@@ -7,7 +7,6 @@ using namespace optix;
 rtDeclareVariable(intersection_point, payload, rtPayload, ); 
 rtDeclareVariable(float, int_dist, rtIntersectionDistance, );
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
-rtDeclareVariable(int , object_dex, ,);
 rtDeclareVariable(unsigned,  cellnum,     attribute cell_num, );
 rtDeclareVariable(unsigned,  cellmat,     attribute cell_mat, );
 rtDeclareVariable(unsigned,  cellfissile, attribute cell_fis, );

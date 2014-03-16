@@ -262,14 +262,14 @@ int main(){
 	fracs_water[1] = 0;   
 	fracs_water[2] = 1;   
 	fracs_water[3] = 2;
-	float    dens_fuel = 10;
+	float    dens_fuel = 5;
 	float 	 dens_water = 3;
 	geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
 	geom.add_material(2,0,n_topes,dens_water,topes,fracs_water);
 	tallyname = "uh2o-pincell.tally";
 
 	//pin cell
-	geom.add_primitive(); //clad
+	geom.add_primitive(); //pin
 	geom.primitives[0].type=0;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]=-1;
@@ -285,7 +285,7 @@ int main(){
 	geom.primitives[0].transforms[0].dz      = 0;
 	geom.primitives[0].transforms[0].theta   = 0;
 	geom.primitives[0].transforms[0].phi     = 0;
-	geom.add_primitive();  //pin 
+	geom.add_primitive();  //clad 
 	geom.primitives[1].type=0;
 	geom.primitives[1].material=2;
 	geom.primitives[1].min[0]=-5.0;

@@ -228,7 +228,7 @@ int main(int argc, char** argv){
 
 	//pin cell
 	geom.add_primitive(); //pin
-	geom.primitives[0].type=2;
+	geom.primitives[0].type=1;
 	geom.primitives[0].material=1;
 	geom.primitives[0].min[0]=-1;
 	geom.primitives[0].min[1]=-1;
