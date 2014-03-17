@@ -18,8 +18,11 @@ rtDeclareVariable(unsigned,  boundary_condition, , );
 
 RT_PROGRAM void camera()
 {
-
+	//skip done particles
 	if(done_buffer[launch_index]){return;}
+
+	//reset reaction if not done
+	rxn_buffer[launch_index]=0;
 
 	// declare important stuff
 	int                 cnt;
@@ -42,9 +45,18 @@ RT_PROGRAM void camera()
 		payload.hitbuff[cnt].fiss = -1;
 	}
 
-	// first trace to find closest hit 
+	// first trace to find closest hit, set bc flag
 	rtTrace(top_object, ray, payload);
-	positions_buffer[launch_index].surf_dist = payload.surf_dist;
+	positions_buffer[launch_index].surf_dist = payload.surf_dist; 
+	if(trace_type==2){
+		if(payload.hitbuff[0].cell == outer_cell){
+			positions_buffer[launch_index].enforce_BC=1;
+			//rtPrintf("should enforce BC\n");
+		}
+		else{
+			positions_buffer[launch_index].enforce_BC=0;
+		}
+	}
 
 	// find entering cell otherwise, trace will write 
 	while(payload.cont){

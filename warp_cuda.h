@@ -11,7 +11,7 @@ void sample_fission_spectra(unsigned , unsigned , unsigned , unsigned* , unsigne
 void sample_fixed_source( unsigned,unsigned,unsigned,unsigned*,unsigned*,float*,source_point*);
 void macroscopic( unsigned ,  unsigned,  unsigned, unsigned, unsigned , unsigned*, source_point * , unsigned* , unsigned * , unsigned*, unsigned * , unsigned*, float * , unsigned * , float * , float *  , float* , unsigned*);
 void microscopic( unsigned ,  unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , float * , unsigned * , float * , float *  , unsigned * , unsigned * ,  float* , unsigned * , float*, unsigned* );
-void tally_spec( unsigned ,  unsigned, unsigned , unsigned , unsigned*, source_point * , float* , float * , unsigned * , unsigned*, unsigned*);
+void tally_spec( unsigned ,  unsigned, unsigned , unsigned , unsigned*, source_point * , float* , float * , unsigned * , unsigned*, unsigned*, unsigned*);
 void escatter( cudaStream_t, unsigned , unsigned, unsigned , unsigned*, unsigned* , unsigned* , unsigned* , float*, source_point* , unsigned*, float*, unsigned*, float**);
 void iscatter( cudaStream_t, unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , unsigned * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
 void cscatter( cudaStream_t, unsigned , unsigned , unsigned , unsigned*, unsigned* , unsigned * , unsigned * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);

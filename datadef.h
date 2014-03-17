@@ -34,6 +34,7 @@ struct source_point{
     float zhat; 
     float surf_dist;
     float macro_t;
+    unsigned enforce_BC;
 };
 
 //quaternary search node and host container

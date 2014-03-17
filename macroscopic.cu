@@ -26,6 +26,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	float		yhat 			= space[tid].yhat;
 	float		zhat 			= space[tid].zhat;
 	float		surf_dist 		= space[tid].surf_dist;
+	unsigned 	enforce_BC 		= space[tid].enforce_BC;  
 	float 		samp_dist 		= 0.0;
 	float 		cum_prob 		= 0.0;
 	float 		diff			= 0.0;
@@ -70,25 +71,26 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	}
 
 	// do surf/samp compare
-	//printf("hat length % 10.8E\n",sqrtf(xhat*xhat+yhat*yhat+zhat*zhat));
-	// /printf("surf_dist %6.4E\n",surf_dist);
-	diff = samp_dist - surf_dist;
-	if( diff>0 ){  //move to surface, set resample flag
+	diff = surf_dist - samp_dist;
+	if( diff < 0 ){  //move to surface, set resample flag
 		x += surf_dist * xhat;
 		y += surf_dist * yhat;
 		z += surf_dist * zhat;
 		this_rxn = 999;
-		//check if moved to BC and leaked
-		if (cell==outer_cell){
+		tope=999999999;
+		// enforce BC
+		if (enforce_BC){
 			isdone = 1;
 			this_rxn  = 888;
+			//printf("leaked tid %u xyz % 6.4E % 6.4E % 6.4E dir % 6.4E % 6.4E % 6.4E\n",tid,x,y,z,xhat,yhat,zhat);
 		}
 	}
 	else{  //move to sampled distance, null reaction
-		if( diff >= -1.2e-4 ){ samp_dist = surf_dist - 1.2e-4; }  //adjust if diff is within epsilon so the next trace will hit the surface!
+		if( diff <= 1.1e-4 ){ samp_dist = surf_dist - 1.1e-4; }  //adjust if diff is within epsilon so the next trace will hit the surface!
 		x += samp_dist * xhat;
 		y += samp_dist * yhat;
 		z += samp_dist * zhat;
+		this_rxn = 0;
 	}
 
 	//write outputs

@@ -196,6 +196,7 @@ void whistory::init_host(){
 		space[k].zhat 		= 0.0;
 		space[k].surf_dist 	= 10000.0;
 		space[k].macro_t 	= 0.0;
+		space[k].enforce_BC = 0;
 		E[k]				= 2.5;
 		Q[k]				= 0.0;
 		cellnum[k]			= 0;
@@ -217,6 +218,7 @@ void whistory::init_host(){
 		space[k].zhat 		= 0.0;
 		space[k].surf_dist 	= 10000.0;
 		space[k].macro_t 	= 0.0;
+		space[k].enforce_BC = 0;
 		E[k]				= 0.0;
 		Q[k]				= 0.0;
 		cellnum[k]			= 0;
@@ -1402,7 +1404,7 @@ void whistory::run(){
 
 			// run tally kernel to compute spectra
 			if(converged){
-				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum);
+				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
 			}
 			
 			

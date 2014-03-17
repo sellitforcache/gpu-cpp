@@ -12,6 +12,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	//remap to active
 	//tid=active[tid];
 	if(done[tid]){return;}
+	if(rxn[tid]==999){return;}//printf("tid %u is resampled %u\n",tid,rxn[tid]);return;}
 
 	// load from array
 	unsigned 	this_tope 		= isonum[tid];

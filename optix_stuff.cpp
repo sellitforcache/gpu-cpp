@@ -532,12 +532,15 @@ float optix_stuff::trace_test(){
 	float y_max = outer_cell_dims[4];
 	float z_max = outer_cell_dims[5];
 
+	//y_min = y_max = 0.0;
+
 	// make distribution random now
 	int height = (int) sqrtf(N);
 	int width  = (int) sqrtf(N);
 	printf("image w/h %dx%d\n",width,height);
 	float dx = (x_max-x_min)/width;
 	float dy = (x_max-x_min)/height;
+	float dz = (z_max-z_min)/height;
 	for(int j=0;j<height;j++){
 		for(int k=0;k<width;k++){
 			mu = 2.0*get_rand()-1.0;
@@ -545,7 +548,7 @@ float optix_stuff::trace_test(){
 			index = j * width + k;
 			positions_local[index].x = x_min + dx/2 + k*dx;
 			positions_local[index].y = y_min + dy/2 + j*dy;
-			positions_local[index].z = 0.0;
+			positions_local[index].z = 0.0;//z_min + dz/2 + j*dz;
 			positions_local[index].xhat = 	sqrtf(1-mu*mu) * cosf( theta ); 
 			positions_local[index].yhat = 	sqrtf(1-mu*mu) * sinf( theta ); 
 			positions_local[index].zhat = 	mu; 

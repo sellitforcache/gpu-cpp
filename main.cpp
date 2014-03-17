@@ -190,31 +190,31 @@ int main(){
 	//geom.primitives[2].transforms[0].phi     = 0;
 
 	// homogenized UO2 
-	//unsigned topes[1]={94239};//,92238};//,8016,1001};
-	//float    fracs[1]={1 };// 0.5};//,   3,   2};
-	//float 	 dens = 19.618;
-	//geom.add_material(1,1,1,dens,topes,fracs);
-	//geom.add_material(2,0,1,dens,topes,fracs);
-	//geom.add_material(3,0,1,dens,topes,fracs);
-	//tallyname = "homfuel.tally";
-
-	////simple geom
-	//geom.add_primitive();
-	//geom.primitives[0].type=0;
-	//geom.primitives[0].material=1;
-	//geom.primitives[0].min[0]=-4.7;
-	//geom.primitives[0].min[1]=-4.7;
-	//geom.primitives[0].min[2]=-4.7;
-	//geom.primitives[0].max[0]= 4.7;
-	//geom.primitives[0].max[1]= 4.7;
-	//geom.primitives[0].max[2]= 4.7;
-	//geom.primitives[0].add_transform();
-	//geom.primitives[0].transforms[0].cellnum = 999;
-	//geom.primitives[0].transforms[0].dx      = 0;
-	//geom.primitives[0].transforms[0].dy      = 0;
-	//geom.primitives[0].transforms[0].dz      = 0;
-	//geom.primitives[0].transforms[0].theta   = 0;
-	//geom.primitives[0].transforms[0].phi     = 0;
+//	unsigned topes[4]={92235,92238,8016,1001};
+//	float    fracs[4]={.01 , 0.99,   3,   2};
+//	float 	 dens = 10;
+//	geom.add_material(1,1,4,dens,topes,fracs);
+//	geom.add_material(2,0,4,dens,topes,fracs);
+//	geom.add_material(3,0,4,dens,topes,fracs);
+//	tallyname = "homfuel.tally";
+//
+//	//simple geom
+//	geom.add_primitive();
+//	geom.primitives[0].type=0;
+//	geom.primitives[0].material=1;
+//	geom.primitives[0].min[0]=-1000.0;
+//	geom.primitives[0].min[1]=-1000.0;
+//	geom.primitives[0].min[2]=-1000.0;
+//	geom.primitives[0].max[0]= 1000.0;
+//	geom.primitives[0].max[1]= 1000.0;
+//	geom.primitives[0].max[2]= 1000.0;
+//	geom.primitives[0].add_transform();
+//	geom.primitives[0].transforms[0].cellnum = 999;
+//	geom.primitives[0].transforms[0].dx      = 0;
+//	geom.primitives[0].transforms[0].dy      = 0;
+//	geom.primitives[0].transforms[0].dz      = 0;
+//	geom.primitives[0].transforms[0].theta   = 0;
+//	geom.primitives[0].transforms[0].phi     = 0;
 
 //	// godiva mats
 //	unsigned n_topes    = 1;
@@ -229,7 +229,7 @@ int main(){
 //
 //	//godiva geom
 //	geom.add_primitive();
-//	geom.primitives[0].type=0;
+//	geom.primitives[0].type=3;
 //	geom.primitives[0].material=1;
 //	geom.primitives[0].min[0]= -5.1;
 //	geom.primitives[0].min[1]= -5.1;
@@ -254,10 +254,10 @@ int main(){
 	topes[1] = 92238;
 	topes[2] = 8016;
 	topes[3] = 1001;
-	fracs_fuel[0] = 1;  
-	fracs_fuel[1] = 0;   
-	fracs_fuel[2] = 0;   
-	fracs_fuel[3] = 0;
+	fracs_fuel[0] = 0.05;  
+	fracs_fuel[1] = 0.95;   
+	fracs_fuel[2] = 3;   
+	fracs_fuel[3] = 2;
 	fracs_water[0] = 0;  
 	fracs_water[1] = 0;   
 	fracs_water[2] = 1;   
@@ -269,38 +269,38 @@ int main(){
 	tallyname = "uh2o-pincell.tally";
 
 	//pin cell
-	geom.add_primitive(); //pin
+	//geom.add_primitive(); //pin
+	//geom.primitives[0].type=0;
+	//geom.primitives[0].material=1;
+	//geom.primitives[0].min[0]=-10;
+	//geom.primitives[0].min[1]=-10;
+	//geom.primitives[0].min[2]=-20;
+	//geom.primitives[0].max[0]= 10; 
+	//geom.primitives[0].max[1]= 10; 
+	//geom.primitives[0].max[2]= 20;
+	//geom.primitives[0].add_transform();
+	//geom.primitives[0].transforms[0].cellnum = 1;
+	//geom.primitives[0].transforms[0].dx      = 0;
+	//geom.primitives[0].transforms[0].dy      = 0;
+	//geom.primitives[0].transforms[0].dz      = 0;
+	//geom.primitives[0].transforms[0].theta   = 0;
+	//geom.primitives[0].transforms[0].phi     = 0;
+	geom.add_primitive();  //clad 
 	geom.primitives[0].type=0;
 	geom.primitives[0].material=1;
-	geom.primitives[0].min[0]=-1;
-	geom.primitives[0].min[1]=-1;
-	geom.primitives[0].min[2]=-20;
-	geom.primitives[0].max[0]= 1; 
-	geom.primitives[0].max[1]= 1; 
-	geom.primitives[0].max[2]= 20;
+	geom.primitives[0].min[0]=-15.0;
+	geom.primitives[0].min[1]=-15.0;
+	geom.primitives[0].min[2]=-25.0;
+	geom.primitives[0].max[0]= 15.0;
+	geom.primitives[0].max[1]= 15.0;
+	geom.primitives[0].max[2]= 25.0;
 	geom.primitives[0].add_transform();
-	geom.primitives[0].transforms[0].cellnum = 1;
+	geom.primitives[0].transforms[0].cellnum = 999;
 	geom.primitives[0].transforms[0].dx      = 0;
 	geom.primitives[0].transforms[0].dy      = 0;
 	geom.primitives[0].transforms[0].dz      = 0;
 	geom.primitives[0].transforms[0].theta   = 0;
 	geom.primitives[0].transforms[0].phi     = 0;
-	geom.add_primitive();  //clad 
-	geom.primitives[1].type=0;
-	geom.primitives[1].material=2;
-	geom.primitives[1].min[0]=-5.0;
-	geom.primitives[1].min[1]=-5.0;
-	geom.primitives[1].min[2]=-20.2;
-	geom.primitives[1].max[0]= 5.0;
-	geom.primitives[1].max[1]= 5.0;
-	geom.primitives[1].max[2]= 20.2;
-	geom.primitives[1].add_transform();
-	geom.primitives[1].transforms[0].cellnum = 999;
-	geom.primitives[1].transforms[0].dx      = 0;
-	geom.primitives[1].transforms[0].dy      = 0;
-	geom.primitives[1].transforms[0].dz      = 0;
-	geom.primitives[1].transforms[0].theta   = 0;
-	geom.primitives[1].transforms[0].phi     = 0;
 	//geom.add_primitive();
 	//geom.primitives[2].type=0;
 	//geom.primitives[2].material=2;
