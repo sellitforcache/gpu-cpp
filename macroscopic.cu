@@ -86,7 +86,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		}
 	}
 	else{  //move to sampled distance, null reaction
-		if( diff <= 1.1e-4 ){ samp_dist = surf_dist - 1.1e-4; }  //adjust if diff is within epsilon so the next trace will hit the surface!
+		if( diff <= 1.2e-4 ){ samp_dist = surf_dist - 1.2e-4; }  //adjust if diff is within epsilon so the next trace will hit the surface!
 		x += samp_dist * xhat;
 		y += samp_dist * yhat;
 		z += samp_dist * zhat;

@@ -9,7 +9,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	//tid=active[tid];
 	if (done[tid]){return;}
 	if (cellnum[tid]!=tally_cell){return;}
-	if (rxn[tid]==888){return;}
+	if (rxn[tid]==999){return;}
 
 
 	//int k;

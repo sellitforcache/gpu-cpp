@@ -269,38 +269,38 @@ int main(){
 	tallyname = "uh2o-pincell.tally";
 
 	//pin cell
-	//geom.add_primitive(); //pin
-	//geom.primitives[0].type=0;
-	//geom.primitives[0].material=1;
-	//geom.primitives[0].min[0]=-10;
-	//geom.primitives[0].min[1]=-10;
-	//geom.primitives[0].min[2]=-20;
-	//geom.primitives[0].max[0]= 10; 
-	//geom.primitives[0].max[1]= 10; 
-	//geom.primitives[0].max[2]= 20;
-	//geom.primitives[0].add_transform();
-	//geom.primitives[0].transforms[0].cellnum = 1;
-	//geom.primitives[0].transforms[0].dx      = 0;
-	//geom.primitives[0].transforms[0].dy      = 0;
-	//geom.primitives[0].transforms[0].dz      = 0;
-	//geom.primitives[0].transforms[0].theta   = 0;
-	//geom.primitives[0].transforms[0].phi     = 0;
-	geom.add_primitive();  //clad 
+	geom.add_primitive(); //pin
 	geom.primitives[0].type=0;
 	geom.primitives[0].material=1;
-	geom.primitives[0].min[0]=-15.0;
-	geom.primitives[0].min[1]=-15.0;
-	geom.primitives[0].min[2]=-25.0;
-	geom.primitives[0].max[0]= 15.0;
-	geom.primitives[0].max[1]= 15.0;
-	geom.primitives[0].max[2]= 25.0;
+	geom.primitives[0].min[0]=-10;
+	geom.primitives[0].min[1]=-10;
+	geom.primitives[0].min[2]=-20;
+	geom.primitives[0].max[0]= 10; 
+	geom.primitives[0].max[1]= 10; 
+	geom.primitives[0].max[2]= 20;
 	geom.primitives[0].add_transform();
-	geom.primitives[0].transforms[0].cellnum = 999;
+	geom.primitives[0].transforms[0].cellnum = 1;
 	geom.primitives[0].transforms[0].dx      = 0;
 	geom.primitives[0].transforms[0].dy      = 0;
 	geom.primitives[0].transforms[0].dz      = 0;
 	geom.primitives[0].transforms[0].theta   = 0;
 	geom.primitives[0].transforms[0].phi     = 0;
+	geom.add_primitive();  //clad 
+	geom.primitives[1].type=0;
+	geom.primitives[1].material=1;
+	geom.primitives[1].min[0]=-15.0;
+	geom.primitives[1].min[1]=-15.0;
+	geom.primitives[1].min[2]=-25.0;
+	geom.primitives[1].max[0]= 15.0;
+	geom.primitives[1].max[1]= 15.0;
+	geom.primitives[1].max[2]= 25.0;
+	geom.primitives[1].add_transform();
+	geom.primitives[1].transforms[0].cellnum = 999;
+	geom.primitives[1].transforms[0].dx      = 0;
+	geom.primitives[1].transforms[0].dy      = 0;
+	geom.primitives[1].transforms[0].dz      = 0;
+	geom.primitives[1].transforms[0].theta   = 0;
+	geom.primitives[1].transforms[0].phi     = 0;
 	//geom.add_primitive();
 	//geom.primitives[2].type=0;
 	//geom.primitives[2].material=2;

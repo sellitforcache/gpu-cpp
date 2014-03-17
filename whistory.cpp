@@ -1388,13 +1388,13 @@ void whistory::run(){
 			else if(RUN_FLAG==1){
 				Nrun=N;
 			}
-	
-			//find the main E grid index
-			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
-			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// find what material we are in and nearest surface distance
 			trace(2);
+
+			//find the main E grid index
+			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
+			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// run macroscopic kernel to find interaction length, macro_t, and reaction isotope, move to interactino length, set resample flag, 
 			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, outer_cell, d_active, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
@@ -1406,7 +1406,6 @@ void whistory::run(){
 			if(converged){
 				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
 			}
-			
 			
 			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
 			cudaThreadSynchronize();
@@ -1427,14 +1426,6 @@ void whistory::run(){
 
 			// remap threads to still active data
 			Nrun = map_active();
-			//if(Nrun<=50){
-			//	print_histories( NUM_THREADS,  N, d_isonum, d_rxn, d_space, d_E, d_done, d_yield, d_rn_bank);
-			//};
-
-			// update random number bank
-			//update_RNG();
-
-			//printf("%u\n",Nrun);
 
 			//std::cout << "cycle done, press enter to continue...\n";
 			//std::cin.ignore();
