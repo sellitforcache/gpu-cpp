@@ -1286,12 +1286,40 @@ void whistory::sample_fissile_points(){
 	update_RNG();
 
 }
+void whistory::write_to_file(source_point* array_in , unsigned N , std::string filename){
+
+	FILE* f  = fopen(filename.c_str(),"w");
+	source_point * hostdata = new source_point [N];
+	cudaMemcpy(hostdata,array_in,N*sizeof(source_point),cudaMemcpyDeviceToHost);
+
+	for(unsigned k = 0;  k<N ;k++){
+		fprintf(f,"% 6.4E % 6.4E % 6.4E % 6.4E % 6.4E % 6.4E % 6.4E %u\n",hostdata[k].x,hostdata[k].y,hostdata[k].z,hostdata[k].xhat,hostdata[k].yhat,hostdata[k].zhat,hostdata[k].surf_dist,hostdata[k].enforce_BC);
+	}
+
+	delete hostdata;
+	fclose(f);
+
+}
+void whistory::write_to_file(unsigned* array_in , unsigned N , std::string filename){
+
+	FILE* f  = fopen(filename.c_str(),"w");
+	unsigned * hostdata = new unsigned [N];
+	cudaMemcpy(hostdata,array_in,N*sizeof(unsigned),cudaMemcpyDeviceToHost);
+
+	for(unsigned k = 0;  k<N ;k++){
+		fprintf(f,"%u\n",hostdata[k]);
+	}
+
+	delete hostdata;
+	fclose(f);
+
+}
 void whistory::reset_cycle(float keff_cycle){
 
 	// re-base the yield so keff is 1
 	rebase_yield( NUM_THREADS,  RNUM_PER_THREAD, N,  keff_cycle, d_rn_bank, d_yield);
 
-	//reduce to check
+	//reduce to check, unecessary in real runs
 	float keff_new = reduce_yield();
 	std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
 
@@ -1300,9 +1328,12 @@ void whistory::reset_cycle(float keff_cycle){
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
 	pop_source( NUM_THREADS, N, RNUM_PER_THREAD, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
 	cscatter(   stream[2], NUM_THREADS,   N, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_fissile_energy, d_fissile_points, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+	//write_to_file(d_scanned,N,"scanned");
+	//write_to_file(d_yield,N,"yield");
 
 	// rest run arrays
 	cudaMemcpy( d_space,		d_fissile_points,		N*sizeof(source_point),		cudaMemcpyDeviceToDevice );
+	write_to_file(d_space,N,"fissile_points");
 	cudaMemcpy( d_E,			d_fissile_energy,		N*sizeof(unsigned),		cudaMemcpyDeviceToDevice );
 	cudaMemcpy( d_done,			done,		Ndataset*sizeof(unsigned),		cudaMemcpyHostToDevice );
 	cudaMemcpy( d_cellnum,		cellnum,	N*sizeof(unsigned),		cudaMemcpyHostToDevice );

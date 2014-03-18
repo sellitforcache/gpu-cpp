@@ -24,7 +24,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	source_point 	this_space 	= space[tid];
 	wfloat3 		hats_old(this_space.xhat,this_space.yhat,this_space.zhat);
 	//float 			this_awr	= awr_list[this_tope];
-	//printf("tid %u rxn %u space % 6.4E % 6.4E % 6.4E\n",tid,this_rxn,this_space.x,this_space.y,this_space.z);
+	//printf("% 6.4E % 6.4E % 6.4E\n",this_space.x,this_space.y,this_space.z);
 
 	// internal data
 	float 		Emin=1e-11;
@@ -51,7 +51,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	next_e_end   = this_array[ offset + 3*vlen + next_vlen - 1];
 	for(k=0 ; k < this_yield ; k++ ){
 		//get proper data index
-		data_dex=completed[position+k];
+		data_dex = completed[ position+k ];
 		//printf("tid %u position %u k %u data_dex %u done %u (xyz) % 6.4E % 6.4E % 6.4E\n",tid,position,k,data_dex,done[data_dex],this_space.x,this_space.y,this_space.z);
 		//make sure data is done
 		if(!done[data_dex]){printf("overwriting into active data!\n");}
@@ -121,7 +121,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 			z = mu;
 		}
 		else{  
-			// pass old values
+			// pass old values from (n,2/3/4n) 
 			x 	= this_space.xhat;
 			y 	= this_space.yhat;
 			z 	= this_space.zhat;	
@@ -133,8 +133,8 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		//printf("done? %u\n",done[ data_dex ]);
 	
 		//check limits
-		if (sampled_E >= Emax){sampled_E = Emax * 0.9;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
-		if (sampled_E <= Emin){sampled_E = Emin * 1.1;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
+		if (sampled_E >= Emax){sampled_E = Emax * 0.99;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
+		if (sampled_E <= Emin){sampled_E = Emin * 1.01;}//printf("enforcing limits in pop data_dex=%u, sampled_E = %6.4E\n",data_dex,sampled_E);}
 
 
 		// sync before writes
@@ -154,12 +154,12 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		if(this_rxn==18){
 			E_out 	 [ data_dex ] 		= sampled_E;
 		}
-		else{ // pass to cscatter
+		else{ // pass (n,2/3/4n) to cscatter
 			E_out 	 [ data_dex ] 		= this_E;
 		}
 		//done [ data_dex ] 		= 0;
 		//yield[ data_dex ] 		= 0;
-		//printf("popped - dex %u space % 6.4E % 6.4E % 6.4E\n",data_dex,sampled_E,this_space.x,this_space.y,this_space.z); 
+		//printf("%u % 6.4E % 6.4E % 6.4E % 6.4E\n",data_dex,sampled_E,space_out[ data_dex ].x,space_out[ data_dex ].y,space_out[ data_dex ].z); 
 
 	}
 

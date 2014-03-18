@@ -17,7 +17,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	unsigned 	this_mat 		= matnum[tid];
 	unsigned 	dex 			= index[tid];   
 	unsigned 	rn 				= rn_bank[tid];
-	unsigned 	cell 			= cellnum[tid];
+	//unsigned 	cell 			= cellnum[tid];
 	float 		this_E  		= E[tid];
 	float		x 				= space[tid].x;
 	float		y 				= space[tid].y;
@@ -71,11 +71,12 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	}
 
 	// do surf/samp compare
+	//printf("% 6.4E % 6.4E % 6.4E % 6.4E % 6.4E % 6.4E % 6.4E % 6.4E %u\n",x,y,z,xhat,yhat,zhat,surf_dist,samp_dist,enforce_BC);
 	diff = surf_dist - samp_dist;
 	if( diff < 0 ){  //move to surface, set resample flag
-		x += surf_dist * xhat;
-		y += surf_dist * yhat;
-		z += surf_dist * zhat;
+		x += (surf_dist + 5e-5) * xhat;
+		y += (surf_dist + 5e-5) * yhat;
+		z += (surf_dist + 5e-5) * zhat;
 		this_rxn = 999;
 		tope=999999999;
 		// enforce BC
@@ -86,7 +87,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		}
 	}
 	else{  //move to sampled distance, null reaction
-		if( diff <= 1.2e-4 ){ samp_dist = surf_dist - 1.2e-4; }  //adjust if diff is within epsilon so the next trace will hit the surface!
+		if( diff <= 5e-5 ){ samp_dist = surf_dist - 5e-5; }  //adjust if diff is within epsilon so the next trace will hit the surface!
 		x += samp_dist * xhat;
 		y += samp_dist * yhat;
 		z += samp_dist * zhat;

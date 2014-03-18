@@ -254,15 +254,15 @@ int main(){
 	topes[1] = 92238;
 	topes[2] = 8016;
 	topes[3] = 1001;
-	fracs_fuel[0] = 0.05;  
-	fracs_fuel[1] = 0.95;   
-	fracs_fuel[2] = 3;   
-	fracs_fuel[3] = 2;
+	fracs_fuel[0] = 0.1;  
+	fracs_fuel[1] = 0.9;   
+	fracs_fuel[2] = 2;   
+	fracs_fuel[3] = 0;
 	fracs_water[0] = 0;  
 	fracs_water[1] = 0;   
 	fracs_water[2] = 1;   
 	fracs_water[3] = 2;
-	float    dens_fuel = 5;
+	float    dens_fuel = 15;
 	float 	 dens_water = 3;
 	geom.add_material(1,1,n_topes,dens_fuel, topes,fracs_fuel);
 	geom.add_material(2,0,n_topes,dens_water,topes,fracs_water);
@@ -272,11 +272,11 @@ int main(){
 	geom.add_primitive(); //pin
 	geom.primitives[0].type=0;
 	geom.primitives[0].material=1;
-	geom.primitives[0].min[0]=-10;
-	geom.primitives[0].min[1]=-10;
+	geom.primitives[0].min[0]=-1;
+	geom.primitives[0].min[1]=-1;
 	geom.primitives[0].min[2]=-20;
-	geom.primitives[0].max[0]= 10; 
-	geom.primitives[0].max[1]= 10; 
+	geom.primitives[0].max[0]= 1; 
+	geom.primitives[0].max[1]= 1; 
 	geom.primitives[0].max[2]= 20;
 	geom.primitives[0].add_transform();
 	geom.primitives[0].transforms[0].cellnum = 1;
@@ -287,12 +287,12 @@ int main(){
 	geom.primitives[0].transforms[0].phi     = 0;
 	geom.add_primitive();  //clad 
 	geom.primitives[1].type=0;
-	geom.primitives[1].material=1;
-	geom.primitives[1].min[0]=-15.0;
-	geom.primitives[1].min[1]=-15.0;
+	geom.primitives[1].material=2;
+	geom.primitives[1].min[0]=-50.0;
+	geom.primitives[1].min[1]=-50.0;
 	geom.primitives[1].min[2]=-25.0;
-	geom.primitives[1].max[0]= 15.0;
-	geom.primitives[1].max[1]= 15.0;
+	geom.primitives[1].max[0]= 50.0;
+	geom.primitives[1].max[1]= 50.0;
 	geom.primitives[1].max[2]= 25.0;
 	geom.primitives[1].add_transform();
 	geom.primitives[1].transforms[0].cellnum = 999;
@@ -357,7 +357,7 @@ int main(){
 	/////////////////////////////////////
 
 	hist.set_run_type("criticality");
-	hist.set_tally_cell(999);
+	hist.set_tally_cell(1);
 	hist.set_run_param(40,20);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);
