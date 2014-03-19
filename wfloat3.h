@@ -65,17 +65,26 @@ __device__ void wfloat3::rodrigues_rotation(wfloat3 k, float theta){
 __device__ float wfloat3::norm2(){
 	return sqrtf( x*x + y*y + z*z );
 };
-__device__ wfloat3 wfloat3::rotate(float phi, float mu){
+__device__ wfloat3 wfloat3::rotate(float mu, float rn){
+	// borrowed from OpenMC
 	wfloat3 out;
-	float alpha, beta;
-	alpha = sqrtf(1.0 - this[0].z*this[0].z);
-	if(alpha<1e-12){
-		alpha=1e-12;
-		//printf("alpha=%10.8E\n",alpha);
-	}
-	out.z = this[0].z*mu + alpha*cosf(phi);
-	beta  = mu - this[0].z*(out.z);
-	out.y = 1.0/(alpha*alpha) * (this[0].y*beta + this[0].x*alpha*sinf(phi));
-	out.x = 1.0/(alpha*alpha) * (this[0].x*beta - this[0].y*alpha*sinf(phi));
-	return out;
+	float phi = 6.28318530718 * rn;
+    float a = sqrtf(max(0.0, 1.0 - mu*mu));
+    float b = sqrtf(max(0.0, 1.0 - this[0].z*this[0].z));
+    float cosphi = cosf(phi);
+    float sinphi = sinf(phi);
+    // Need to treat special case where sqrt(1 - w**2) is close to zero by
+    // expanding about the v component rather than the w component
+    if (b > 1e-10) {
+      out.x = mu*this[0].x + a*(this[0].x*this[0].z*cosphi - this[0].y*sinphi)/b;
+      out.y = mu*this[0].y + a*(this[0].y*this[0].z*cosphi + this[0].x*sinphi)/b;
+      out.z = mu*this[0].z - a*b*cosphi;
+  	}
+    else{
+      b = sqrtf(1.0 - this[0].y*this[0].y);
+      out.x = mu*this[0].x + a*(this[0].x*this[0].y*cosphi + this[0].z*sinphi)/b;
+      out.y = mu*this[0].y - a*b*cosphi;
+      out.z = mu*this[0].z + a*(this[0].y*this[0].z*cosphi - this[0].x*sinphi)/b;
+    }
+    return out;
 };

@@ -45,52 +45,6 @@ inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const
 
 }
 
-//inline __device__ wfloat3 rotate_angle(unsigned* rn, wfloat3 uvw0, float mu){
-//
-//    wfloat3 uvw;  //rotated directional cosine
-//
-//    float phi    ;// azimuthal angle
-//    float sinphi ;// sine of azimuthal angle
-//    float cosphi ;// cosine of azimuthal angle
-//    float a      ;// sqrt(1 - mu^2)
-//    float b      ;// sqrt(1 - w^2)
-//    float u0     ;// original cosine in x direction
-//    float v0     ;// original cosine in y direction
-//    float w0     ;// original cosine in z direction
-//    float pi 	= 3.14159;
-//
-//    // Copy original directional cosines
-//    u0 = uvw0.x;
-//    v0 = uvw0.y;
-//    w0 = uvw0.z;
-//
-//    // Sample azimuthal angle in [0,2pi)
-//    phi = 2.0 * pi * get_rand(rn);
-//
-//    // Precompute factors to save flops
-//    sinphi = sinf(phi);
-//    cosphi = cosf(phi);
-//    a = sqrtf(max(0.0, 1.0 - mu*mu));
-//    b = sqrtf(max(0.0, 1.0 - w0*w0));
-//
-//    // Need to treat special case where sqrt(1 - w**2) is close to zero by
-//    // expanding about the v component rather than the w component
-//    if (b > 1e-10) {
-//      uvw.x = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b;
-//      uvw.y = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b;
-//      uvw.z = mu*w0 - a*b*cosphi;
-//  	}
-//    else{
-//      b = sqrtf(1.0 - v0*v0);
-//      uvw.x = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b;
-//      uvw.y = mu*v0 - a*b*cosphi;
-//      uvw.z = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b;
-//    }
-//
-//    return uvw;
-//
-// }
-
 __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
 
@@ -141,18 +95,8 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	//sample therm dist if low E
 	//if(this_E <= 600*kb*temp ){
-		sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
-		//hats_target = rotate_angle(&rn,hats_old,mu);
-		rotation_hat = hats_old.cross( hats_target );
-		rotation_hat = rotation_hat / rotation_hat.norm2();
-		hats_target = hats_old;
-		hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
-		hats_target.rodrigues_rotation( hats_old,     phi       );
-	//}
-	//else{
-	//	speed_target = 0.0;
-	//}
-	//__syncthreads();
+	sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
+	hats_target = hats_old.rotate(mu, get_rand(&rn));
 	
 	// make speed vectors
 	v_n_lf = hats_old    * speed_n;
@@ -203,18 +147,14 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
-	//  create a perpendicular roation vector 
-	rotation_hat = hats_target.cross( v_n_cm );
-	rotation_hat = rotation_hat / rotation_hat.norm2();
-	//  do rotations, polar first, then azimuthal
-	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
-	v_n_cm.rodrigues_rotation( hats_old,     phi       );
-	//v_n_cm = rotate_angle(&rn,hats_old,mu) * v_n_cm.norm2();
+	hats_old = hats_old.rotate(mu, get_rand(&rn));
+	v_n_cm = hats_old * v_n_cm.norm2();
 
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
 	hats_new = hats_new / hats_new.norm2();  // get higher precision, make SURE vector is length one
+	
 	// calculate energy
 	E_new = 0.5 * m_n * v_n_lf.dot(v_n_lf);
 
@@ -223,10 +163,6 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		isdone=1;
 	}
 
-	//printf("%u esatter hat length % 10.8E\n",tid,sqrtf(hats_new.x*hats_new.x+hats_new.y*hats_new.y+hats_new.z*hats_new.z));
-
-
-	//printf("speed target = %6.4E, speed=%6.4E, Eold,Enew = %10.8E %10.8E\n",speed_target, speed_n,this_E,E_new);
 	// write results
 	done[tid]       = isdone;
 	E[tid]          = E_new;
