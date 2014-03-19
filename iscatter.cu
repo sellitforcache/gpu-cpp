@@ -66,7 +66,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  m_n          =   1.00866491600 ; // u
 	const float  E_cutoff     =   1e-11;
 	const float  E_max        =   20.0; //MeV
-	const float  temp         =   300;    // K
+	//const float  temp         =   300;    // K
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
 	unsigned 	this_dex	= index[tid];
@@ -100,16 +100,16 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	//sample therm dist if low E
 	//if(this_E <= 600*kb*temp ){
-		sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
-		//hats_target = rotate_angle(&rn,hats_old,mu);
-		rotation_hat = hats_old.cross( hats_target );
-		rotation_hat = rotation_hat / rotation_hat.norm2();
-		hats_target = hats_old;
-		hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
-		hats_target.rodrigues_rotation( hats_old,     phi       );
+	//	sample_therm(&rn,&mu,&speed_target,temp,this_E,this_awr);
+	//	//hats_target = rotate_angle(&rn,hats_old,mu);
+	//	rotation_hat = hats_old.cross( hats_target );
+	//	rotation_hat = rotation_hat / rotation_hat.norm2();
+	//	hats_target = hats_old;
+	//	hats_target.rodrigues_rotation( rotation_hat, acosf(mu) );
+	//	hats_target.rodrigues_rotation( hats_old,     phi       );
 	//}
 	//else{
-	//	speed_target = 0.0;
+		speed_target = 0.0;
 	//}
 	//__syncthreads();
 	
@@ -160,15 +160,10 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
-	//  create a perpendicular roation vector 
-	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-	hats_target.cross( v_n_cm );
-	rotation_hat = rotation_hat / rotation_hat.norm2();
-	//  do rotations, polar first, then azimuthal
-	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
-	v_n_cm.rodrigues_rotation( hats_old,     phi       );
-	v_n_cm = v_n_cm/v_n_cm.norm2() * sqrtf(v_n_cm.dot(v_n_cm) + 2.0*this_awr*this_Q/((this_awr+1.0)*m_n) );
+	hats_old = hats_old.rotate(mu, get_rand(&rn));
+	v_n_cm = hats_old * sqrtf(v_n_cm.dot(v_n_cm) + 2.0*this_awr*this_Q/((this_awr+1.0)*m_n) );
 	//printf("this_Q=%6.4E\n",this_Q);
+	
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();

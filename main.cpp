@@ -357,7 +357,7 @@ int main(){
 	/////////////////////////////////////
 
 	hist.set_run_type("criticality");
-	hist.set_tally_cell(1);
+	hist.set_tally_cell(999);
 	hist.set_run_param(40,20);  //run, skip
 	hist.run();
 	hist.write_tally(0,tallyname);

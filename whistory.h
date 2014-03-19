@@ -142,8 +142,8 @@ class whistory {
     float get_time();
     void prep_secondaries();
     unsigned map_active();
-    void  write_to_file(source_point*  , unsigned , std::string );
-    void  write_to_file(unsigned*  , unsigned , std::string );
+    void  write_to_file(source_point*  , unsigned , std::string , std::string);
+    void  write_to_file(unsigned*  , unsigned , std::string, std::string );
 public:
      whistory(int,wgeometry);
     ~whistory();
