@@ -94,6 +94,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 		this_rxn = 0;
 	}
 
+	//printf("% 6.4E % 6.4E % 6.4E\n",x,y,z);
 	//write outputs
 	space[tid].x 			= x;
 	space[tid].y			= y;

@@ -198,6 +198,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn1-cdf0)+mu0; 
 		}
 	}
+	//printf("k %u vlen %u\n",k,vlen);
 
 
 	// pre rotation directions
@@ -233,6 +234,8 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	space[tid].yhat = hats_new.y;
 	space[tid].zhat = hats_new.z;
 	rn_bank[tid] 	= rn;
+
+	//printf("% 6.4E % 6.4E % 6.4E\n",hats_new.x,hats_new.y,hats_new.z);
 
 
 }
