@@ -9,6 +9,14 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
 
+	//shred mem for material matrix
+	extern __shared__ float s_material_matrix[];
+
+	//have first thread load in material matrix
+	if(threadIdx.x==0){
+		memcpy( s_material_matrix, material_matrix, n_materials*n_isotopes*sizeof(float) );
+	}
+	
 	//remap to active
 	//tid=active[tid];
 	if(done[tid]){return;}
@@ -48,7 +56,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 		//printf("val % 6.4E\n",s_material_matrix[n_isotopes*this_mat + k]);
 		t0 = xs_data_MT[n_columns* dex    + k];     //dex is the row number
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
-		macro_t_total += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * material_matrix[n_isotopes*this_mat+k];    //interpolated micro times number density
+		macro_t_total += ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * s_material_matrix[n_isotopes*this_mat+k];    //interpolated micro times number density
 		//printf("mat %u - density of tope %u = %6.3E\n",this_mat,k,material_matrix[n_isotopes*this_mat+k]);
 	}
 
@@ -61,7 +69,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 		//lienarly interpolate
 		t0 = xs_data_MT[n_columns* dex    + k];     
 		t1 = xs_data_MT[n_columns*(dex+1) + k];
-		cum_prob += ( ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * material_matrix[n_isotopes*this_mat+k] ) / macro_t_total;
+		cum_prob += ( ( (t1-t0)/(e1-e0)*(this_E-e0) + t0 ) * s_material_matrix[n_isotopes*this_mat+k] ) / macro_t_total;
 		if( k==n_isotopes-1 & cum_prob<1.0){cum_prob=1.0;}  //sometimes roundoff makes this a problem
 		if( rn1 <= cum_prob){
 			// reactions happen in isotope k
@@ -115,7 +123,7 @@ void macroscopic( unsigned NUM_THREADS,  unsigned N, unsigned Ntopes, unsigned n
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, Ntopes, n_materials, n_col, outer_cell, active, space, isonum, cellnum, index, matnum, rxn, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
+	macroscopic_kernel <<< blks, NUM_THREADS, Ntopes*n_materials*sizeof(float) >>> ( N, Ntopes, n_materials, n_col, outer_cell, active, space, isonum, cellnum, index, matnum, rxn, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
 	cudaThreadSynchronize();
 
 }

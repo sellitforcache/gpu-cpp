@@ -2,43 +2,56 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void find_E_grid_index_quad_kernel(unsigned N, unsigned depth, unsigned width, unsigned* active, qnode* tree, float* E, unsigned * index, unsigned* done){
+__global__ void find_E_grid_index_quad_kernel(unsigned N, unsigned depth, unsigned width, unsigned* active, qnode* qnode_root, float* E, unsigned * index, unsigned* done){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
 
 	//remap to active
-	tid=active[tid];
+	//tid=active[tid];
+	if(done[tid]){return;}
 
 	//load data
 	float this_E = E[tid];
 	unsigned dex=0;
 
 	//find initial node bin
-	unsigned 	bin  = tid*width/N;
-	qnode 		node = tree[bin];
+	//unsigned 	bin  = tid*width/N;
+	qnode 		node = *qnode_root;
 	qnode*		next_ptr;
 
-	//printf("tid=%d bin=%u values=(%6.4E %6.4E %6.4E %6.4E %6.4E)\n",tid,bin,tree[bin].values[0],tree[bin].values[1],tree[bin].values[2],tree[bin].values[3],tree[bin].values[4]);
 	//return;
 	// traverse tree
 	for(unsigned it=0; it<depth ;it++){
-		for(unsigned k=0;k<4;k++){
-			if(this_E >= node.values[k] & this_E < node.values[k+1]){
-				next_ptr = node.leaves[k];
-				break;
-			}
+		//printf("tid=%d values=(%6.4E %6.4E %6.4E %6.4E)\n",tid,node.values[0],node.values[1],node.values[2],node.values[3]);
+		if(this_E <= node.values[1]){
+			next_ptr = node.leaves[0];
+		}
+		else if(this_E <= node.values[2]){
+			next_ptr = node.leaves[1];
+		}
+		else if(this_E <= node.values[3]){
+			next_ptr = node.leaves[2];
+		}
+		else{
+			next_ptr = node.leaves[3];
 		}
 		memcpy(&node,next_ptr,sizeof(qnode));
 	}
-	// find final bin, copy index
-	for(unsigned k=0;k<4;k++){
-		if(this_E >= node.values[k] & this_E < node.values[k+1]){
-			dex=(unsigned long)node.leaves[k];
-			break;
-		}
+
+	// lowest level, copy index intead of pointer
+	if(this_E <= node.values[1]){
+		dex=(unsigned long)node.leaves[0];
 	}
-	//printf("dex=%u\n",dex);
+	else if(this_E <= node.values[2]){
+		dex=(unsigned long)node.leaves[1];
+	}
+	else if(this_E <= node.values[3]){
+		dex=(unsigned long)node.leaves[2];
+	}
+	else{
+		dex=(unsigned long)node.leaves[3];
+	}
 
 	//write output index
 	index[tid]=dex;

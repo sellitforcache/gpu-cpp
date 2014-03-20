@@ -107,7 +107,7 @@ class whistory {
     float * 		d_fissile_energy;
     source_point * 	d_fissile_points;
     unsigned * 		d_mask;
-    qnode *			d_qnodes;
+    qnode *			d_qnodes_root;
     unsigned * 		d_completed;
  	unsigned *  	d_scanned;
  	unsigned * 		d_active;

@@ -39,7 +39,7 @@ struct source_point{
 
 //quaternary search node and host container
 struct qnode{
-    float  values[5];
+    float  values[4];
     qnode* leaves[4];
 };
 struct qnode_host{

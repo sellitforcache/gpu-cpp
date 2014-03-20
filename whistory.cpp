@@ -117,6 +117,7 @@ void whistory::init(){
 	init_RNG();
 	init_CUDPP();
 	load_cross_sections();
+	create_quad_tree();
 	copy_to_device();
 }
 whistory::~whistory(){
@@ -1425,11 +1426,11 @@ void whistory::run(){
 			trace(2);
 
 			//find the main E grid index
+			//find_E_grid_index_quad( NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_active, d_qnodes_root, d_E, d_index, d_done);
 			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
-			//find_E_grid_index_quad(blks, NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_qnodes, d_E, d_index, d_done);
 
 			// run macroscopic kernel to find interaction length, macro_t, and reaction isotope, move to interactino length, set resample flag, 
-			macroscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, outer_cell, d_active, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
+			macroscopic( NUM_THREADS, Nrun, n_isotopes, n_materials, MT_columns, outer_cell, d_active, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 
 			// run microscopic kernel to find reaction type
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
@@ -1578,7 +1579,7 @@ void whistory::set_tally_cell(unsigned cell){
 }
 void whistory::create_quad_tree(){
 
-	std::cout << "\e[1;32m" << "Building forked quad tree for energy search... " << "\e[m \n";
+	std::cout << "\e[1;32m" << "Building quad tree for energy search... " << "\e[m \n";
 
 	// node vectors
 	std::vector<qnode_host>   nodes;
@@ -1590,15 +1591,13 @@ void whistory::create_quad_tree(){
 
 	// build bottom-up from the unionized E vector
 	unsigned k, depth;
-	unsigned rows_by_four = MT_rows/4;
-	rows_by_four = rows_by_four *4;
+	unsigned rows_by_four = MT_rows;
 	for(k=0; k < rows_by_four ; k = k+4){
 		this_qnode.node.values[0] = xs_data_main_E_grid[ k+0 ];
 		this_qnode.node.values[1] = xs_data_main_E_grid[ k+1 ];
 		this_qnode.node.values[2] = xs_data_main_E_grid[ k+2 ];
 		this_qnode.node.values[3] = xs_data_main_E_grid[ k+3 ];
-		this_qnode.node.values[4] = xs_data_main_E_grid[ k+4 ];  // nodes share edge values
-		this_qnode.node.leaves[0] = (qnode*) ((long unsigned)k + 0);  // recast index as the pointer for lowest nodes
+		this_qnode.node.leaves[0] = (qnode*) ((long unsigned)k + 0);  // recast grid index as the pointer for lowest nodes
 		this_qnode.node.leaves[1] = (qnode*) ((long unsigned)k + 1);
 		this_qnode.node.leaves[2] = (qnode*) ((long unsigned)k + 2);
 		this_qnode.node.leaves[3] = (qnode*) ((long unsigned)k + 3);
@@ -1608,23 +1607,24 @@ void whistory::create_quad_tree(){
 		nodes.push_back(this_qnode);
 	}
 	//do the last values
-	unsigned n=0;
-	for(k=rows_by_four;k<MT_rows;k++){
-		this_qnode.node.values[n] = xs_data_main_E_grid[ k ];
-		this_qnode.node.leaves[n] = (qnode*) ((long unsigned)k); 
-		n++;
+	if(MT_rows%4){
+		unsigned n=0;
+		for(k=rows_by_four;k<MT_rows;k++){
+			this_qnode.node.values[n] = xs_data_main_E_grid[ k ];
+			this_qnode.node.leaves[n] = (qnode*) ((long unsigned)k); 
+			n++;
+		}
+		//repeat the last values
+		for(k=n;k<4;k++){
+			this_qnode.node.values[k] = this_qnode.node.values[n-1];
+			this_qnode.node.leaves[k] = this_qnode.node.leaves[n-1];
+		}
+		// device allocate and add to vector
+		cudaMalloc(&cuda_qnode,sizeof(qnode));
+		cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
+		this_qnode.cuda_pointer = cuda_qnode;
+		nodes.push_back(this_qnode);
 	}
-	//repeat the last values
-	for(k=n;k<4;k++){
-		this_qnode.node.values[k] = this_qnode.node.values[n-1];
-		this_qnode.node.leaves[k] = this_qnode.node.leaves[n-1];
-	}
-	this_qnode.node.values[4] = this_qnode.node.values[n-1];
-	// device allocate and add to vector
-	cudaMalloc(&cuda_qnode,sizeof(qnode));
-	cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
-	this_qnode.cuda_pointer = cuda_qnode;
-	nodes.push_back(this_qnode);
 
 
 	//now build it up!  length will *always* need to be a multiple of 4.  this routine pads the end nodes with 
@@ -1634,18 +1634,18 @@ void whistory::create_quad_tree(){
 	unsigned end_depth=  (logf(lowest_length)/logf(4))+1;
 	unsigned num_repeats = 1;
 	unsigned starting_index = 0;
+	float inf = 1e45;
 	//std::cout << "end_depth="<<end_depth<<"\n";
 	for(unsigned depth=0;depth<end_depth;depth++){
-		for(unsigned copy_repeats=0;copy_repeats<num_repeats;copy_repeats++){
-			starting_index=copy_repeats*this_width;
-		for(unsigned copy_iteration=0;copy_iteration<4;copy_iteration++){
+		//for(unsigned copy_repeats=0;copy_repeats<num_repeats;copy_repeats++){
+		//	starting_index=copy_repeats*this_width;
+		//for(unsigned copy_iteration=0;copy_iteration<4;copy_iteration++){
 			for( k=starting_index;k<(starting_index+this_width-mod4);k=k+4){
 				//std::cout << "k=" << k << "\n";
 				this_qnode.node.values[0] = nodes[ k+0 ].node.values[0]; // can use 0 since values overlap
 				this_qnode.node.values[1] = nodes[ k+1 ].node.values[0];
 				this_qnode.node.values[2] = nodes[ k+2 ].node.values[0];
-				this_qnode.node.values[3] = nodes[ k+3 ].node.values[0];
-				this_qnode.node.values[4] = nodes[ k+3 ].node.values[4];  
+				this_qnode.node.values[3] = nodes[ k+3 ].node.values[0];  
 				this_qnode.node.leaves[0] = nodes[ k+0 ].cuda_pointer;  // set pointers as the cuda pointer of the children
 				this_qnode.node.leaves[1] = nodes[ k+1 ].cuda_pointer;
 				this_qnode.node.leaves[2] = nodes[ k+2 ].cuda_pointer;
@@ -1664,24 +1664,18 @@ void whistory::create_quad_tree(){
 					this_qnode.node.leaves[n] = nodes[ k ].cuda_pointer;
 					n++;
 				}
-				k=k-1;
-				//std::cout <<"n="<<n << " k="<<k<<"\n";
-				this_qnode.node.values[n] = nodes[ k ].node.values[4];
-				this_qnode.node.leaves[n] = nodes[ k ].cuda_pointer;
-				n++;
 				for( n;n<4;n++){
 					//std::cout <<"n="<<n << " k="<<k<<"\n";
-					this_qnode.node.values[n] = this_qnode.node.values[n-1];
-					this_qnode.node.leaves[n] = this_qnode.node.leaves[n-1];
+					this_qnode.node.values[n] = inf;
+					this_qnode.node.leaves[n] = NULL;
 				}
-				this_qnode.node.values[4] = this_qnode.node.values[n-1];
 				cudaMalloc(&cuda_qnode,sizeof(qnode));
 				cudaMemcpy(cuda_qnode,&this_qnode.node,sizeof(qnode),cudaMemcpyHostToDevice);
 				this_qnode.cuda_pointer = cuda_qnode;
 				nodes_next.push_back(this_qnode);
 			}
-		}
-	}
+		//}
+	//}
 		if(mod4){
 			this_width=(this_width)/4+1;
 		}
@@ -1705,22 +1699,22 @@ void whistory::create_quad_tree(){
 	qnodes_width = nodes.size();
 
 	//copy root nodes vector to object variable
-	qnodes = new qnode[qnodes_width];
-	for(k=0;k<qnodes_width;k++){   //only need to copy heads, they have pointers to the rest in them
-			qnodes[k].values[0] = nodes[k].node.values[0];
-			qnodes[k].values[1] = nodes[k].node.values[1];
-			qnodes[k].values[2] = nodes[k].node.values[2];
-			qnodes[k].values[3] = nodes[k].node.values[3];
-			qnodes[k].values[4] = nodes[k].node.values[4];
-			qnodes[k].leaves[0] = nodes[k].node.leaves[0];
-			qnodes[k].leaves[1] = nodes[k].node.leaves[1];
-			qnodes[k].leaves[2] = nodes[k].node.leaves[2];
-			qnodes[k].leaves[3] = nodes[k].node.leaves[3];
-	}
+	//qnodes = new qnode[qnodes_width];
+	//for(k=0;k<qnodes_width;k++){   //only need to copy heads, they have pointers to the rest in them
+	//		qnodes[k].values[0] = nodes[k].node.values[0];
+	//		qnodes[k].values[1] = nodes[k].node.values[1];
+	//		qnodes[k].values[2] = nodes[k].node.values[2];
+	//		qnodes[k].values[3] = nodes[k].node.values[3];
+	//		qnodes[k].values[4] = nodes[k].node.values[4];
+	//		qnodes[k].leaves[0] = nodes[k].node.leaves[0];
+	//		qnodes[k].leaves[1] = nodes[k].node.leaves[1];
+	//		qnodes[k].leaves[2] = nodes[k].node.leaves[2];
+	//		qnodes[k].leaves[3] = nodes[k].node.leaves[3];
+	//}
 
 	// make and copy device data
-	cudaMalloc(	&d_qnodes,				qnodes_width*sizeof(qnode)	);
-	cudaMemcpy(	 d_qnodes,	qnodes,		qnodes_width*sizeof(qnode),	cudaMemcpyHostToDevice); 
+	cudaMalloc(	&d_qnodes_root,				sizeof(qnode)	);
+	cudaMemcpy(	 d_qnodes_root,	&nodes[0].node,		sizeof(qnode),	cudaMemcpyHostToDevice); 
 
 	std::cout << "  Complete.  Depth of tree is "<< qnodes_depth << ", width is "<< qnodes_width <<".\n";
 

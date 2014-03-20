@@ -16,6 +16,7 @@ __global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies, unsign
 	unsigned donesearching = 0;
 	unsigned cnt  = 1;
 	unsigned powtwo = 2;
+	unsigned olddex=index[tid];
 	int dex  = (N_energies-1) / 2;  //N_energiesgth starts at 1, duh
 
 	//printf("%p %d %10.4E\n",main_E_grid,dex,value);
@@ -52,6 +53,7 @@ __global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies, unsign
 
 	//write output index
 	index[tid]=dex;
+	//if(olddex!=dex){printf("E_i %6.4E E %6.4E E_i+1 %6.4E, dex %u quaddex %u\n",main_E_grid[dex],value,main_E_grid[dex+1],dex,olddex);}
 
 }
 
