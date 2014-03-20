@@ -112,6 +112,7 @@ void whistory::init(){
 	outer_cell = optix_obj.get_outer_cell();
 	xs_isotope_string = problem_geom.isotope_list;
 	// init host values
+	filename = "warp";
 	init_host();
 	init_RNG();
 	init_CUDPP();
@@ -1523,8 +1524,21 @@ void whistory::run(){
 		std::cout << "RUNTIME = " << runtime << " seconds.\n";
 	}
 
+	write_results(runtime,keff,"w");
+
 }
-void whistory::write_tally(unsigned tallynum, std::string filename){
+void whistory::write_results(float runtime, float keff, std::string opentype){
+
+	std::string resname = filename;
+	resname.append(".results");
+	FILE* f  = fopen(resname.c_str(),opentype.c_str());
+	for(unsigned k = 0;  k<N ;k++){
+		fprintf(f,"runtime = % 6.4E s    k_eff = % 6.4E     \ncycles total %u skipped %u scored %u \n %u source neutrons per cycle\n",runtime,keff,n_skip+n_cycles,n_skip,n_cycles,N);
+	}
+	fclose(f);
+
+}
+void whistory::write_tally(unsigned tallynum){
 
 	//tallynum is unused at this point
 
@@ -1821,6 +1835,11 @@ void whistory::device_report(){
 		std::cout << "  -------------------------------------------------------------------------------------------------------\n";
 	}
 		
+}
+void whistory::set_filename(std::string filename_in){
+
+	filename = filename_in;
+
 }
 void whistory::set_acceration(std::string accel_in){
 

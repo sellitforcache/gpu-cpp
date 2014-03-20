@@ -42,6 +42,7 @@ class whistory {
 	unsigned 		n_qnodes;
 	unsigned 		n_skip;
 	unsigned 		n_cycles;
+    std::string     filename;
     source_point *  space;
     unsigned *      xs_length_numbers;     // 0=isotopes, 1=main E points, 2=total numer of reaction channels, 3=matrix E points, 4=angular cosine points, 5=outgoing energy points 
     unsigned *      xs_MT_numbers_total;
@@ -144,6 +145,7 @@ class whistory {
     unsigned map_active();
     void  write_to_file(source_point*  , unsigned , std::string , std::string);
     void  write_to_file(unsigned*  , unsigned , std::string, std::string );
+    void  write_results(float,float,std::string);
 public:
      whistory(int,wgeometry);
     ~whistory();
@@ -152,7 +154,7 @@ public:
     void print_materials_table();
     void run();
     void write_xs_data(std::string);
-    void write_tally(unsigned, std::string);
+    void write_tally(unsigned);
     void set_tally_cell(unsigned);
     void set_run_type(unsigned);
     void set_run_type(std::string);
@@ -161,5 +163,6 @@ public:
     void device_report();
     void set_device(unsigned);
     void set_acceration(std::string);
+    void set_filename(std::string);
 };
 

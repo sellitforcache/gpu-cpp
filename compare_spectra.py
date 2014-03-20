@@ -101,6 +101,7 @@ elif case== 'homfuel':
 	tally      = numpy.loadtxt('homfuel.tally')
 	tallybins  = numpy.loadtxt('homfuel.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/homfuel_crit_det0.m')
+	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in homogenized block of UO2 and water'	
 elif case== 'uh2o-pincell':
 	tally      = numpy.loadtxt('uh2o-pincell.tally')
 	tallybins  = numpy.loadtxt('uh2o-pincell.tallybins')
@@ -109,6 +110,11 @@ elif case== 'godiva':
 	tally      = numpy.loadtxt('godiva.tally')
 	tallybins  = numpy.loadtxt('godiva.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/godiva_det0.m')
+elif case== 'assembly':
+	tally      = numpy.loadtxt('uh2o-assembly.tally')
+	tallybins  = numpy.loadtxt('uh2o-assembly.tallybins')
+	serpdata   = get_serpent_det('../serpent-benchmark/uh2o-assembly_det0.m')
+	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in the water of a hexagonal array of UO2 pins'
 
 
 
@@ -134,7 +140,7 @@ ax.semilogx(serpE,serpF,'b',linestyle='steps-mid',label='Serpent 2.1.15')
 ax.semilogx(avg,newflux,'r',linestyle='steps-mid',label='WARP')
 ax.set_xlabel('Energy (MeV)')
 ax.set_ylabel('Normalized Flux/Lethary')
-ax.set_title('Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n 1x1x1m block of UO2/water @ 3 g/cc')
+ax.set_title(title)
 handles, labels = ax.get_legend_handles_labels()
 ax.legend(handles,labels,loc=2)
 ax.set_xlim([1e-11,20])
@@ -150,7 +156,7 @@ ax = fig.add_subplot(1,1,1)
 ax.semilogx(serpE,numpy.divide(serpF-newflux,serpF),linestyle='steps-mid')
 ax.set_xlabel('Energy (MeV)')
 ax.set_ylabel('Relative error')
-ax.set_title('Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n 1x1x1m block of UO2/water @ 3 g/cc')
+ax.set_title(title)
 #pylab.ylim([0,.25])
 ax.set_xlim([1e-11,20])
 ax.set_ylim([-1e-1,1e-1])
