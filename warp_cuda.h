@@ -24,3 +24,4 @@ void pop_secondaries( unsigned, unsigned, unsigned, unsigned* , unsigned* , unsi
 void pop_source( unsigned, unsigned, unsigned, unsigned*, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, unsigned*, source_point* , float* , unsigned* , float** , source_point*, float*, float*);
 void rebase_yield( unsigned , unsigned , unsigned , float , unsigned* , unsigned* );
 void flip_done(unsigned , unsigned , unsigned* );
+void reaction_edges( unsigned ,  unsigned , unsigned* , unsigned* );

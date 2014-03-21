@@ -111,6 +111,10 @@ void whistory::init(){
 	memcpy(outer_cell_dims,optix_obj.outer_cell_dims,6*sizeof(float));
 	outer_cell = optix_obj.get_outer_cell();
 	xs_isotope_string = problem_geom.isotope_list;
+	//  map edge array
+	n_edges = 8;
+	cudaHostAlloc(&edges,n_edges*sizeof(unsigned),cudaHostAllocMapped);
+	cudaHostGetDevicePointer(&d_edges,edges,0);
 	// init host values
 	filename = "warp";
 	init_host();
@@ -285,6 +289,14 @@ void whistory::init_CUDPP(){
 	scan_int_config.options = CUDPP_OPTION_EXCLUSIVE;
 	res = cudppPlan(theCudpp, &scanplan_int, scan_int_config, Ndataset, 1, 0);
 	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for scan\n");exit(-1);}
+
+	std::cout << "  configuring radix sort..." << "\n";
+	// int reduction stuff
+	radix_config.algorithm = CUDPP_SORT_RADIX;
+    radix_config.datatype = CUDPP_UINT;
+    radix_config.options = CUDPP_OPTION_KEY_VALUE_PAIRS;
+	res = cudppPlan(theCudpp, &radixplan, radix_config, Ndataset, 1, 0);
+	if (CUDPP_SUCCESS != res){printf("Error creating CUDPPPlan for radix sort\n");exit(-1);}
 	
 	//std::cout << "configuring hashes..." << "\n";
 	// hash config stuff
@@ -1381,6 +1393,7 @@ void whistory::run(){
 	int iteration = 0;
 	int iteration_total=0;
 	unsigned converged = 0;
+	std::string fiss_name;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -1407,10 +1420,16 @@ void whistory::run(){
 	std::cout << "\e[1;32m" << "--- Running in " << runtype << " source mode --- " << "\e[m \n";
 	std::cout << "\e[1;32m" << "--- Skipping "<< n_skip << " cycles, Running "<< n_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
 
+	// make sure fissile_points file is cleared
+	fiss_name="fission_points";
+	fiss_name.append(filename);
+	FILE* ffile = fopen(fiss_name,'w');
+	flcose(ffile);
+
 	while(iteration<n_cycles){
 
 		//write source positions to file if converged
-		if(converged){write_to_file(d_space,N,"fissile_points","a+");}
+		if(converged){write_to_file(d_space,N,fiss_name,"a+");}
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -1458,7 +1477,7 @@ void whistory::run(){
 			}
 
 			// remap threads to still active data
-			Nrun = map_active();
+			Nrun = remap_active();
 
 			//std::cout << "cycle done, press enter to continue...\n";
 			//std::cin.ignore();
@@ -1756,6 +1775,25 @@ unsigned whistory::map_active(){
 	flip_done(NUM_THREADS, Ndataset, d_done);
 
 	return num_active;
+}
+void whistory::remap_active(){
+
+	unsigned num_active=0;
+
+	// copy remap vector
+	cudaMemcpy(d_remap, remap, N*sizeof(unsigned), cudaMemcpyHostToDevice);
+
+	// sort key/value of rxn/tid
+	cudppRadixSort(cudppPlan, d_rxn, d_remap, N);
+
+	// launch edge detection kernel, writes mapped d_edges array
+	reaction_edges(NUM_THREADS, Nrun, d_edges, d_rxn);
+
+	// return active for convenience
+	num_active = edges[7] - edges[3] + edges[1];  //subtracts yield/fission/n,2n reactions from scatters to give num_active
+
+	return num_active;
+
 }
 void whistory::set_run_type(unsigned type_in){
 

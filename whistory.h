@@ -12,12 +12,14 @@ class whistory {
 	CUDPPConfiguration     scan_int_config;
 	CUDPPConfiguration     redu_int_config;
 	CUDPPConfiguration     redu_float_config;
+    CUDPPConfiguration     radix_config;
 	CUDPPHandle            mate_hash_table_handle;
 	CUDPPHandle            fiss_hash_table_handle;
 	CUDPPHandle            scanplan_int;
 	CUDPPHandle            reduplan_int;
 	CUDPPHandle            reduplan_float;
 	CUDPPHandle            compactplan;
+    CUDPPHandle            radixplan;
 	CUDPPResult            res;
 	unsigned * 				d_valid_result;
 	unsigned * 				d_valid_N;
@@ -115,6 +117,10 @@ class whistory {
  	unsigned * 		d_num_active;
  	source_point *  d_bank_space;
  	float * 		d_bank_E;
+    // mapped arrays
+    unsigned        n_edges;
+    unsigned*         edges;
+    unsigned*       d_edges;
     // xs data parameters
     std::string xs_isotope_string;
     std::vector<unsigned> 	xs_num_rxns;
@@ -143,6 +149,7 @@ class whistory {
     float get_time();
     void prep_secondaries();
     unsigned map_active();
+    unsigned remap_active();
     void  write_to_file(source_point*  , unsigned , std::string , std::string);
     void  write_to_file(unsigned*  , unsigned , std::string, std::string );
     void  write_results(float,float,std::string);
