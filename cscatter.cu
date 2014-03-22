@@ -5,22 +5,24 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-__global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
+__global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned size1, unsigned gap, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	
-	//remap to active
-	//tid=active[tid];
-	if(done[tid]){return;}
+	//remap
+	if(tid<size1){  // 11-45 block
+		tid=remap[starting_index + tid];
+	}
+	else{  			// 91 block
+		tid=remap[starting_index + tid + gap];
+	}
+	//if(done[tid]){return;}
 
-	// return if not inelastic
+	// check
 	unsigned 	this_rxn 	= rxn[tid];
-	if (this_rxn == 91 | this_rxn == 16 | this_rxn == 17 | this_rxn == 37 | this_rxn == 24 | this_rxn == 22 | this_rxn == 28 | this_rxn == 24 | this_rxn == 32 | this_rxn == 33 | this_rxn == 41 ){}
-	else {return;}  //return if not continuum inelastic scatter or n,Xn
-
-	//printf("in cscatter, tid %u rxn %u\n",tid,rxn[tid]);
+	if (this_rxn != 91 & this_rxn != 16 & this_rxn != 17 & this_rxn != 37 & this_rxn != 24 & this_rxn != 22 & this_rxn != 28 & this_rxn != 24 & this_rxn !=32 & this_rxn != 33 & this_rxn != 41){printf("cscatter kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;}  //print and return if not elastic scatter
 
 	//constants
 	const float  pi           =   3.14159265359 ;
@@ -189,12 +191,12 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 }
 
-void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
+void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned size1, unsigned gap, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	//cscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
-	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N,  starting_index,  size1,  gap, remap, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }

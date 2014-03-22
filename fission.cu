@@ -3,15 +3,19 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
+__global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
 	
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	//tid=active[tid];
-	if(done[tid]){return;}
+	tid=remap[starting_index + tid];
+	//if(done[tid]){return;}
+
+	// print and return if wrong
+	unsigned 	this_rxn 	= rxn[tid];
+	if (this_rxn < 11 | this_rxn > 45){printf("fisison kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
 
 	//load rxn number, init values
 	unsigned 	this_rxn 	= rxn[tid];
@@ -21,8 +25,8 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 	unsigned	rn 			= rn_bank[ tid ];
 
 	//only do reactions with secondary neutrons
-	if (rxn[tid] == 18 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 41){}
-	else {return;} 
+	//if (rxn[tid] == 18 | rxn[tid] == 16 | rxn[tid] == 17 | rxn[tid] == 37 | rxn[tid] == 24 | rxn[tid] == 41){}
+	//else {return;} 
 
 	//printf("in fission\n");
 
@@ -56,12 +60,12 @@ __global__ void fission_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned RU
 
 }
 
-void fission( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned RUN_FLAG, unsigned* active, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
+void fission( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	//fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, RUN_FLAG, active, rxn , index, yield , rn_bank, done, scatterdat);
-	fission_kernel <<< blks, NUM_THREADS , 0 , stream >>> (   N,  RNUM_PER_THREAD, RUN_FLAG, active, rxn , index, yield , rn_bank, done, scatterdat);
+	//fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, active, rxn , index, yield , rn_bank, done, scatterdat);
+	fission_kernel <<< blks, NUM_THREADS , 0 , stream >>> (   N,  starting_index, remap, rxn , index, yield , rn_bank, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

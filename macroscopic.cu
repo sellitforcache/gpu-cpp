@@ -3,15 +3,19 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_materials, unsigned n_columns, unsigned outer_cell, unsigned* active, source_point * space, unsigned* isonum, unsigned* cellnum, unsigned * index, unsigned * matnum, unsigned* rxn, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
+__global__ void macroscopic_kernel(unsigned N, unsigned size1 , unsigned gap, unsigned n_isotopes, unsigned n_materials, unsigned n_columns, unsigned outer_cell, unsigned* remap, source_point * space, unsigned* isonum, unsigned* cellnum, unsigned * index, unsigned * matnum, unsigned* rxn, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
 
-	//remap to active
-	//tid=active[tid];
-	if(done[tid]){return;}
+	//remap
+	if(tid<size1){  // reaction block
+		tid=remap[tid];
+	}
+	else{  			// resample block
+		tid=remap[tid + gap];
+	//if(done[tid]){return;}
 
 	// load from arrays
 	unsigned 	this_mat 		= matnum[tid];
@@ -111,11 +115,11 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 
 }
 
-void macroscopic( unsigned NUM_THREADS,  unsigned N, unsigned Ntopes, unsigned n_materials, unsigned n_col , unsigned outer_cell, unsigned* active, source_point * space, unsigned* isonum, unsigned* cellnum, unsigned * index, unsigned * matnum, unsigned* rxn, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
+void macroscopic( unsigned NUM_THREADS,  unsigned N, unsigned size1, unsigned gap, unsigned Ntopes, unsigned n_materials, unsigned n_col , unsigned outer_cell, unsigned* remap, source_point * space, unsigned* isonum, unsigned* cellnum, unsigned * index, unsigned * matnum, unsigned* rxn, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , float* material_matrix, unsigned* done){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, Ntopes, n_materials, n_col, outer_cell, active, space, isonum, cellnum, index, matnum, rxn, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
+	macroscopic_kernel <<< blks, NUM_THREADS >>> ( N, size1, gap, Ntopes, n_materials, n_col, outer_cell, remap, space, isonum, cellnum, index, matnum, rxn, main_E_grid, rn_bank, E, xs_data_MT , material_matrix, done);
 	cudaThreadSynchronize();
 
 }

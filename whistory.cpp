@@ -1423,8 +1423,8 @@ void whistory::run(){
 	// make sure fissile_points file is cleared
 	fiss_name="fission_points";
 	fiss_name.append(filename);
-	FILE* ffile = fopen(fiss_name,'w');
-	flcose(ffile);
+	FILE* ffile = fopen(fiss_name.c_str(),"w");
+	fclose(ffile);
 
 	while(iteration<n_cycles){
 
@@ -1458,8 +1458,11 @@ void whistory::run(){
 			if(converged){
 				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
 			}
+
+			// remap threads to still active data
+			Nrun = remap_active();
 			
-			// concurrent calls to do escatter/iscatter/abs/fission, serial execution for now :(
+			// concurrent calls to do escatter/iscatter/abs/fission
 			cudaThreadSynchronize();
 			escatter( stream[0], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
 			iscatter( stream[1], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
@@ -1476,11 +1479,8 @@ void whistory::run(){
 				//if(reduce_yield()!=0.0){printf("pop_secondaries did not reset all yields!\n");}
 			}
 
-			// remap threads to still active data
-			Nrun = remap_active();
-
 			//std::cout << "cycle done, press enter to continue...\n";
-			//std::cin.ignore();
+			//std::cin.ignore();s
 
 
 		}
@@ -1776,7 +1776,7 @@ unsigned whistory::map_active(){
 
 	return num_active;
 }
-void whistory::remap_active(){
+unsigned whistory::remap_active(){
 
 	unsigned num_active=0;
 
@@ -1784,13 +1784,20 @@ void whistory::remap_active(){
 	cudaMemcpy(d_remap, remap, N*sizeof(unsigned), cudaMemcpyHostToDevice);
 
 	// sort key/value of rxn/tid
-	cudppRadixSort(cudppPlan, d_rxn, d_remap, N);
+	cudppRadixSort(radixplan, d_rxn, d_remap, N);
 
 	// launch edge detection kernel, writes mapped d_edges array
-	reaction_edges(NUM_THREADS, Nrun, d_edges, d_rxn);
+	reaction_edges(NUM_THREADS, N, d_edges, d_rxn);
 
 	// return active for convenience
-	num_active = edges[7] - edges[3] + edges[1];  //subtracts yield/fission/n,2n reactions from scatters to give num_active
+	printf("edges %u %u %u %u %u %u %u %u\n",edges[0],edges[1],edges[2],edges[3],edges[4],edges[5],edges[6],edges[7]);
+	num_active = N - edges[5] + edges[4];  //subtracts yield/fission/n,2n/abs reactions from total
+	printf("nactive = %u\n",num_active);
+
+	// debug
+	write_to_file(d_rxn,N,"rxns","w");
+	write_to_file(d_remap,N,"remap","w");
+	exit(0);
 
 	return num_active;
 

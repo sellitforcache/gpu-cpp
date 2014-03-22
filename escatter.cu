@@ -45,19 +45,16 @@ inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const
 
 }
 
-__global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
+__global__ void escatter_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, unsigned* done, float** scatterdat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	//tid=active[tid];
-	if(done[tid]){return;}
-
-	if (rxn[tid] != 2){return;}  //return if not elastic scatter
-
-	//printf("in escatter - tid %u Nrun %u \n",tid,N);
+	tid=remap[starting_index+tid];
+	//if(done[tid]){return;}
+	if (rxn[tid] != 2){printf("escatter kernel accessing rxn!=2 @ dex %u\n",tid);return;}  //print and return if not elastic scatter
 
 	//constants
 	const float  pi           =   3.14159265359 ;
@@ -68,7 +65,7 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	const float  E_max        =   20.0; //MeV
 	// load history data
 	unsigned 	this_tope 	= isonum[tid];
-	unsigned 	this_dex	= index[tid];  //this is no longer the row, it is now the exact index of the array, set by microscopic
+	unsigned 	this_dex	= index[tid];  //this is no longer the row, it is now the exact index of the flat cross section array, set by microscopic
 	float 		this_E 		= E[tid];
 	//float 		this_Q 		= 0.0;
 	wfloat3 	hats_old(space[tid].xhat,space[tid].yhat,space[tid].zhat);
@@ -142,8 +139,6 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 			mu   = (mu1-mu0)/(cdf1-cdf0)*(rn1-cdf0)+mu0; 
 		}
 	}
-	//printf("k %u vlen %u\n",k,vlen);
-
 
 	// pre rotation directions
 	hats_old = v_n_cm / v_n_cm.norm2();
@@ -171,17 +166,15 @@ __global__ void escatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	space[tid].zhat = hats_new.z;
 	rn_bank[tid] 	= rn;
 
-	//printf("% 6.4E % 6.4E % 6.4E\n",hats_new.x,hats_new.y,hats_new.z);
-
 
 }
 
-void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, unsigned* done, float** scatterdat){
+void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, unsigned* done, float** scatterdat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	//escatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
-	escatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
+	escatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, starting_index, remap, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);
 	cudaThreadSynchronize();
 
 }

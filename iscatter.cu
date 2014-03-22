@@ -46,18 +46,22 @@ inline __device__ void sample_therm(unsigned* rn, float* muout, float* vt, const
 }
 
 
-__global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
+__global__ void iscatter_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	//tid=active[tid];
-	if(done[tid]){return;}
+	tid=remap[starting_index + tid];
+	//if(done[tid]){return;}
+
+	// print and return if wrong
+	unsigned 	this_rxn 	= rxn[tid];
+	if (this_rxn < 51 | this_rxn > 90){printf("iscatter kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
 
 	// return if not inelastic
-	if (rxn[tid] < 51 | rxn[tid] > 90 ){return;}  //return if not inelastic scatter
+	//if (rxn[tid] < 51 | rxn[tid] > 90 ){return;}  //return if not inelastic scatter
 
 	//printf("in iscatter\n");
 
@@ -188,12 +192,12 @@ __global__ void iscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 
 }
 
-void iscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned RNUM_PER_THREAD, unsigned* active, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
+void iscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	//iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
-	iscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	iscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, starting_index, remap, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }
