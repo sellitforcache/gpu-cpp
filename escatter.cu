@@ -52,10 +52,10 @@ __global__ void escatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	unsigned this_rxn = rxn[starting_index + tid];
 	tid=remap[starting_index+tid];
+	unsigned this_rxn = rxn[tid];
 	//if(done[tid]){return;}
-	if (this_rxn != 2){printf("escatter kernel accessing rxn!=2 @ dex %u\n",tid);return;}  //print and return if not elastic scatter
+	if (this_rxn != 2){printf("escatter kernel accessing rxn!=2 (%u) @ dex %u\n",rxn,tid);return;}  //print and return if not elastic scatter
 
 	//constants
 	const float  pi           =   3.14159265359 ;
@@ -172,6 +172,7 @@ __global__ void escatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 
 void escatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, unsigned* done, float** scatterdat){
 
+	if(N<1){return;}
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	//escatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, done, scatterdat);

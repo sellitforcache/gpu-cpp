@@ -10,12 +10,12 @@ __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* re
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	unsigned this_rxn = rxn[starting_index+tid];
 	tid=remap[starting_index + tid];
+	unsigned this_rxn = rxn[tid];
 	//if(done[tid]){return;}
 
 	// print and return if wrong
-	if (this_rxn < 11 | this_rxn > 45){printf("fission kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
+	if (this_rxn < 811 | this_rxn > 845){printf("fission kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
 
 	//load rxn number, init values
 	unsigned 	this_yield 	= 0;
@@ -29,7 +29,7 @@ __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* re
 
 	//printf("in fission\n");
 
-	if (this_rxn == 18){
+	if (this_rxn == 818){
 		// load nu from arrays
 		unsigned 	this_dex 	= index[tid];
 	
@@ -45,22 +45,24 @@ __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* re
 		}
 		//printf("nu %6.4E inu %u rn1 %6.4E yield %u\n",nu,inu,rn1,this_yield);
 	}
-	else if(this_rxn == 17){
+	else if(this_rxn == 817){
 		this_yield = 3;
 	}
-	else if(this_rxn == 16 | this_rxn==24 | rxn[tid] == 41){
+	else if(this_rxn == 816 | this_rxn==824 | rxn[tid] == 841){
 		this_yield = 2;
 	}
 
 	// write output and terminate history
 	yield[tid] = this_yield;
 	done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
+	rxn[tid] = this_rxn+100;  //mark as done by putting it in the 900 block
 	if (this_rxn == 18){rn_bank[tid] = rn;}  //rn was used for fission
 
 }
 
 void fission( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
+	if(N<1){return;}
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	//fission_kernel <<< blks, NUM_THREADS >>> (   N,  RNUM_PER_THREAD, active, rxn , index, yield , rn_bank, done, scatterdat);

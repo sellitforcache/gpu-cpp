@@ -5,20 +5,15 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-__global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned size1, unsigned gap, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
+__global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap
-	unsigned this_rxn = rxn[starting_index+tid];
-	if(tid<size1){  // 11-45 block
-		tid=remap[starting_index + tid];
-	}
-	else{  			// 91 block
-		tid=remap[starting_index + tid + gap];
-	}
+	tid=remap[starting_index + tid];
+	unsigned this_rxn = rxn[tid];
 	//if(done[tid]){return;}
 
 	// check
@@ -81,6 +76,9 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 	memcpy(&next_vlen,	&this_Earray[3], sizeof(float));
 	memcpy(&law, 		&this_Earray[4], sizeof(float));
 	float r = (this_E-last_E)/(next_E-last_E);
+	if(r<0){
+		printf("r % 10.8E rxn %u this_E % 10.8E last_E % 10.8E next_E % 10.8E dex %u\n",r,this_rxn,this_E,last_E,next_E,this_dex);
+	}
 	last_e_start = this_Earray[ offset ];
 	last_e_end   = this_Earray[ offset + vlen - 1 ];
 	next_e_start = this_Earray[ offset + 3*vlen ];
@@ -136,6 +134,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 	E1 = last_e_start + r*( next_e_start - last_e_start );
 	Ek = last_e_end   + r*( next_e_end   - last_e_end   );
 	sampled_E = E1 +(E0-e_start)*(Ek-E1)/diff;
+	//printf("sampled_E % 10.8E E1 % 10.8E Ek % 10.8E E0 % 10.8E e_start % 10.8E diff % 10.8E last_e_end % 10.8E r % 10.8E next_e_end % 10.8E last_e_end % 10.8E \n",sampled_E,E1,Ek,E0,e_start,diff,last_e_end,r,next_e_end,last_e_end);
 	//sampled_E = E0;
 
 	// find mu
@@ -149,19 +148,25 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 	}
 
 	// sample new phi
-	phi = 2.0*pi*get_rand(&rn);
+	//phi = 2.0*pi*get_rand(&rn);
 
 	// pre rotation directions
+	//hats_old = v_n_cm / v_n_cm.norm2();
+	////  create a perpendicular roation vector 
+	////wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
+	//wfloat3 rotation_hat = hats_target.cross( v_n_cm );
+	//rotation_hat = rotation_hat / rotation_hat.norm2();
+	////  do rotations, polar first, then azimuthal
+	//v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
+	//v_n_cm.rodrigues_rotation( hats_old,     phi       );
+
 	hats_old = v_n_cm / v_n_cm.norm2();
-	//  create a perpendicular roation vector 
-	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-	wfloat3 rotation_hat = hats_target.cross( v_n_cm );
-	rotation_hat = rotation_hat / rotation_hat.norm2();
-	//  do rotations, polar first, then azimuthal
-	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
-	v_n_cm.rodrigues_rotation( hats_old,     phi       );
+	hats_old = hats_old.rotate(mu, get_rand(&rn));
+	//v_n_cm = hats_old * v_n_cm.norm2();
+
 	//  scale to sampled energy
-	v_n_cm = v_n_cm/v_n_cm.norm2() * sqrtf(2.0*sampled_E/m_n);
+	//v_n_cm = v_n_cm/v_n_cm.norm2() * sqrtf(2.0*sampled_E/m_n);
+	v_n_cm = hats_old * sqrtf(2.0*sampled_E/m_n);
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
@@ -179,7 +184,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 	//if(this_rxn==91){printf("%6.4E %6.4E %6.4E\n",E_new,this_E,E_new/this_E);}
 	//printf("n,vlen %u %u S,Eptrs %p %p Enew,samp %6.4E %6.4E A,R %6.4E %6.4E\n",n,vlen,this_Sarray,this_Earray,E_new,sampled_E,A,R);
 
-	//printf("%u csatter hat length % 10.8E\n",tid,sqrtf(hats_new.x*hats_new.x+hats_new.y*hats_new.y+hats_new.z*hats_new.z));
+	//printf("%u dex %u sampled_E % 10.8E norm2_lf % 10.8E mu % 10.8E\n",tid,this_dex,sampled_E,v_n_lf.norm2(),mu);
 
 	// write results
 	done[tid]       = isdone;
@@ -191,12 +196,13 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 
 }
 
-void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned size1, unsigned gap, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
+void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
+	if(N<1){return;}
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
-
+	
 	//cscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
-	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N,  starting_index,  size1,  gap, remap, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N,  starting_index, remap, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }

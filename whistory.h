@@ -99,6 +99,7 @@ class whistory {
 	unsigned *      d_matnum;
 	unsigned *      d_isonum;
 	unsigned *      d_rxn;
+    unsigned *      d_rxn_remap;
 	unsigned *      d_done;
 	unsigned *      d_yield;
 	unsigned * 		d_material_list;
@@ -139,7 +140,7 @@ class whistory {
     void copy_to_device();
     void load_cross_sections();
     void trace(unsigned);
-    void trace(unsigned,unsigned,unsigned,unsigned);
+    void trace(unsigned,unsigned);
     unsigned reduce_done();
     void reset_cycle(float);
     void reset_fixed();
@@ -153,6 +154,7 @@ class whistory {
     unsigned remap_active();
     void  write_to_file(source_point*  , unsigned , std::string , std::string);
     void  write_to_file(unsigned*  , unsigned , std::string, std::string );
+    void  write_to_file(unsigned*  , unsigned*, unsigned , std::string, std::string );
     void  write_results(float,float,std::string);
 public:
      whistory(int,wgeometry);

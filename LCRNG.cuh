@@ -13,7 +13,7 @@ since 32-bit math is being used, 30 bits are used here
 	unsigned nextint = (a * in[0] +  c) & mask; 			// mod by truncation
 	float randout = nextint*norm;
 	if(randout==1.0){
-		randout=0.9999999;
+		randout=0.9999990;
 		//printf("RN=1.0  %u %u %10.8E\n",in[0],nextint,randout);
 	}
 	in[0]=nextint;

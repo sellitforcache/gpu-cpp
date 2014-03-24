@@ -10,25 +10,24 @@ __global__ void reaction_edges_kernel( unsigned N, unsigned* edges, unsigned* rx
 	unsigned rxn1 = rxn[tid];
 	unsigned rxn2 = rxn[tid+1];
 
-	if(rxn1<2 & rxn2>=2){  //bottom bound for 2
-		edges[0]=tid+1;
+	if(rxn1<2 & rxn2>=2){  //upper bound for <2
+		edges[0]=tid;
 	}
-	else if(rxn1<=2 & rxn2>2){  //upper bound for 2
+	if(rxn1<=2 & rxn2>2){  //upper bound for 2
 		edges[1]=tid;
-	}	
-	else if(rxn1<=45 & rxn2>45){  //upper bound for 45
+	}
+	if(rxn1<=90 & rxn2>90){  // upper bound for 90
 		edges[2]=tid;
 	}
-	else if(rxn1<=90 & rxn2>90){  // upper bound for 90
+	if(rxn1<=91 & rxn2>91){  // upper bound for 91
 		edges[3]=tid;
 	}
-	else if(rxn1<=91 & rxn2>91){  // upper bound for 91
+	if(rxn1<=800 & rxn2>800){  //upper bound for 800
 		edges[4]=tid;
 	}
-	else if(rxn1<999 & rxn2>=999){  //lower bound for 999
-		edges[5]=tid+1;
+	if(rxn1<=845 & rxn2>845){  //upper bound for 845
+		edges[5]=tid;
 	}
-
 
 
 }

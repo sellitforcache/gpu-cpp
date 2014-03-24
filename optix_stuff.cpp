@@ -179,10 +179,6 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	//set trace type, 1=transport (writes intersection point and next cell), 2=fission (writes origin and current cell)
 	context["trace_type"]->setUint(1);
 
-	//set gap and sizes for remapping
-	context["size1"]->setUint(N);
-	context["gap"]->setUint(0);
-
 	//set outer cell adn get its dimensions
 	context["outer_cell"]->setUint(outer_cell);
 	outer_cell_type = problem_geom.get_outer_cell_dims(outer_cell_dims);
@@ -223,10 +219,8 @@ void optix_stuff::trace(unsigned trace_type){
 	context["trace_type"]->setUint(trace_type);
 	context -> launch( 0 , N );
 }
-void optix_stuff::trace(unsigned trace_type, unsigned n_active, unsigned size1, unsigned gap){
+void optix_stuff::trace(unsigned trace_type, unsigned n_active){
 	context["trace_type"]->setUint(trace_type);
-	context["size1"]->setUint(size1);
-	context["gap"]->setUint(gap);
 	context -> launch( 0 , n_active );
 }
 void optix_stuff::trace(){

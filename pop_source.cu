@@ -24,7 +24,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	source_point 	this_space 	= space[tid];
 	wfloat3 		hats_old(this_space.xhat,this_space.yhat,this_space.zhat);
 	//float 			this_awr	= awr_list[this_tope];
-	printf("% 6.4E % 6.4E % 6.4E\n",this_space.x,this_space.y,this_space.z);
+	//printf("% 6.4E % 6.4E % 6.4E\n",this_space.x,this_space.y,this_space.z);
 
 	// internal data
 	float 		Emin=1e-11;
@@ -54,7 +54,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		data_dex = completed[ position+k ];
 		//printf("tid %u position %u k %u data_dex %u done %u (xyz) % 6.4E % 6.4E % 6.4E\n",tid,position,k,data_dex,done[data_dex],this_space.x,this_space.y,this_space.z);
 		//make sure data is done
-		if(!done[data_dex]){printf("overwriting into active data!\n");}
+		//if(!done[data_dex]){printf("overwriting into active data!\n");}
 		//copy in values
 		rn1 = get_rand(&rn);
 		rn2 = get_rand(&rn);

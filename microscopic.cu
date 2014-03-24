@@ -3,23 +3,14 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, unsigned n_isotopes, unsigned n_columns, unsigned* remap, unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+__global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* remap, unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 
-	int tid = threadIdx.x+blockIdx.x*blockDim.x;
-	if (tid >= N){return;}
+	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
+	if (tid_in >= N){return;}
 	
 	//remap
-	if(tid<size1){  // reaction block
-		//printf("tid %u, remapped %u, N %u, size1 %u, gap %u\n",tid,remap[tid],N,size1,gap);
-		tid=remap[tid];
-	}
-	else{  			// resample block
-		//printf("tid %u, remapped %u, N %u, size1 %u, gap %u\n",tid,remap[tid + gap],N,size1,gap);
-		tid=remap[tid + gap];
-	}
-	//if(done[tid]){return;}
-	//if(rxn[tid]==999){return;}//printf("tid %u is resampled %u\n",tid,rxn[tid]);return;}
+	int tid=remap[tid_in];
 
 	// load from array
 	unsigned 	this_tope 		= isonum[tid];
@@ -34,7 +25,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, uns
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
 	unsigned 	this_rxn 		= rxn[tid];
-	if(this_rxn>=888){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
+	if(this_rxn>=800){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
 
 	//printf("tid %u dex %u topes %u rxn %u this_tope %u\n",tid,dex,n_isotopes,this_rxn,this_tope);
 
@@ -109,11 +100,11 @@ __global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, uns
 
 }
 
-void microscopic( unsigned NUM_THREADS, unsigned N, unsigned size1, unsigned gap, unsigned n_isotopes, unsigned n_columns, unsigned* remap,unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+void microscopic( unsigned NUM_THREADS, unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* remap,unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	microscopic_kernel <<< blks, NUM_THREADS >>> ( N, size1, gap,  n_isotopes, n_columns, remap, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, xs_data_Q, rxn, Q, done);
+	microscopic_kernel <<< blks, NUM_THREADS >>> ( N,  n_isotopes, n_columns, remap, isonum, index, main_E_grid, rn_bank, E, xs_data_MT , xs_MT_numbers_total, xs_MT_numbers, xs_data_Q, rxn, Q, done);
 	cudaThreadSynchronize();
 
 }

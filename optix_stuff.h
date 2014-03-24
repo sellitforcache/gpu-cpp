@@ -29,7 +29,7 @@ public:
 	void init(wgeometry, unsigned, std::string);
 	void trace();
 	void trace(unsigned);
-	void trace(unsigned, unsigned, unsigned, unsigned);
+	void trace(unsigned, unsigned);
 	void set_trace_type(unsigned);
 	void print();
 	void trace_geometry(unsigned,unsigned,std::string,std::string);

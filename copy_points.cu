@@ -26,7 +26,9 @@ __global__ void copy_points_kernel( unsigned Nout, unsigned * Nvalid , unsigned 
 
 }
 
-void copy_points(unsigned blks, unsigned NUM_THREADS,  unsigned Nout , unsigned * Nvalid,  unsigned current_index , unsigned * to_valid , source_point * positions_out , source_point * positions_in, float*E_out, float*E_in){
+void copy_points( unsigned NUM_THREADS,  unsigned Nout , unsigned * Nvalid,  unsigned current_index , unsigned * to_valid , source_point * positions_out , source_point * positions_in, float*E_out, float*E_in){
+
+	unsigned blks = ( Nout + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	copy_points_kernel <<< blks, NUM_THREADS >>> (  Nout , Nvalid,  current_index , to_valid , positions_out , positions_in , E_out, E_in);
 	cudaThreadSynchronize();

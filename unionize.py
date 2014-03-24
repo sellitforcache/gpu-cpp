@@ -130,6 +130,13 @@ class cross_section_data:
 
 	def _get_MT_numbers_pointer(self):
 		MT_num_array = numpy.ascontiguousarray(numpy.array(self.reaction_numbers,order='C'),dtype=numpy.uint32)
+		# shift captures +1000
+		for n in range(0,len(MT_num_array)):
+			if MT_num_array[n] >= 11 and MT_num_array[n] <= 45:
+				MT_num_array[n] = MT_num_array[n]+800
+			elif MT_num_array[n] > 100:
+				MT_num_array[n] = MT_num_array[n]+1000
+		print MT_num_array
 		return MT_num_array
 
 	def _get_awr_pointer(self):

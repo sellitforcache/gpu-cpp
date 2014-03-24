@@ -15,8 +15,6 @@ rtDeclareVariable(uint, launch_index_in, rtLaunchIndex, );
 rtDeclareVariable(uint, launch_dim,   rtLaunchDim, );
 rtDeclareVariable(unsigned,  outer_cell, , );
 rtDeclareVariable(unsigned,  trace_type, , );
-rtDeclareVariable(unsigned,  size1, , );
-rtDeclareVariable(unsigned,  gap, , );
 rtDeclareVariable(unsigned,  boundary_condition, , );
 
 RT_PROGRAM void camera()
@@ -27,17 +25,11 @@ RT_PROGRAM void camera()
 	//remap if 2
 	unsigned launch_index;
 	if(trace_type==2){
-		if(launch_index_in<size1){  // reaction block
-			launch_index=remap_buffer[launch_index_in];
-		}
-		else{  			// resample block
-			launch_index=remap_buffer[launch_index_in + gap];
-		}
+		launch_index=remap_buffer[launch_index_in];
 	}
 	else{
 		launch_index = launch_index_in;
 	}
-	rxn_buffer[launch_index]=0;
 
 	// declare important stuff
 	int                 cnt;
@@ -96,7 +88,7 @@ RT_PROGRAM void camera()
 	else if(trace_type == 3){  //write fissile flag if fissile query
 		matnum_buffer[launch_index] 				= payload.hitbuff[0].fiss;
 		cellnum_buffer[launch_index] 				= payload.hitbuff[0].cell;
-		rxn_buffer[launch_index] 					= 18;
+		rxn_buffer[launch_index] 					= 818;
 	}
 
 }

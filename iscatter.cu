@@ -53,8 +53,8 @@ __global__ void iscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	unsigned this_rxn = rxn[starting_index+tid];
 	tid=remap[starting_index + tid];
+	unsigned this_rxn = rxn[tid];
 	//if(done[tid]){return;}
 
 	// print and return if wrong
@@ -194,6 +194,7 @@ __global__ void iscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 
 void iscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
+	if(N<1){return;}
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
 	//iscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
