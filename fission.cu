@@ -10,15 +10,14 @@ __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* re
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
+	unsigned this_rxn = rxn[starting_index+tid];
 	tid=remap[starting_index + tid];
 	//if(done[tid]){return;}
 
 	// print and return if wrong
-	unsigned 	this_rxn 	= rxn[tid];
-	if (this_rxn < 11 | this_rxn > 45){printf("fisison kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
+	if (this_rxn < 11 | this_rxn > 45){printf("fission kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
 
 	//load rxn number, init values
-	unsigned 	this_rxn 	= rxn[tid];
 	unsigned 	this_yield 	= 0;
 	unsigned 	inu 		= 0;
 	float 		nu 			= 0.0;

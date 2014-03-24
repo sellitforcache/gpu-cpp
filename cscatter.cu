@@ -12,6 +12,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap
+	unsigned this_rxn = rxn[starting_index+tid];
 	if(tid<size1){  // 11-45 block
 		tid=remap[starting_index + tid];
 	}
@@ -21,7 +22,6 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned si
 	//if(done[tid]){return;}
 
 	// check
-	unsigned 	this_rxn 	= rxn[tid];
 	if (this_rxn != 91 & this_rxn != 16 & this_rxn != 17 & this_rxn != 37 & this_rxn != 24 & this_rxn != 22 & this_rxn != 28 & this_rxn != 24 & this_rxn !=32 & this_rxn != 33 & this_rxn != 41){printf("cscatter kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;}  //print and return if not elastic scatter
 
 	//constants

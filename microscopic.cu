@@ -11,9 +11,11 @@ __global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, uns
 	
 	//remap
 	if(tid<size1){  // reaction block
+		//printf("tid %u, remapped %u, N %u, size1 %u, gap %u\n",tid,remap[tid],N,size1,gap);
 		tid=remap[tid];
 	}
 	else{  			// resample block
+		//printf("tid %u, remapped %u, N %u, size1 %u, gap %u\n",tid,remap[tid + gap],N,size1,gap);
 		tid=remap[tid + gap];
 	}
 	//if(done[tid]){return;}
@@ -31,7 +33,10 @@ __global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, uns
 	float 		cum_prob 		= 0.0;
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
-	unsigned 	this_rxn 		= 999999999;
+	unsigned 	this_rxn 		= rxn[tid];
+	if(this_rxn==999){return;} //reutn if flagged to resample
+
+//	printf("tid %u dex %u topes %u this_tope %u\n",tid,dex,n_isotopes,this_tope);
 
 	if (this_tope == 0){  //first isotope
 		tope_beginning = n_isotopes + 0;
@@ -104,7 +109,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, uns
 
 }
 
-void microscopic( unsigned NUM_THREADS, unsigned size1, unsigned gap, unsigned N, unsigned n_isotopes, unsigned n_columns, unsigned* remap,unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
+void microscopic( unsigned NUM_THREADS, unsigned N, unsigned size1, unsigned gap, unsigned n_isotopes, unsigned n_columns, unsigned* remap,unsigned* isonum, unsigned * index, float * main_E_grid, unsigned * rn_bank, float * E, float * xs_data_MT , unsigned * xs_MT_numbers_total, unsigned * xs_MT_numbers,  float* xs_data_Q, unsigned * rxn, float* Q, unsigned* done){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 

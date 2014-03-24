@@ -15,6 +15,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned size1 , unsigned gap, un
 	}
 	else{  			// resample block
 		tid=remap[tid + gap];
+	}
 	//if(done[tid]){return;}
 
 	// load from arrays
@@ -74,7 +75,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned size1 , unsigned gap, un
 		}
 	}
 	if(tope == 999999999){ 
-		printf("macro - ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u rn=%u cum_prob=%12.10E s_mm=%12.10E\n",tope, this_E, dex, this_mat, rn, cum_prob,s_material_matrix[n_isotopes*this_mat + tope]);
+		printf("macro - ISOTOPE NOT SAMPLED CORRECTLY! tope=%u E=%10.8E dex=%u mat=%u rn=%u cum_prob=%12.10E s_mm=%12.10E\n",tope, this_E, dex, this_mat, rn, cum_prob,material_matrix[n_isotopes*this_mat + tope]);
 	}
 
 	// do surf/samp compare

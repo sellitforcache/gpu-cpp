@@ -52,9 +52,10 @@ __global__ void escatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
+	unsigned this_rxn = rxn[starting_index + tid];
 	tid=remap[starting_index+tid];
 	//if(done[tid]){return;}
-	if (rxn[tid] != 2){printf("escatter kernel accessing rxn!=2 @ dex %u\n",tid);return;}  //print and return if not elastic scatter
+	if (this_rxn != 2){printf("escatter kernel accessing rxn!=2 @ dex %u\n",tid);return;}  //print and return if not elastic scatter
 
 	//constants
 	const float  pi           =   3.14159265359 ;

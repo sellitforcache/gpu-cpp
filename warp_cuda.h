@@ -17,7 +17,7 @@ void iscatter( cudaStream_t, unsigned , unsigned , unsigned , unsigned*, unsigne
 void cscatter( cudaStream_t, unsigned , unsigned , unsigned, unsigned, unsigned , unsigned*, unsigned* , unsigned * , unsigned * , float *, source_point *  ,unsigned * , float* , float* , unsigned* , float**, float**);
 void fission(  cudaStream_t, unsigned, unsigned, unsigned , unsigned*, unsigned* , unsigned* , unsigned*  , unsigned * , unsigned* , float**);
 void absorb(   cudaStream_t, unsigned , unsigned , unsigned*, unsigned*  , unsigned* );
-void find_E_grid_index( unsigned , unsigned , unsigned , unsigned*,float * , float* , unsigned *, unsigned* );
+void find_E_grid_index( unsigned , unsigned, unsigned , unsigned , unsigned , unsigned*,float * , float* , unsigned *, unsigned* );
 void find_E_grid_index_quad( unsigned , unsigned , unsigned , unsigned , unsigned* , qnode* , float* , unsigned * , unsigned* );
 void print_histories(unsigned, unsigned, unsigned *, unsigned*, source_point*, float*, unsigned*,unsigned*,unsigned*);
 void pop_secondaries( unsigned, unsigned, unsigned, unsigned* , unsigned* , unsigned* , unsigned* , unsigned*, unsigned*, source_point* , float* , unsigned* , float** );

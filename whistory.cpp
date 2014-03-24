@@ -1340,9 +1340,10 @@ void whistory::reset_cycle(float keff_cycle){
 	// pop them in!  should be the right size now.  scan to see where to write
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
+	cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
 	pop_source( NUM_THREADS, N, RNUM_PER_THREAD, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
-	cscatter(   stream[2], NUM_THREADS,   N, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_fissile_energy, d_fissile_points, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-
+	cscatter( stream[2], NUM_THREADS,   edges[4] - edges[3] + edges[2] - edges[1] , edges[1]+1 , edges[2]-edges[1] ,edges[5] - edges[4] , d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			
 	// rest run arrays
 	cudaMemcpy( d_space,		d_fissile_points,		N*sizeof(source_point),		cudaMemcpyDeviceToDevice );
 	cudaMemcpy( d_E,			d_fissile_energy,		N*sizeof(unsigned),		cudaMemcpyDeviceToDevice );
@@ -1393,6 +1394,7 @@ void whistory::run(){
 	int iteration = 0;
 	int iteration_total=0;
 	unsigned converged = 0;
+	unsigned active_size1, active_gap, escatter_N, escatter_start, iscatter_N, iscatter_start, cscatter_N, cscatter_start1, cscatter_size1, cscatter_gap, fission_N, fission_start;
 	std::string fiss_name;
 	float runtime = get_time();
 
@@ -1431,44 +1433,76 @@ void whistory::run(){
 		//write source positions to file if converged
 		if(converged){write_to_file(d_space,N,fiss_name,"a+");}
 
+		Nrun=N;
+		edges[0] = 0; 
+		edges[1] = 0;
+		edges[2] = Nrun;
+		edges[3] = Nrun;
+		edges[4] = Nrun;
+		edges[5] = Nrun;
+		cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
-			if(RUN_FLAG==0){
-				Nrun=Ndataset;
-			}
-			else if(RUN_FLAG==1){
-				Nrun=N;
-			}
+			//if(RUN_FLAG==0){
+			//	Nrun=Ndataset;
+			//}
+			//else if(RUN_FLAG==1){
+			//	Nrun=N;
+			//}
+
+			//compute active block numbers
+			active_size1 	= edges[1] - edges[0] + edges[4] - edges[2];
+			active_gap   	= edges[5] - edges[4];
+			
 
 			// find what material we are in and nearest surface distance
 			trace(2);
+			printf("CUDA ERROR1, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			//find the main E grid index
 			//find_E_grid_index_quad( NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_active, d_qnodes_root, d_E, d_index, d_done);
-			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], d_active, d_xs_data_main_E_grid, d_E, d_index, d_done);
+			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1], active_size1, active_gap,  d_remap, d_xs_data_main_E_grid, d_E, d_index, d_done);
+			printf("CUDA ERROR2, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// run macroscopic kernel to find interaction length, macro_t, and reaction isotope, move to interactino length, set resample flag, 
-			macroscopic( NUM_THREADS, Nrun, n_isotopes, n_materials, MT_columns, outer_cell, d_active, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
+			macroscopic( NUM_THREADS, Nrun, active_size1, active_gap,  n_isotopes, n_materials, MT_columns, outer_cell, d_remap, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
+			printf("CUDA ERROR3, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// run microscopic kernel to find reaction type
-			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_active, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
+			microscopic( NUM_THREADS, Nrun, active_size1, active_gap,  n_isotopes, MT_columns, d_remap, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
+			printf("CUDA ERROR4, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// run tally kernel to compute spectra
 			if(converged){
-				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_active, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
+				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_remap, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
+				//printf("CUDA ERROR5, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			}
+
 
 			// remap threads to still active data
 			Nrun = remap_active();
+			escatter_N 		= edges[1] - edges[0];
+			escatter_start	= edges[0];
+			iscatter_N		= edges[3] - edges[2];
+			iscatter_start	= edges[2]+1;
+			// just doing 91 for now
+			cscatter_N 		= edges[4] - edges[3];
+			cscatter_start1	= edges[3]+1;
+			cscatter_size1	= edges[4] - edges[3];
+			cscatter_gap 	= 0;
+			// 
+			fission_N 		= edges[2] - edges[1];
+			fission_start	= edges[1]+1;
 			
 			// concurrent calls to do escatter/iscatter/abs/fission
 			cudaThreadSynchronize();
-			escatter( stream[0], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
-			iscatter( stream[1], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			cscatter( stream[2], NUM_THREADS,   Nrun, RNUM_PER_THREAD, d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			absorb  ( stream[3], NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
-			fission ( stream[4], NUM_THREADS,   Nrun, RNUM_PER_THREAD, RUN_FLAG, d_active, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
+			escatter( stream[0], NUM_THREADS,   escatter_N, escatter_start , d_remap, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_done, d_xs_data_scatter);
+			iscatter( stream[1], NUM_THREADS,   iscatter_N, iscatter_start , d_remap, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			cscatter( stream[2], NUM_THREADS,   cscatter_N, cscatter_start1, cscatter_size1, cscatter_gap , d_remap, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+			//absorb  ( stream[3], NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
+			fission ( stream[4], NUM_THREADS,   fission_N, fission_start, d_remap, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 			cudaDeviceSynchronize();
 
 			if(RUN_FLAG==0){  //fixed source
@@ -1478,6 +1512,8 @@ void whistory::run(){
 				pop_secondaries( NUM_THREADS, Ndataset, RNUM_PER_THREAD, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy);
 				//if(reduce_yield()!=0.0){printf("pop_secondaries did not reset all yields!\n");}
 			}
+
+			//exit(0);
 
 			//std::cout << "cycle done, press enter to continue...\n";
 			//std::cin.ignore();s
@@ -1797,7 +1833,6 @@ unsigned whistory::remap_active(){
 	// debug
 	write_to_file(d_rxn,N,"rxns","w");
 	write_to_file(d_remap,N,"remap","w");
-	exit(0);
 
 	return num_active;
 

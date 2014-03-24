@@ -53,11 +53,11 @@ __global__ void iscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	if (tid >= N){return;}       //return if out of bounds
 	
 	//remap to active
+	unsigned this_rxn = rxn[starting_index+tid];
 	tid=remap[starting_index + tid];
 	//if(done[tid]){return;}
 
 	// print and return if wrong
-	unsigned 	this_rxn 	= rxn[tid];
 	if (this_rxn < 51 | this_rxn > 90){printf("iscatter kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
 
 	// return if not inelastic
