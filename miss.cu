@@ -16,7 +16,7 @@ RT_PROGRAM void miss()
 {
 	rtPrintf("!!!MISS!!! rxn = %u outer_cell = %d launch_index = %d trace %d done %u (x,y,z-source)= % 10.9E % 10.9E % 10.9E (x,y,z,dist)= % 6.4E % 6.4E % 6.4E %6.4E \n",rxn_buffer[launch_index], outer_cell, launch_index, trace_type, done_buffer[launch_index],positions_buffer[launch_index].x,positions_buffer[launch_index].y,positions_buffer[launch_index].z, payload.x,payload.y,payload.z,payload.surf_dist);
 	payload.cont 				=  0;
-	rxn_buffer[launch_index]	=  99999; //miss code
+	rxn_buffer[launch_index]	=  999967; //miss code
 	payload.cell_first 			=  4294967295;
 	payload.surf_dist 			= -1.0;
 	payload.hitbuff[0].cell 	=  4294967295;

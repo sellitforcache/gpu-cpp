@@ -139,6 +139,7 @@ class whistory {
     void copy_to_device();
     void load_cross_sections();
     void trace(unsigned);
+    void trace(unsigned,unsigned,unsigned,unsigned);
     unsigned reduce_done();
     void reset_cycle(float);
     void reset_fixed();

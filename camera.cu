@@ -6,22 +6,37 @@ using namespace optix;
 
 rtBuffer<source_point,1>            positions_buffer;
 rtBuffer<unsigned,1>                rxn_buffer;
+rtBuffer<unsigned,1>                remap_buffer;
 rtBuffer<unsigned,1>                done_buffer;
 rtBuffer<unsigned,1>                cellnum_buffer;
 rtBuffer<unsigned,1>                matnum_buffer;
 rtDeclareVariable(rtObject,      top_object, , );
-rtDeclareVariable(uint, launch_index, rtLaunchIndex, );
+rtDeclareVariable(uint, launch_index_in, rtLaunchIndex, );
 rtDeclareVariable(uint, launch_dim,   rtLaunchDim, );
 rtDeclareVariable(unsigned,  outer_cell, , );
 rtDeclareVariable(unsigned,  trace_type, , );
+rtDeclareVariable(unsigned,  size1, , );
+rtDeclareVariable(unsigned,  gap, , );
 rtDeclareVariable(unsigned,  boundary_condition, , );
 
 RT_PROGRAM void camera()
 {
 	//skip done particles
-	if(done_buffer[launch_index]){return;}
+	//if(done_buffer[launch_index]){return;}
 
-	//reset reaction if not done
+	//remap if 2
+	unsigned launch_index;
+	if(trace_type==2){
+		if(launch_index_in<size1){  // reaction block
+			launch_index=remap_buffer[launch_index_in];
+		}
+		else{  			// resample block
+			launch_index=remap_buffer[launch_index_in + gap];
+		}
+	}
+	else{
+		launch_index = launch_index_in;
+	}
 	rxn_buffer[launch_index]=0;
 
 	// declare important stuff
@@ -89,6 +104,6 @@ RT_PROGRAM void camera()
 RT_PROGRAM void exception()
 {
 	const unsigned int code = rtGetExceptionCode();
-	rtPrintf( "Caught exception 0x%X at launch index (%d)\n", code, launch_index);
+	rtPrintf( "Caught exception 0x%X at launch index (%d)\n", code, launch_index_in);
 	rtPrintExceptionDetails();
 }

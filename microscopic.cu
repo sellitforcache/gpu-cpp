@@ -34,9 +34,9 @@ __global__ void microscopic_kernel(unsigned N, unsigned size1, unsigned gap, uns
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
 	unsigned 	this_rxn 		= rxn[tid];
-	if(this_rxn==999){return;} //reutn if flagged to resample
+	if(this_rxn>=888){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
 
-//	printf("tid %u dex %u topes %u this_tope %u\n",tid,dex,n_isotopes,this_tope);
+	//printf("tid %u dex %u topes %u rxn %u this_tope %u\n",tid,dex,n_isotopes,this_rxn,this_tope);
 
 	if (this_tope == 0){  //first isotope
 		tope_beginning = n_isotopes + 0;

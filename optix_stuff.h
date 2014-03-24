@@ -18,6 +18,7 @@ public:
 	CUdeviceptr 	     done_ptr;
 	CUdeviceptr 	  cellnum_ptr;
 	CUdeviceptr 	   matnum_ptr;
+	CUdeviceptr 	    remap_ptr;
 	unsigned 			stack_size_multiplier;
 	unsigned 			N;
 	float 				outer_cell_dims[6];
@@ -28,6 +29,7 @@ public:
 	void init(wgeometry, unsigned, std::string);
 	void trace();
 	void trace(unsigned);
+	void trace(unsigned, unsigned, unsigned, unsigned);
 	void set_trace_type(unsigned);
 	void print();
 	void trace_geometry(unsigned,unsigned,std::string,std::string);

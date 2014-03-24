@@ -64,6 +64,7 @@ void whistory::init(){
 				 d_matnum 	= (unsigned*)     optix_obj.matnum_ptr;
 				 d_rxn 		= (unsigned*)     optix_obj.rxn_ptr;
 				 d_done 	= (unsigned*)     optix_obj.done_ptr;
+				 d_remap 	= (unsigned*)     optix_obj.remap_ptr;
 	cudaMalloc( &d_xs_length_numbers	, 6*sizeof(unsigned) );		 
 	cudaMalloc( &d_E 					, Ndataset*sizeof(float)    );
 	cudaMalloc( &d_Q 					, Ndataset*sizeof(float)    );
@@ -77,7 +78,7 @@ void whistory::init(){
 	cudaMalloc( &d_reduced_done 		, 1*sizeof(unsigned));
 	cudaMalloc(	&d_valid_result			, Ndataset*sizeof(unsigned));
 	cudaMalloc(	&d_valid_N				, 1*sizeof(unsigned));
-	cudaMalloc(	&d_remap				, Ndataset*sizeof(unsigned));
+	//cudaMalloc(	&d_remap				, Ndataset*sizeof(unsigned));
 	cudaMalloc(	&d_fissile_points		, Ndataset*sizeof(source_point));
 	cudaMalloc( &d_fissile_energy       , Ndataset*sizeof(float));
 	cudaMalloc( &d_mask 				, Ndataset*sizeof(unsigned));
@@ -1237,6 +1238,11 @@ void whistory::trace(unsigned type){
 	optix_obj.trace(type);
 
 }
+void whistory::trace(unsigned type, unsigned n_active, unsigned size1, unsigned gap){
+
+	optix_obj.trace(type,n_active,size1,gap);
+
+}
 void whistory::print_materials_table(){
 
 	problem_geom.print_materials_table();
@@ -1259,7 +1265,7 @@ void whistory::sample_fissile_points(){
 		set_positions_rand ( NUM_THREADS, N , RNUM_PER_THREAD, d_space , d_rn_bank, outer_cell_dims);
 		
 		//run OptiX to get cell number, set as a hash run for fissile, writes 1/0 to matnum, trace_type=4
-		trace(3);
+		trace(3,N,N,0);
 		
 		// compact
 		res = cudppCompact(compactplan, d_valid_result, (size_t*)d_valid_N , d_remap , d_matnum , N);
@@ -1458,7 +1464,7 @@ void whistory::run(){
 			
 
 			// find what material we are in and nearest surface distance
-			trace(2);
+			trace(2, Nrun, active_size1, active_gap);
 			printf("CUDA ERROR1, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			//find the main E grid index
@@ -1477,7 +1483,7 @@ void whistory::run(){
 			// run tally kernel to compute spectra
 			if(converged){
 				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_remap, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
-				//printf("CUDA ERROR5, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+				printf("CUDA ERROR5, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			}
 
 
@@ -1504,6 +1510,7 @@ void whistory::run(){
 			//absorb  ( stream[3], NUM_THREADS,   Nrun, d_active, d_rxn , d_done);
 			fission ( stream[4], NUM_THREADS,   fission_N, fission_start, d_remap, d_rxn , d_index, d_yield , d_rn_bank, d_done, d_xs_data_scatter);
 			cudaDeviceSynchronize();
+			printf("CUDA ERROR6, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			if(RUN_FLAG==0){  //fixed source
 				// pop secondaries back in
@@ -1513,7 +1520,7 @@ void whistory::run(){
 				//if(reduce_yield()!=0.0){printf("pop_secondaries did not reset all yields!\n");}
 			}
 
-			//exit(0);
+			exit(0);
 
 			//std::cout << "cycle done, press enter to continue...\n";
 			//std::cin.ignore();s

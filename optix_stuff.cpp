@@ -49,11 +49,13 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	Buffer 				     done_buffer;
 	Buffer 				  cellnum_buffer;
 	Buffer 				   matnum_buffer;
+	Buffer 					remap_buffer;
 	Variable          	positions_var;
 	Variable 			      rxn_var;
 	Variable 			     done_var;
 	Variable 			  cellnum_var;
 	Variable 			   matnum_var;
+	Variable 			    remap_var;
 	Variable          	outer_cell_var;
 	Variable 			boundary_condition_var;
 	Variable 			trace_type_var;
@@ -150,6 +152,13 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	matnum_var = context["matnum_buffer"];
 	matnum_var -> set(matnum_buffer);
 
+	// Render remap buffer and attach to variable, get pointer for CUDA
+	remap_buffer = context->createBuffer(RT_BUFFER_INPUT_OUTPUT,RT_FORMAT_USER,N);
+	remap_buffer -> setElementSize( sizeof(unsigned) );
+	remap_buffer -> getDevicePointer(compute_device,&remap_ptr);
+	remap_var = context["remap_buffer"];
+	remap_var -> set(remap_buffer);
+
 	// Ray generation program 
 	sprintf( path_to_ptx, "%s", "camera.ptx" );
 	ray_gen_program = context->createProgramFromPTXFile( path_to_ptx, "camera" );
@@ -169,6 +178,10 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 
 	//set trace type, 1=transport (writes intersection point and next cell), 2=fission (writes origin and current cell)
 	context["trace_type"]->setUint(1);
+
+	//set gap and sizes for remapping
+	context["size1"]->setUint(N);
+	context["gap"]->setUint(0);
 
 	//set outer cell adn get its dimensions
 	context["outer_cell"]->setUint(outer_cell);
@@ -209,6 +222,12 @@ void optix_stuff::set_trace_type(unsigned trace_type){
 void optix_stuff::trace(unsigned trace_type){
 	context["trace_type"]->setUint(trace_type);
 	context -> launch( 0 , N );
+}
+void optix_stuff::trace(unsigned trace_type, unsigned n_active, unsigned size1, unsigned gap){
+	context["trace_type"]->setUint(trace_type);
+	context["size1"]->setUint(size1);
+	context["gap"]->setUint(gap);
+	context -> launch( 0 , n_active );
 }
 void optix_stuff::trace(){
 	context -> launch( 0 , N );
