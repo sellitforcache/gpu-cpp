@@ -30,7 +30,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	float 		Emin=1e-11;
 	float 		Emax=20.0;
 	unsigned 	k, n, offset, vlen, next_vlen, law;
-	float 		sampled_E, phi, mu, rn1, rn2, lawst_E, next_E, e_start, E0, E1, Ek, next_e_start, next_e_end, last_e_start, last_e_end, diff;;
+	float 		sampled_E, phi, mu, rn1, rn2, last_E, next_E, e_start, E0, E1, Ek, next_e_start, next_e_end, last_e_start, last_e_end, diff;;
 	float 		cdf0, cdf1, e0, e1, m, pdf0, pdf1, arg,x,y,z;
 	const float  pi           =   3.14159265359 ;
 	const float  m_n          =   1.00866491600 ; // u

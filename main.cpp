@@ -275,11 +275,11 @@ int main(){
 	geom.add_primitive();  //clad 
 	geom.primitives[1].type=0;
 	geom.primitives[1].material=2;
-	geom.primitives[1].min[0]=-50.0;
-	geom.primitives[1].min[1]=-50.0;
+	geom.primitives[1].min[0]=-5.0;
+	geom.primitives[1].min[1]=-5.0;
 	geom.primitives[1].min[2]=-25.0;
-	geom.primitives[1].max[0]= 50.0;
-	geom.primitives[1].max[1]= 50.0;
+	geom.primitives[1].max[0]= 5.0;
+	geom.primitives[1].max[1]= 5.0;
 	geom.primitives[1].max[2]= 25.0;
 	geom.primitives[1].add_transform();
 	geom.primitives[1].transforms[0].cellnum = 999;
