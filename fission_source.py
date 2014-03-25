@@ -6,7 +6,7 @@ import numpy as np
 import sys
 
 data=np.array(open("/Users/rmb/code/gpu-cpp/fission_points."+sys.argv[1]).read().split(),dtype=float)
-data=np.reshape(data,(-1,3))
+data=np.reshape(data,(-1,4))
 
 fig = pl.figure(figsize=(10,6))
 ax = fig.add_subplot(1,1,1)

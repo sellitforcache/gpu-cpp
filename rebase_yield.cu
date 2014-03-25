@@ -3,7 +3,7 @@
 #include "datadef.h"
 #include "LCRNG.cuh"
 
-__global__ void rebase_yield_kernel(unsigned N, unsigned RNUM_PER_THREAD, float keff, unsigned* rn_bank, unsigned* yield){
+__global__ void rebase_yield_kernel(unsigned N, float keff, unsigned* rn_bank, unsigned* yield){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -29,11 +29,11 @@ __global__ void rebase_yield_kernel(unsigned N, unsigned RNUM_PER_THREAD, float 
 
 }
 
-void rebase_yield( unsigned NUM_THREADS, unsigned RNUM_PER_THREAD, unsigned N, float keff, unsigned* rn_bank, unsigned* yield){
+void rebase_yield( unsigned NUM_THREADS, unsigned N, float keff, unsigned* rn_bank, unsigned* yield){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	rebase_yield_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, keff, rn_bank, yield);
+	rebase_yield_kernel <<< blks, NUM_THREADS >>> (  N, keff, rn_bank, yield);
 	cudaThreadSynchronize();
 
 }

@@ -4,7 +4,7 @@
 #include "wfloat3.h"
 #include "LCRNG.cuh"
 
-__global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , unsigned* rn_bank, float**  energydata, source_point* space_out, float* E_out, float * awr_list){
+__global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , unsigned* rn_bank, float**  energydata, source_point* space_out, float* E_out, float * awr_list){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -24,7 +24,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 	source_point 	this_space 	= space[tid];
 	wfloat3 		hats_old(this_space.xhat,this_space.yhat,this_space.zhat);
 	//float 			this_awr	= awr_list[this_tope];
-	//printf("% 6.4E % 6.4E % 6.4E\n",this_space.x,this_space.y,this_space.z);
+	//printf("tid %drxn %u yield %u space % 6.4E % 6.4E % 6.4E\n",tid,this_rxn,this_yield,this_space.x,this_space.y,this_space.z);
 
 	// internal data
 	float 		Emin=1e-11;
@@ -110,7 +110,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		//sampled_E = E0;
 		//printf("%6.4E\n",sampled_E);
 
-		if(this_rxn==18){
+		if(this_rxn==918){
 			//sample isotropic directions
 			rn1 = get_rand(&rn);
 			rn2 = get_rand(&rn);
@@ -152,7 +152,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 		index 	 [ data_dex ] 		= dex;
 		isonum   [ data_dex ]  		= this_tope;
 		rn_bank  [tid] = rn;
-		if(this_rxn==18){
+		if(this_rxn==918){
 			E_out 	 [ data_dex ] 		= sampled_E;
 		}
 		else{ // pass (n,2/3/4n) to cscatter
@@ -167,11 +167,11 @@ __global__ void pop_source_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned
 
 }
 
-void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned RNUM_PER_THREAD, unsigned* isonum, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , unsigned* d_rn_bank, float ** energydata, source_point* space_out, float* E_out, float * awr_list){
+void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned* isonum, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , unsigned* d_rn_bank, float ** energydata, source_point* space_out, float* E_out, float * awr_list){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, RNUM_PER_THREAD, isonum, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata, space_out, E_out, awr_list);
+	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, isonum, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata, space_out, E_out, awr_list);
 	cudaThreadSynchronize();
 
 }

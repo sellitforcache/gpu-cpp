@@ -323,7 +323,7 @@ void whistory::init_CUDPP(){
 }
 float whistory::reduce_yield(){
 
-	res = cudppReduce(reduplan_int, d_reduced_yields, d_yield, Ndataset);
+	res = cudppReduce(reduplan_int, d_reduced_yields, d_yield, N);
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in reducing yield values\n");exit(-1);}
 	cudaMemcpy(&reduced_yields, d_reduced_yields, 1*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
@@ -1321,6 +1321,23 @@ void whistory::write_to_file(source_point* array_in , unsigned N , std::string f
 	fclose(f);
 
 }
+void whistory::write_to_file(source_point* array_in , float* array_in2, unsigned N , std::string filename, std::string opentype){
+
+	FILE* f  = fopen(filename.c_str(),opentype.c_str());
+	source_point * hostdata = new source_point [N];
+	float * hostdata2 = new float [N];
+	cudaMemcpy(hostdata,array_in,N*sizeof(source_point),cudaMemcpyDeviceToHost);
+	cudaMemcpy(hostdata2,array_in2,N*sizeof(float),cudaMemcpyDeviceToHost);
+
+	for(unsigned k = 0;  k<N ;k++){
+		fprintf(f,"% 6.4E % 6.4E % 6.4E % 6.4E\n",hostdata[k].x,hostdata[k].y,hostdata[k].z,hostdata2[k]);
+	}
+
+	delete hostdata;
+	delete hostdata2;
+	fclose(f);
+
+}
 void whistory::write_to_file(unsigned* array_in , unsigned N , std::string filename, std::string opentype){
 
 	FILE* f  = fopen(filename.c_str(),opentype.c_str());
@@ -1354,18 +1371,20 @@ void whistory::write_to_file(unsigned* array_in , unsigned* array_in2, unsigned 
 }
 void whistory::reset_cycle(float keff_cycle){
 
+	cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+	write_to_file(d_rxn,d_yield,N,"yields","w");
+
 	// re-base the yield so keff is 1
-	rebase_yield( NUM_THREADS,  RNUM_PER_THREAD, N,  keff_cycle, d_rn_bank, d_yield);
+	rebase_yield( NUM_THREADS, N,  keff_cycle, d_rn_bank, d_yield);
 
 	//reduce to check, unecessary in real runs
-	float keff_new = reduce_yield();
-	std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
+	//float keff_new = reduce_yield();
+	//std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
 
 	// pop them in!  should be the right size now.  scan to see where to write
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
-	cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
-	pop_source( NUM_THREADS, N, RNUM_PER_THREAD, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
+	pop_source( NUM_THREADS, N, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
 	printf("non treating n2n, etc in pop!\n");
 	//cscatter( stream[2], NUM_THREADS,  edges[5], d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			
@@ -1456,7 +1475,9 @@ void whistory::run(){
 	while(iteration<n_cycles){
 
 		//write source positions to file if converged
-		if(converged){write_to_file(d_space,N,fiss_name,"a+");}
+		//if(converged){
+			write_to_file(d_space,d_E,N,fiss_name,"a+");
+		//}
 
 		Nrun=N;
 		edges[0] = 0; 
@@ -1465,7 +1486,7 @@ void whistory::run(){
 		edges[3] = Nrun;
 		edges[4] = Nrun;
 		edges[5] = Nrun;
-		cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+		// /cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -1856,7 +1877,7 @@ unsigned whistory::remap_active(){
 
 	// return active for convenience
 	num_active = edges[4];  //subtracts yield/fission/n,2n/abs reactions from total
-	//printf("nactive = %u \n",num_active);
+	printf("nactive = %u \n",num_active);
 	//printf("nactive = %u, edges %u %u %u %u %u %u \n",num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5]);
 
 	// debug

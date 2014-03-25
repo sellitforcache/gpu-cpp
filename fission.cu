@@ -56,7 +56,7 @@ __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* re
 	yield[tid] = this_yield;
 	done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
 	rxn[tid] = this_rxn+100;  //mark as done by putting it in the 900 block
-	if (this_rxn == 18){rn_bank[tid] = rn;}  //rn was used for fission
+	if (this_rxn == 818){rn_bank[tid] = rn;}  //rn was used for fission
 
 }
 
