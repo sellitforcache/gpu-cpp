@@ -6,16 +6,16 @@
 __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned * rxn , unsigned * index, unsigned * yield , unsigned * rn_bank, unsigned* done, float** scatterdat){
 
 	
-	int tid = threadIdx.x+blockIdx.x*blockDim.x;
-	if (tid >= N){return;}       //return if out of bounds
+	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
+	if (tid_in >= N){return;}       //return if out of bounds
 	
 	//remap to active
-	tid=remap[starting_index + tid];
-	unsigned this_rxn = rxn[tid];
+	int tid=remap[starting_index + tid_in];
+	unsigned this_rxn = rxn[starting_index + tid_in];
 	//if(done[tid]){return;}
 
 	// print and return if wrong
-	if (this_rxn < 811 | this_rxn > 845){printf("fission kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;} 
+	if (this_rxn < 811 | this_rxn > 845){printf("fission kernel accessing wrong reaction @ remapped dex %u sorted dex %u rxn %u\n",tid,starting_index + tid_in, this_rxn);return;} 
 
 	//load rxn number, init values
 	unsigned 	this_yield 	= 0;
@@ -55,7 +55,7 @@ __global__ void fission_kernel(unsigned N, unsigned starting_index, unsigned* re
 	// write output and terminate history
 	yield[tid] = this_yield;
 	done[tid]  = 1;    // pop will re-activate this data slot on fixed-source runs
-	rxn[tid] = this_rxn+100;  //mark as done by putting it in the 900 block
+	rxn[starting_index + tid_in] = this_rxn+100;  //mark as done by putting it in the 900 block
 	if (this_rxn == 818){rn_bank[tid] = rn;}  //rn was used for fission
 
 }

@@ -31,7 +31,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 	float 		diff			= 0.0;
 	unsigned 	tope 			= 999999999;
 	//unsigned    this_rxn		= 0;
-	unsigned    this_rxn = rxn[tid];
+	unsigned    this_rxn = rxn[tid_in];
 	unsigned 	isdone 			= 0;
 
 
@@ -103,7 +103,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 	space[tid].y			= y;
 	space[tid].z			= z;
 	space[tid].macro_t 		= macro_t_total;
-	rxn[tid] 				= this_rxn;
+	rxn[tid_in] 				= this_rxn;
 	isonum[tid] 			= tope;
 	rn_bank[tid] 			= rn;
 	done[tid] 				= isdone;

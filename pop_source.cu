@@ -4,7 +4,7 @@
 #include "wfloat3.h"
 #include "LCRNG.cuh"
 
-__global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* completed, unsigned* scanned, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , unsigned* rn_bank, float**  energydata, source_point* space_out, float* E_out, float * awr_list){
+__global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* completed, unsigned* scanned, unsigned* remap, unsigned* yield, unsigned* done, unsigned* index, unsigned* rxn, source_point* space, float* E , unsigned* rn_bank, float**  energydata, source_point* space_out, float* E_out, float * awr_list){
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
@@ -17,7 +17,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* comple
 	unsigned 		this_yield 	= yield[tid];
 	unsigned 		dex  		= index[tid];
 	float 			this_E 		= E[tid];
-	unsigned 		this_rxn 	= rxn[tid];
+	unsigned 		this_rxn 	= rxn[remap[tid]];
 	unsigned 		rn 			= rn_bank[tid];
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;
@@ -167,11 +167,11 @@ __global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* comple
 
 }
 
-void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned* isonum, unsigned* d_completed, unsigned* d_scanned, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , unsigned* d_rn_bank, float ** energydata, source_point* space_out, float* E_out, float * awr_list){
+void pop_source( unsigned NUM_THREADS,  unsigned N, unsigned* isonum, unsigned* d_completed, unsigned* d_scanned, unsigned* d_remap, unsigned* d_yield, unsigned* d_done, unsigned* d_index, unsigned* d_rxn, source_point* d_space, float* d_E , unsigned* d_rn_bank, float ** energydata, source_point* space_out, float* E_out, float * awr_list){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, isonum, d_completed, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata, space_out, E_out, awr_list);
+	pop_source_kernel <<< blks, NUM_THREADS >>> ( N, isonum, d_completed, d_scanned, d_remap, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank, energydata, space_out, E_out, awr_list);
 	cudaThreadSynchronize();
 
 }

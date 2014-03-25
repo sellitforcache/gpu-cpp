@@ -24,7 +24,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	float 		cum_prob 		= 0.0;
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
-	unsigned 	this_rxn 		= rxn[tid];
+	unsigned 	this_rxn 		= rxn[tid_in];
 	if(this_rxn>=800){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
 
 	//printf("tid %u dex %u topes %u rxn %u this_tope %u\n",tid,dex,n_isotopes,this_rxn,this_tope);
@@ -91,7 +91,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	//if( this_rxn >= 4 & this_rxn<50 & this_rxn!=18 ){printf("this_rxn(%d,(1:5))=[%u,%u,%u,%u,%u];\n",tid+1,xs_MT_numbers[k],this_dex,this_rxn,this_tope,k);}
 	//printf("%u\n",this_rxn);
 	if(this_rxn==4){printf("MT=4!!!\n");}
-	rxn[tid] = this_rxn;
+	rxn[tid_in] = this_rxn;
 	Q[tid] 	 = this_Q;
 	rn_bank[tid] = rn;
 	//also write MT array index to dex instead of energy vector index

@@ -1371,8 +1371,8 @@ void whistory::write_to_file(unsigned* array_in , unsigned* array_in2, unsigned 
 }
 void whistory::reset_cycle(float keff_cycle){
 
-	cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
-	write_to_file(d_rxn,d_yield,N,"yields","w");
+	//cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+	//write_to_file(d_rxn,d_yield,N,"yields","w");
 
 	// re-base the yield so keff is 1
 	rebase_yield( NUM_THREADS, N,  keff_cycle, d_rn_bank, d_yield);
@@ -1384,7 +1384,7 @@ void whistory::reset_cycle(float keff_cycle){
 	// pop them in!  should be the right size now.  scan to see where to write
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
-	pop_source( NUM_THREADS, N, d_isonum, d_remap, d_scanned, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
+	pop_source( NUM_THREADS, N, d_isonum, d_remap, d_scanned, d_remap, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
 	printf("non treating n2n, etc in pop!\n");
 	//cscatter( stream[2], NUM_THREADS,  edges[5], d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
 			
@@ -1481,12 +1481,11 @@ void whistory::run(){
 
 		Nrun=N;
 		edges[0] = 0; 
-		edges[1] = Nrun;
-		edges[2] = Nrun;
-		edges[3] = Nrun;
-		edges[4] = Nrun;
-		edges[5] = Nrun;
-		// /cudaMemcpy(d_remap,remap,N*sizeof(unsigned),cudaMemcpyHostToDevice);
+		edges[1] = Nrun-1;
+		edges[2] = Nrun-1;
+		edges[3] = Nrun-1;
+		edges[4] = Nrun-1;
+		edges[5] = Nrun-1;
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -1497,10 +1496,6 @@ void whistory::run(){
 			//else if(RUN_FLAG==1){
 			//	Nrun=N;
 			//}
-
-			//compute active block numbers
-			//active_size1 	= edges[1] - edges[0] + edges[4] - edges[2];
-			//active_gap   	= edges[5] - edges[4];
 			
 			// find what material we are in and nearest surface distance
 			trace(2, Nrun);
@@ -1866,23 +1861,22 @@ unsigned whistory::remap_active(){
 	unsigned num_active=0;
 
 	// copy remap vector
-	cudaMemcpy(d_remap, remap, N*sizeof(unsigned), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_rxn_remap, d_rxn, N*sizeof(unsigned), cudaMemcpyDeviceToDevice);
+	//cudaMemcpy(d_remap, remap, N*sizeof(unsigned), cudaMemcpyHostToDevice);
+	//cudaMemcpy(d_rxn_remap, d_rxn, N*sizeof(unsigned), cudaMemcpyDeviceToDevice);
 
 	// sort key/value of rxn/tid
-	cudppRadixSort(radixplan, d_rxn_remap, d_remap, N);
+	cudppRadixSort(radixplan, d_rxn, d_remap, edges[5]+1);  //everything in 900s doesn't need to be sorted anymore
 
 	// launch edge detection kernel, writes mapped d_edges array
-	reaction_edges(NUM_THREADS, N, d_edges, d_rxn_remap);
+	reaction_edges(NUM_THREADS, edges[5]+1, d_edges, d_rxn);
 
 	// return active for convenience
 	num_active = edges[4];  //subtracts yield/fission/n,2n/abs reactions from total
-	printf("nactive = %u \n",num_active);
+	//printf("nactive = %u \n",num_active);
 	//printf("nactive = %u, edges %u %u %u %u %u %u \n",num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5]);
 
 	// debug
-	write_to_file(d_rxn,N,"rxns","w");
-	write_to_file(d_remap, d_rxn_remap, N,"remap","w");
+	//write_to_file(d_remap, d_rxn, N,"remap","w");
 
 	return num_active;
 

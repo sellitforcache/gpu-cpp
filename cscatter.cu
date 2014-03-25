@@ -8,12 +8,12 @@
 __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
-	int tid = threadIdx.x+blockIdx.x*blockDim.x;
-	if (tid >= N){return;}       //return if out of bounds
+	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
+	if (tid_in >= N){return;}       //return if out of bounds
 	
 	//remap
-	tid=remap[starting_index + tid];
-	unsigned this_rxn = rxn[tid];
+	int tid=remap[starting_index + tid_in];
+	unsigned this_rxn = rxn[starting_index + tid_in];
 	//if(done[tid]){return;}
 
 	// check
