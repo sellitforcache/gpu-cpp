@@ -1381,9 +1381,15 @@ void whistory::reset_cycle(float keff_cycle){
 	//float keff_new = reduce_yield();
 	//std::cout << "real keff "<< keff_cycle <<", artificially rebased keff " << keff_new <<"\n";
 
-	// pop them in!  should be the right size now.  scan to see where to write
+	// prefix sum scan (non-inclusive) yields to see where to write
 	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
+
+	// swap the key/values to sort the rxn vector by tid to align the rest of data with the right reactions, done so 18 doesn't have to be assumed.  Sorting is necessary for prefix sum to work (order-dependent)
+	res = cudppRadixSort(radixplan, d_remap, d_rxn, N);  
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
+
+	//pop them in!  should be the right size now due to keff rebasing  
 	pop_source( NUM_THREADS, N, d_isonum, d_remap, d_scanned, d_remap, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
 	printf("non treating n2n, etc in pop!\n");
 	//cscatter( stream[2], NUM_THREADS,  edges[5], d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
@@ -1865,7 +1871,8 @@ unsigned whistory::remap_active(){
 	//cudaMemcpy(d_rxn_remap, d_rxn, N*sizeof(unsigned), cudaMemcpyDeviceToDevice);
 
 	// sort key/value of rxn/tid
-	cudppRadixSort(radixplan, d_rxn, d_remap, edges[5]+1);  //everything in 900s doesn't need to be sorted anymore
+	res = cudppRadixSort(radixplan, d_rxn, d_remap, edges[5]+1);  //everything in 900s doesn't need to be sorted anymore
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
 
 	// launch edge detection kernel, writes mapped d_edges array
 	reaction_edges(NUM_THREADS, edges[5]+1, d_edges, d_rxn);

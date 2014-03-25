@@ -8,7 +8,10 @@ __global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* comple
 
 	int tid = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid >= N){return;}
+
+	// return if no yield
 	if (yield[tid]==0){return;}
+
 	//if(done[tid]){return;}
 
 	// external data
@@ -17,7 +20,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* comple
 	unsigned 		this_yield 	= yield[tid];
 	unsigned 		dex  		= index[tid];
 	float 			this_E 		= E[tid];
-	unsigned 		this_rxn 	= rxn[remap[tid]];
+	unsigned 		this_rxn 	= rxn[tid];
 	unsigned 		rn 			= rn_bank[tid];
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;
