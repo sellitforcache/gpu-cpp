@@ -9,10 +9,11 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 
 	// remap to active
 	int tid = remap[tid_in];
+	unsigned this_rxn = rxn[tid_in];
 
 	// return if not cell or for some reason marked as done
 	if (cellnum[tid]!=tally_cell){return;}
-	if (rxn[tid]>=900){return;}
+	if (this_rxn>=900 | this_rxn==800){return;}
 
 	//int k;
 	float 		my_E   			= E[tid];
