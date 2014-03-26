@@ -1516,16 +1516,15 @@ void whistory::run(){
 			macroscopic( NUM_THREADS, Nrun,  n_isotopes, n_materials, MT_columns, outer_cell, d_remap, d_space, d_isonum, d_cellnum, d_index, d_matnum, d_rxn, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_number_density_matrix, d_done);
 			//printf("CUDA ERROR3, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
-			// run microscopic kernel to find reaction type
-			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_remap, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
-			//printf("CUDA ERROR4, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
-
 			// run tally kernel to compute spectra
 			if(converged){
 				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_remap, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
 				//printf("CUDA ERROR5, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			}
 
+			// run microscopic kernel to find reaction type
+			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_remap, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
+			//printf("CUDA ERROR4, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// remap threads to still active data
 			Nrun = remap_active();
@@ -1540,7 +1539,7 @@ void whistory::run(){
 			fission_N 		= edges[5] - edges[4];
 			fission_start	= edges[4]+1;
 
-			printf("escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
+			//printf("escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
 
 			//check_remap(NUM_THREADS, Nrun, d_edges, d_remap, d_rxn);
 			//exit(0);
@@ -1655,7 +1654,7 @@ void whistory::write_tally(unsigned tallynum){
 	// write tally values
 	FILE* tfile = fopen(filename.c_str(),"w");
 	for (int k=0;k<n_tally;k++){
-		fprintf(tfile,"%10.8E %u\n",tally_score[k],tally_count[k]);
+		fprintf(tfile,"%10.8E %u\n",tally_score[k]/(N*(n_cycles)),tally_count[k]);
 	}
 	fclose(tfile);
 

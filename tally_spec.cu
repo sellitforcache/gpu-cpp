@@ -2,15 +2,17 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_cell,  unsigned* active, source_point* space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* cellnum, unsigned* rxn){
+__global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_cell,  unsigned* remap, source_point* space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* cellnum, unsigned* rxn){
 
-	int tid = threadIdx.x+blockIdx.x*blockDim.x;
-	if (tid >= N){return;}
-	//tid=active[tid];
-	if (done[tid]){return;}
+	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
+	if (tid_in >= N){return;}
+
+	// remap to active
+	int tid = remap[tid_in];
+
+	// return if not cell or for some reason marked as done
 	if (cellnum[tid]!=tally_cell){return;}
 	if (rxn[tid]>=900){return;}
-
 
 	//int k;
 	float 		my_E   			= E[tid];
@@ -32,11 +34,11 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 
 }
 
-void tally_spec(unsigned NUM_THREADS,  unsigned N, unsigned Ntally, unsigned tally_cell, unsigned* active, source_point * space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* cellnum, unsigned* rxn){
+void tally_spec(unsigned NUM_THREADS,  unsigned N, unsigned Ntally, unsigned tally_cell, unsigned* remap, source_point * space, float* E, float * tally_score, unsigned * tally_count, unsigned* done, unsigned* cellnum, unsigned* rxn){
 	
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	tally_spec_kernel <<< blks, NUM_THREADS >>> ( N, Ntally, tally_cell, active, space, E, tally_score, tally_count, done, cellnum, rxn);
+	tally_spec_kernel <<< blks, NUM_THREADS >>> ( N, Ntally, tally_cell, remap, space, E, tally_score, tally_count, done, cellnum, rxn);
 	cudaThreadSynchronize();
 
 }

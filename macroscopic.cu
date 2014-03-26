@@ -107,7 +107,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 	space[tid].y			= y;
 	space[tid].z			= z;
 	space[tid].macro_t 		= macro_t_total;
-	rxn[tid_in] 				= this_rxn;
+	rxn[tid_in] 			= this_rxn;
 	isonum[tid] 			= tope;
 	rn_bank[tid] 			= rn;
 	done[tid] 				= isdone;

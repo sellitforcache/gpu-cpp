@@ -127,7 +127,7 @@ newflux=numpy.array(tally[:,0])
 newflux=numpy.divide(newflux,widths)
 newflux=numpy.multiply(newflux,avg)
 #newflux=numpy.divide(newflux,40e5)
-newflux=numpy.divide(newflux,40e5)#numpy.max(newflux))
+newflux=numpy.divide(newflux,1)#numpy.max(newflux))
 
 serpE=numpy.array(serpdata['DETfluxlogE'][:,2])
 serpF=numpy.array(serpdata['DETfluxlog'][:,10])

@@ -8,6 +8,9 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid_in >= N){return;}
+
+	unsigned 	this_rxn 		= rxn[tid_in];
+	if(this_rxn>=800){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
 	
 	//remap
 	int tid=remap[tid_in];
@@ -24,9 +27,7 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 	float 		cum_prob 		= 0.0;
 	float 		this_Q 			= 0.0;
 	unsigned 	k 				= 0;
-	unsigned 	this_rxn 		= rxn[tid_in];
-	if(this_rxn>=800){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
-
+	
 	//printf("tid %u dex %u topes %u rxn %u this_tope %u\n",tid,dex,n_isotopes,this_rxn,this_tope);
 
 	if (this_tope == 0){  //first isotope
