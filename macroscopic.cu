@@ -9,6 +9,10 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid_in >= N){return;}
 
+	// return if terminated
+	unsigned this_rxn=rxn[tid_in];
+	if (this_rxn>=900){return;}
+
 	//remap
 	int tid=remap[tid_in];
 
@@ -31,7 +35,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 	float 		diff			= 0.0;
 	unsigned 	tope 			= 999999999;
 	//unsigned    this_rxn		= 0;
-	unsigned    this_rxn = rxn[tid_in];
+	//unsigned    this_rxn = rxn[tid_in];
 	unsigned 	isdone 			= 0;
 
 

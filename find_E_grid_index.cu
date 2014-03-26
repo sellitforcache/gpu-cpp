@@ -2,10 +2,14 @@
 #include <stdio.h>
 #include "datadef.h"
 
-__global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies , unsigned* remap, float * main_E_grid, float* E , unsigned * index, unsigned* done){
+__global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies , unsigned* remap, float * main_E_grid, float* E , unsigned * index, unsigned* rxn){
 
 	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid_in >= N){return;}
+
+	// return if terminated
+	unsigned this_rxn=rxn[tid_in];
+	if (this_rxn>=900){return;}
 
 	//remap
 	int tid=remap[tid_in];
@@ -15,7 +19,7 @@ __global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies , unsig
 	unsigned donesearching = 0;
 	unsigned cnt  = 1;
 	unsigned powtwo = 2;
-	unsigned olddex=index[tid];
+	//unsigned olddex=index[tid];
 	int dex  = (N_energies-1) / 2;  //N_energiesgth starts at 1, duh
 
 	//printf("%p %d %10.4E\n",main_E_grid,dex,value);
@@ -56,11 +60,11 @@ __global__ void find_E_grid_index_kernel(unsigned N, unsigned N_energies , unsig
 
 }
 
-void find_E_grid_index(unsigned NUM_THREADS, unsigned N, unsigned N_energies, unsigned* active, float * main_E_grid, float* E , unsigned * index , unsigned* done){
+void find_E_grid_index(unsigned NUM_THREADS, unsigned N, unsigned N_energies, unsigned* active, float * main_E_grid, float* E , unsigned * index , unsigned* rxn){
 
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 
-	find_E_grid_index_kernel <<< blks, NUM_THREADS >>> ( N, N_energies, active, main_E_grid,  E , index , done);
+	find_E_grid_index_kernel <<< blks, NUM_THREADS >>> ( N, N_energies, active, main_E_grid,  E , index , rxn);
 	cudaThreadSynchronize();
 
 }

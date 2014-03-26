@@ -1481,9 +1481,9 @@ void whistory::run(){
 	while(iteration<n_cycles){
 
 		//write source positions to file if converged
-		//if(converged){
+		if(converged){
 			write_to_file(d_space,d_E,N,fiss_name,"a+");
-		//}
+		}
 
 		Nrun=N;
 		edges[0] = 0; 
@@ -1509,7 +1509,7 @@ void whistory::run(){
 
 			//find the main E grid index
 			//find_E_grid_index_quad( NUM_THREADS, N,  qnodes_depth,  qnodes_width, d_active, d_qnodes_root, d_E, d_index, d_done);
-			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1],  d_remap, d_xs_data_main_E_grid, d_E, d_index, d_done);
+			find_E_grid_index( NUM_THREADS, Nrun, xs_length_numbers[1],  d_remap, d_xs_data_main_E_grid, d_E, d_index, d_rxn);
 			//printf("CUDA ERROR2, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 			// run macroscopic kernel to find interaction length, macro_t, and reaction isotope, move to interactino length, set resample flag, 
@@ -1534,13 +1534,13 @@ void whistory::run(){
 			iscatter_N		= edges[2] - edges[1];
 			iscatter_start	= edges[1]+1;
 			// just doing 91 for now
-			cscatter_N 		= edges[3] - edges[3];
+			cscatter_N 		= edges[3] - edges[2];
 			cscatter_start	= edges[2]+1;
 			// 
 			fission_N 		= edges[5] - edges[4];
 			fission_start	= edges[4]+1;
 
-			//printf("escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
+			printf("escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
 
 			//check_remap(NUM_THREADS, Nrun, d_edges, d_remap, d_rxn);
 			//exit(0);
@@ -1864,12 +1864,6 @@ unsigned whistory::map_active(){
 }
 unsigned whistory::remap_active(){
 
-	unsigned num_active=0;
-
-	// copy remap vector
-	//cudaMemcpy(d_remap, remap, N*sizeof(unsigned), cudaMemcpyHostToDevice);
-	//cudaMemcpy(d_rxn_remap, d_rxn, N*sizeof(unsigned), cudaMemcpyDeviceToDevice);
-
 	// sort key/value of rxn/tid
 	res = cudppRadixSort(radixplan, d_rxn, d_remap, edges[5]+1);  //everything in 900s doesn't need to be sorted anymore
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
@@ -1877,15 +1871,13 @@ unsigned whistory::remap_active(){
 	// launch edge detection kernel, writes mapped d_edges array
 	reaction_edges(NUM_THREADS, edges[5]+1, d_edges, d_rxn);
 
-	// return active for convenience
-	num_active = edges[4];  //subtracts yield/fission/n,2n/abs reactions from total
 	//printf("nactive = %u \n",num_active);
 	//printf("nactive = %u, edges %u %u %u %u %u %u \n",num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5]);
 
 	// debug
 	//write_to_file(d_remap, d_rxn, N,"remap","w");
 
-	return num_active;
+	return edges[4];
 
 }
 void whistory::set_run_type(unsigned type_in){

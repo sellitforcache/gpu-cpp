@@ -177,6 +177,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	// enforce limits
 	if ( E_new <= E_cutoff | E_new > E_max ){
 		isdone=1;
+		this_rxn = 998;  // ecutoff code
 	}
 
 	
@@ -188,6 +189,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 
 	// write results
 	done[tid]       = isdone;
+	rxn[starting_index+tid_in] = this_rxn;
 	E[tid]          = E_new;
 	space[tid].xhat = hats_new.x;
 	space[tid].yhat = hats_new.y;

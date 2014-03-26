@@ -106,6 +106,7 @@ elif case== 'uh2o-pincell':
 	tally      = numpy.loadtxt('uh2o-pincell.tally')
 	tallybins  = numpy.loadtxt('uh2o-pincell.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/uh2o-pincell_det0.m')
+	title='Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in the water of surrpunding a single UO2 pin'
 elif case== 'godiva':
 	tally      = numpy.loadtxt('godiva.tally')
 	tallybins  = numpy.loadtxt('godiva.tallybins')
@@ -126,11 +127,11 @@ newflux=numpy.array(tally[:,0])
 newflux=numpy.divide(newflux,widths)
 newflux=numpy.multiply(newflux,avg)
 #newflux=numpy.divide(newflux,40e5)
-newflux=numpy.divide(newflux,numpy.max(newflux))
+newflux=numpy.divide(newflux,40e5)#numpy.max(newflux))
 
 serpE=numpy.array(serpdata['DETfluxlogE'][:,2])
 serpF=numpy.array(serpdata['DETfluxlog'][:,10])
-serpF=numpy.divide(serpdata['DETfluxlog'][:,10],numpy.max(serpdata['DETfluxlog'][:,10]))
+serpF=numpy.divide(serpdata['DETfluxlog'][:,10],1)#numpy.max(serpdata['DETfluxlog'][:,10]))
 serpE = numpy.squeeze(numpy.asarray(serpE))
 serpF = numpy.squeeze(numpy.asarray(serpF))
 
