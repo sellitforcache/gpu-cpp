@@ -11,9 +11,10 @@ __global__ void microscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_c
 
 	unsigned 	this_rxn 		= rxn[tid_in];
 	if(this_rxn>=800){return;} //return if flagged to resample or leaked (leak can be in here since set by macro and remap hasn't been done)
-	
+
 	//remap
 	int tid=remap[tid_in];
+	//printf("tid %u remapped_tid %u\n",tid_in,tid);
 
 	// load from array
 	unsigned 	this_tope 		= isonum[tid];

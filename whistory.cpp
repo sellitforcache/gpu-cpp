@@ -1487,7 +1487,7 @@ void whistory::run(){
 
 		Nrun=N;
 		edges[0] = 0; 
-		edges[1] = Nrun-1;
+		edges[1] = Nrun-1; // assumes 0 indexing
 		edges[2] = Nrun-1;
 		edges[3] = Nrun-1;
 		edges[4] = Nrun-1;
@@ -1523,18 +1523,7 @@ void whistory::run(){
 			microscopic( NUM_THREADS, Nrun, n_isotopes, MT_columns, d_remap, d_isonum, d_index, d_xs_data_main_E_grid, d_rn_bank, d_E, d_xs_data_MT , d_xs_MT_numbers_total, d_xs_MT_numbers, d_xs_data_Q, d_rxn, d_Q, d_done);
 
 			// remap threads to still active data
-			Nrun = remap_active();
-			escatter_N 		= edges[1] - edges[0];
-			escatter_start	= edges[0];
-			iscatter_N		= edges[2] - edges[1];
-			iscatter_start	= edges[1]+1;
-			// just doing 91 for now
-			cscatter_N 		= edges[3] - edges[2];
-			cscatter_start	= edges[2]+1;
-			fission_N 		= edges[5] - edges[4];
-			fission_start	= edges[4]+1;
-
-			//printf("escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
+			remap_active(&Nrun, &escatter_N, &escatter_start, &iscatter_N, &iscatter_start, &cscatter_N, &cscatter_start, &fission_N, &fission_start);
 			
 			// concurrent calls to do escatter/iscatter/abs/fission
 			cudaThreadSynchronize();
@@ -1554,8 +1543,8 @@ void whistory::run(){
 
 			//exit(0);
 
-			std::cout << "cycle done, press enter to continue...\n";
-			std::cin.ignore();
+			//std::cout << "cycle done, press enter to continue...\n";
+			//std::cin.ignore();
 
 
 		}
@@ -1659,6 +1648,155 @@ void whistory::write_tally(unsigned tallynum){
 		fprintf(tfile,"%10.8E\n",edge);
 	}
 	fclose(tfile);
+}
+void whistory::prep_secondaries(){
+
+	// scan the yields to determine where the individual threads write into the done data
+	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
+
+	// compact the done data to know where to write
+	res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , Ndataset);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
+
+	//unsigned * tmp1 = new unsigned [Ndataset];
+	//unsigned * tmp2 = new unsigned [Ndataset];
+	//unsigned * tmp3 = new unsigned [Ndataset];
+	//unsigned * tmp4 = new unsigned [Ndataset];
+	//cudaMemcpy(tmp1,d_scanned,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp2,d_completed,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp3,d_done,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//cudaMemcpy(tmp4,d_yield,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
+	//for(int k=0; k<Ndataset ; k++ ){printf("(tid,done,scanned,completed,yield) %u %u %u %u %u\n",k,tmp3[k],tmp1[k],tmp2[k],tmp4[k]);}
+
+}
+unsigned whistory::map_active(){
+
+	unsigned num_active=0;
+
+	// flip done flag
+	flip_done(NUM_THREADS, Ndataset, d_done);
+
+	// remap to active
+	res = cudppCompact( compactplan, d_active , (size_t*) d_num_active , d_remap , d_done , Ndataset);
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
+	cudaMemcpy(&num_active,d_num_active,1*sizeof(unsigned),cudaMemcpyDeviceToHost);
+
+	// flip done flag back	
+	flip_done(NUM_THREADS, Ndataset, d_done);
+
+	return num_active;
+}
+void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned* escatter_start, unsigned* iscatter_N, unsigned* iscatter_start, unsigned* cscatter_N, unsigned* cscatter_start, unsigned* fission_N, unsigned* fission_start){
+
+	// sort key/value of rxn/tid
+	res = cudppRadixSort(radixplan, d_rxn, d_remap, edges[5]+1);  //everything in 900s doesn't need to be sorted anymore
+	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
+
+	// launch edge detection kernel, writes mapped d_edges array
+	reaction_edges(NUM_THREADS, edges[5]+1, d_edges, d_rxn);
+
+	// calculate values for the various blocks
+	*escatter_N 	= edges[1] - edges[0];
+	*escatter_start	= edges[0];
+	*iscatter_N		= edges[2] - edges[1];
+	*iscatter_start	= *escatter_N+1;
+	*cscatter_N 	= edges[3] - edges[2];  // just doing 91 for now
+	*cscatter_start	= *escatter_N+*iscatter_N+1;
+	*fission_N 		= edges[5] - edges[4];
+	*fission_start	= edges[4]+1;
+	if(edges[4]==0){
+		*num_active = 0;
+	}
+	else{
+		*num_active = edges[4]+1;
+	}
+
+	// debug
+	//printf("nactive = %u, edges %u %u %u %u %u %u \n",*num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5]);
+	//printf("Nrun %u escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",Nrun,escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
+	//write_to_file(d_remap, d_rxn, N,"remap","w");
+
+}
+void whistory::set_run_type(unsigned type_in){
+
+	RUN_FLAG = type_in;
+
+}
+void whistory::set_run_type(std::string type_in){
+
+	if(type_in.compare("fixed")==0){
+		RUN_FLAG = 0;
+	}
+	else if(type_in.compare("criticality")==0){
+		// check of there are fissile materials
+		if(problem_geom.check_fissile()){
+			//set flag to criticality
+			RUN_FLAG = 1;
+		}
+		else{
+			RUN_FLAG = 0;
+			std::cout << "\e[1;31m" << "!!! No materials marked as fissile, criticality source mode rejected, will run in fixed source mode !!!" << "\e[m \n";
+		}
+	}
+	else{
+		std::cout << "Run type \"" << type_in << "\" not recognized." << "\n";
+	}
+
+}
+void whistory::set_run_param(unsigned n_cycles_in, unsigned n_skip_in){
+
+	n_skip = n_skip_in;
+	n_cycles = n_cycles_in;
+
+}
+void whistory::set_device(unsigned dev_in){
+
+	//get number to make sure this is a valid device
+	int 			n_devices;
+	cudaGetDeviceCount(&n_devices);
+
+	// set obj
+	if(dev_in < n_devices){
+		compute_device = dev_in;
+	}
+	else{
+		std::cout << "!!!! Device " << dev_in << " does not exist.  Max devices is " << n_devices <<"\n";
+	}
+
+}
+void whistory::device_report(){
+
+	// vars
+	cudaDeviceProp 	device_prop;
+	int 			n_devices;
+	float 			compute_cap;
+	std::string 	con_string;
+
+	// get the number of devices
+	cudaGetDeviceCount(&n_devices);
+
+	// loop over and print
+	std::cout << "\e[1;32m" << "--- Compute Devices Present ---" << "\e[m \n";
+	std::cout << "  -------------------------------------------------------------------------------------------------------\n";
+	std::cout << "  Device | Model             |  SMs  | Global Mem | SM Freq | Mem Freq | Compute Cap. | Concurrent Kern |" << "\n";
+	std::cout << "  -------------------------------------------------------------------------------------------------------\n";
+	for(unsigned k=0;k<n_devices;k++){
+		cudaGetDeviceProperties(&device_prop,k);
+		compute_cap = (float)device_prop.major + (float)device_prop.minor/10.0;
+		con_string = "no ";
+		if(device_prop.concurrentKernels){con_string="yes";}
+		printf(  "  %d      | %0.24s   |  %d    | %6.4f  | %6.1f  | %6.1f   | %2.1f          | %0.3s             |\n", k, device_prop.name, device_prop.multiProcessorCount, (float)device_prop.totalGlobalMem/(1024*1024), (float)device_prop.clockRate/1e3, (float)device_prop.memoryClockRate/1e3, compute_cap, con_string.c_str());
+		std::cout << "  -------------------------------------------------------------------------------------------------------\n";
+	}
+		
+}
+void whistory::set_filename(std::string filename_in){
+
+	filename = filename_in;
+
+}
+void whistory::set_acceration(std::string accel_in){
 
 }
 float whistory::get_time(){
@@ -1811,142 +1949,5 @@ void whistory::create_quad_tree(){
 	cudaMemcpy(	 d_qnodes_root,	&nodes[0].node,		sizeof(qnode),	cudaMemcpyHostToDevice); 
 
 	std::cout << "  Complete.  Depth of tree is "<< qnodes_depth << ", width is "<< qnodes_width <<".\n";
-
-}
-void whistory::prep_secondaries(){
-
-	// scan the yields to determine where the individual threads write into the done data
-	res = cudppScan( scanplan_int, d_scanned,  d_yield,  Ndataset );
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in scanning yield values\n");exit(-1);}
-
-	// compact the done data to know where to write
-	res = cudppCompact( compactplan, d_completed , (size_t*) d_num_completed , d_remap , d_done , Ndataset);
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
-
-	//unsigned * tmp1 = new unsigned [Ndataset];
-	//unsigned * tmp2 = new unsigned [Ndataset];
-	//unsigned * tmp3 = new unsigned [Ndataset];
-	//unsigned * tmp4 = new unsigned [Ndataset];
-	//cudaMemcpy(tmp1,d_scanned,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//cudaMemcpy(tmp2,d_completed,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//cudaMemcpy(tmp3,d_done,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//cudaMemcpy(tmp4,d_yield,Ndataset*sizeof(unsigned),cudaMemcpyDeviceToHost);
-	//for(int k=0; k<Ndataset ; k++ ){printf("(tid,done,scanned,completed,yield) %u %u %u %u %u\n",k,tmp3[k],tmp1[k],tmp2[k],tmp4[k]);}
-
-}
-unsigned whistory::map_active(){
-
-	unsigned num_active=0;
-
-	// flip done flag
-	flip_done(NUM_THREADS, Ndataset, d_done);
-
-	// remap to active
-	res = cudppCompact( compactplan, d_active , (size_t*) d_num_active , d_remap , d_done , Ndataset);
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in compacting done values\n");exit(-1);}
-	cudaMemcpy(&num_active,d_num_active,1*sizeof(unsigned),cudaMemcpyDeviceToHost);
-
-	// flip done flag back	
-	flip_done(NUM_THREADS, Ndataset, d_done);
-
-	return num_active;
-}
-unsigned whistory::remap_active(){
-
-	// sort key/value of rxn/tid
-	res = cudppRadixSort(radixplan, d_rxn, d_remap, edges[5]+1);  //everything in 900s doesn't need to be sorted anymore
-	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
-
-	// launch edge detection kernel, writes mapped d_edges array
-	reaction_edges(NUM_THREADS, edges[5]+1, d_edges, d_rxn);
-
-	//printf("nactive = %u \n",num_active);
-	//printf("nactive = %u, edges %u %u %u %u %u %u \n",num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5]);
-
-	// debug
-	write_to_file(d_remap, d_rxn, N,"remap","w");
-
-	return edges[4];
-
-}
-void whistory::set_run_type(unsigned type_in){
-
-	RUN_FLAG = type_in;
-
-}
-void whistory::set_run_type(std::string type_in){
-
-	if(type_in.compare("fixed")==0){
-		RUN_FLAG = 0;
-	}
-	else if(type_in.compare("criticality")==0){
-		// check of there are fissile materials
-		if(problem_geom.check_fissile()){
-			//set flag to criticality
-			RUN_FLAG = 1;
-		}
-		else{
-			RUN_FLAG = 0;
-			std::cout << "\e[1;31m" << "!!! No materials marked as fissile, criticality source mode rejected, will run in fixed source mode !!!" << "\e[m \n";
-		}
-	}
-	else{
-		std::cout << "Run type \"" << type_in << "\" not recognized." << "\n";
-	}
-
-}
-void whistory::set_run_param(unsigned n_cycles_in, unsigned n_skip_in){
-
-	n_skip = n_skip_in;
-	n_cycles = n_cycles_in;
-
-}
-void whistory::set_device(unsigned dev_in){
-
-	//get number to make sure this is a valid device
-	int 			n_devices;
-	cudaGetDeviceCount(&n_devices);
-
-	// set obj
-	if(dev_in < n_devices){
-		compute_device = dev_in;
-	}
-	else{
-		std::cout << "!!!! Device " << dev_in << " does not exist.  Max devices is " << n_devices <<"\n";
-	}
-
-}
-void whistory::device_report(){
-
-	// vars
-	cudaDeviceProp 	device_prop;
-	int 			n_devices;
-	float 			compute_cap;
-	std::string 	con_string;
-
-	// get the number of devices
-	cudaGetDeviceCount(&n_devices);
-
-	// loop over and print
-	std::cout << "\e[1;32m" << "--- Compute Devices Present ---" << "\e[m \n";
-	std::cout << "  -------------------------------------------------------------------------------------------------------\n";
-	std::cout << "  Device | Model             |  SMs  | Global Mem | SM Freq | Mem Freq | Compute Cap. | Concurrent Kern |" << "\n";
-	std::cout << "  -------------------------------------------------------------------------------------------------------\n";
-	for(unsigned k=0;k<n_devices;k++){
-		cudaGetDeviceProperties(&device_prop,k);
-		compute_cap = (float)device_prop.major + (float)device_prop.minor/10.0;
-		con_string = "no ";
-		if(device_prop.concurrentKernels){con_string="yes";}
-		printf(  "  %d      | %0.24s   |  %d    | %6.4f  | %6.1f  | %6.1f   | %2.1f          | %0.3s             |\n", k, device_prop.name, device_prop.multiProcessorCount, (float)device_prop.totalGlobalMem/(1024*1024), (float)device_prop.clockRate/1e3, (float)device_prop.memoryClockRate/1e3, compute_cap, con_string.c_str());
-		std::cout << "  -------------------------------------------------------------------------------------------------------\n";
-	}
-		
-}
-void whistory::set_filename(std::string filename_in){
-
-	filename = filename_in;
-
-}
-void whistory::set_acceration(std::string accel_in){
 
 }

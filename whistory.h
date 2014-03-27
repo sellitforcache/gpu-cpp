@@ -151,7 +151,7 @@ class whistory {
     float get_time();
     void prep_secondaries();
     unsigned map_active();
-    unsigned remap_active();
+    void  remap_active(unsigned* , unsigned* , unsigned* , unsigned* , unsigned* , unsigned* , unsigned* , unsigned* , unsigned* );
     void  write_to_file(source_point*  , unsigned , std::string , std::string);
     void  write_to_file(source_point*  , float*, unsigned , std::string , std::string);
     void  write_to_file(unsigned*  , unsigned , std::string, std::string );
