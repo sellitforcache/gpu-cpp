@@ -1391,9 +1391,9 @@ void whistory::reset_cycle(float keff_cycle){
 
 	//pop them in!  should be the right size now due to keff rebasing  
 	pop_source( NUM_THREADS, N, d_isonum, d_remap, d_scanned, d_remap, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
-	printf("non treating n2n, etc in pop!\n");
-	//cscatter( stream[2], NUM_THREADS,  edges[5], d_active, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-			
+	//printf("non treating n2n, etc in pop!\n");
+	cscatter( stream[2], NUM_THREADS,   N, 0 , d_remap, d_isonum, d_index, d_rn_bank, d_E, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
+		
 	// rest run arrays
 	cudaMemcpy( d_space,		d_fissile_points,		N*sizeof(source_point),		cudaMemcpyDeviceToDevice );
 	cudaMemcpy( d_E,			d_fissile_energy,		N*sizeof(unsigned),		cudaMemcpyDeviceToDevice );
