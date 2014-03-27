@@ -77,7 +77,7 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	memcpy(&law, 		&this_Earray[4], sizeof(float));
 	float r = (this_E-last_E)/(next_E-last_E);
 	if(r<0){
-		printf("r % 10.8E rxn %u this_E % 10.8E last_E % 10.8E next_E % 10.8E dex %u\n",r,this_rxn,this_E,last_E,next_E,this_dex);
+		printf("tid %u r % 10.8E rxn %u isotope %u this_E % 10.8E last_E % 10.8E next_E % 10.8E dex %u\n",tid,r,this_rxn,this_tope,this_E,last_E,next_E,this_dex);
 	}
 	last_e_start = this_Earray[ offset ];
 	last_e_end   = this_Earray[ offset + vlen - 1 ];
@@ -147,26 +147,13 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 		mu = logf(rn1*expf(A)+(1.0-rn1)*expf(-A))/A;
 	}
 
-	// sample new phi
-	//phi = 2.0*pi*get_rand(&rn);
-
-	// pre rotation directions
-	//hats_old = v_n_cm / v_n_cm.norm2();
-	////  create a perpendicular roation vector 
-	////wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-	//wfloat3 rotation_hat = hats_target.cross( v_n_cm );
-	//rotation_hat = rotation_hat / rotation_hat.norm2();
-	////  do rotations, polar first, then azimuthal
-	//v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
-	//v_n_cm.rodrigues_rotation( hats_old,     phi       );
-
+	// rotate direction vector
 	hats_old = v_n_cm / v_n_cm.norm2();
 	hats_old = hats_old.rotate(mu, get_rand(&rn));
-	//v_n_cm = hats_old * v_n_cm.norm2();
 
 	//  scale to sampled energy
-	//v_n_cm = v_n_cm/v_n_cm.norm2() * sqrtf(2.0*sampled_E/m_n);
 	v_n_cm = hats_old * sqrtf(2.0*sampled_E/m_n);
+	
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();

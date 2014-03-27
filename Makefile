@@ -47,7 +47,6 @@ COBJS =	mt19937ar.o \
 		primitive.o \
 		write_to_file.o \
 		reaction_edges.o \
-		check_remap.o \
 		device_copies.o \
 
 ptx_objects = 	camera.ptx \
@@ -177,9 +176,6 @@ reaction_edges.o:
 
 write_to_file.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c write_to_file.cu
-
-check_remap.o:
-	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c check_remap.cu
 
 whistory.o:
 	$(CXX) $(C_FLAGS)  $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
