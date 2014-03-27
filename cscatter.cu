@@ -79,6 +79,9 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 	memcpy(&next_vlen,	&this_Earray[3], sizeof(float));
 	memcpy(&law, 		&this_Earray[4], sizeof(float));
 	float r = (this_E-last_E)/(next_E-last_E);
+	if(r<0){
+		printf("tid %u r % 10.8E rxn %u isotope %u this_E % 10.8E last_E % 10.8E next_E % 10.8E dex %u\n",tid,r,this_rxn,this_tope,this_E,last_E,next_E,this_dex);
+	}
 	last_e_start = this_Earray[ offset ];
 	last_e_end   = this_Earray[ offset + vlen - 1 ];
 	next_e_start = this_Earray[ offset + 3*vlen ];
