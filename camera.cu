@@ -20,12 +20,12 @@ rtDeclareVariable(unsigned,  boundary_condition, , );
 RT_PROGRAM void camera()
 {
 	//skip done particles
-	//if(done_buffer[launch_index]){return;}
 
 	//remap if 2
 	unsigned launch_index;
 	if(trace_type==2){
 		launch_index=remap_buffer[launch_index_in];
+		if(rxn_buffer[launch_index]>=900){return;}
 	}
 	else{
 		launch_index = launch_index_in;

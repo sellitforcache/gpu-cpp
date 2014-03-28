@@ -156,11 +156,12 @@ __global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* comple
 		isonum   [ data_dex ]  		= this_tope;
 		rn_bank  [tid] = rn;
 		if(this_rxn==918){
-			E_out 	 [ data_dex ] 		= sampled_E;
+			E_out 	 [ data_dex ] 	= sampled_E;
 		}
 		else{ // pass (n,2/3/4n) to cscatter
-			E_out 	 [ data_dex ] 		= this_E;
+			E_out 	 [ data_dex ] 	= this_E;
 		}
+		//printf("rxn %u dex %u E_out %6.4E data_dex %u\n",this_rxn,dex,E_out[data_dex],data_dex);
 		//done [ data_dex ] 		= 0;
 		//yield[ data_dex ] 		= 0;
 		//printf("%u % 6.4E % 6.4E % 6.4E % 6.4E\n",data_dex,sampled_E,space_out[ data_dex ].x,space_out[ data_dex ].y,space_out[ data_dex ].z); 

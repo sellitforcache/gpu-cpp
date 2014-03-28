@@ -5,19 +5,26 @@
 #include "binary_search.h"
 #include "LCRNG.cuh"
 
-__global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
+__global__ void cscatter_kernel(unsigned N, unsigned run_mode, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space, unsigned * rxn, float * awr_list, float * Q, unsigned * done, float** scatterdat, float** energydat){
 
 
 	int tid_in = threadIdx.x+blockIdx.x*blockDim.x;
 	if (tid_in >= N){return;}       //return if out of bounds
 	
 	//remap
-	int tid=remap[starting_index + tid_in];
-	unsigned this_rxn = rxn[starting_index + tid_in];
-	//if(done[tid]){return;}
+	int tid, this_rxn;
 
 	// check
-	if (this_rxn != 91 & this_rxn != 16 & this_rxn != 17 & this_rxn != 37 & this_rxn != 24 & this_rxn != 22 & this_rxn != 28 & this_rxn != 24 & this_rxn !=32 & this_rxn != 33 & this_rxn != 41){printf("cscatter kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;}  //print and return if not elastic scatter
+	if(run_mode){ // regular transport
+		tid=remap[starting_index + tid_in];
+		this_rxn = rxn[starting_index + tid_in];
+		if (this_rxn != 91 ){printf("cscatter kernel accessing wrong reaction @ dex %u rxn %u\n",tid, this_rxn);return;}  //print and return if not elastic scatter
+	}
+	else{  // pop mode
+		tid=tid_in;
+		this_rxn = rxn[tid];
+		if ( this_rxn != 916 & this_rxn != 917 & this_rxn != 937 & this_rxn != 924 & this_rxn != 922 & this_rxn != 928 & this_rxn != 924 & this_rxn !=932 & this_rxn != 933 & this_rxn != 941){return;}  // return if not elastic scatter
+	}
 
 	//constants
 	const float  pi           =   3.14159265359 ;
@@ -75,9 +82,10 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 	memcpy(&vlen,   	&this_Earray[2], sizeof(float));
 	memcpy(&next_vlen,	&this_Earray[3], sizeof(float));
 	memcpy(&law, 		&this_Earray[4], sizeof(float));
+	if(run_mode==0 & this_E<last_E){this_E=last_E;}
 	float r = (this_E-last_E)/(next_E-last_E);
 	if(r<0){
-		printf("tid %u r % 10.8E rxn %u isotope %u this_E % 10.8E last_E % 10.8E next_E % 10.8E dex %u\n",tid,r,this_rxn,this_tope,this_E,last_E,next_E,this_dex);
+		printf("mode %u tid %u r % 10.8E rxn %u isotope %u this_E % 10.8E last_E % 10.8E next_E % 10.8E dex %u\n",run_mode,tid,r,this_rxn,this_tope,this_E,last_E,next_E,this_dex);
 	}
 	last_e_start = this_Earray[ offset ];
 	last_e_end   = this_Earray[ offset + vlen - 1 ];
@@ -185,13 +193,12 @@ __global__ void cscatter_kernel(unsigned N, unsigned starting_index, unsigned* r
 
 }
 
-void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
+void cscatter( cudaStream_t stream, unsigned NUM_THREADS, unsigned run_mode, unsigned N, unsigned starting_index, unsigned* remap, unsigned* isonum, unsigned * index, unsigned * rn_bank, float * E, source_point * space ,unsigned * rxn, float* awr_list, float * Q, unsigned* done, float** scatterdat, float** energydat){
 
 	if(N<1){return;}
 	unsigned blks = ( N + NUM_THREADS - 1 ) / NUM_THREADS;
 	
-	//cscatter_kernel <<< blks, NUM_THREADS >>> (  N, RNUM_PER_THREAD, active, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
-	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N,  starting_index, remap, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
+	cscatter_kernel <<< blks, NUM_THREADS , 0 , stream >>> (  N, run_mode, starting_index, remap, isonum, index, rn_bank, E, space, rxn, awr_list, Q, done, scatterdat, energydat);
 	cudaThreadSynchronize();
 
 }
