@@ -101,7 +101,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 		this_rxn = 0;
 	}
 
-	//printf("% 6.4E % 6.4E % 6.4E\n",x,y,z);
+	//if(this_rxn==800){printf("resmapled tid %u xyz % 6.4E % 6.4E % 6.4E\n",tid,x,y,z);}
 	//write outputs
 	space[tid].x 			= x;
 	space[tid].y			= y;

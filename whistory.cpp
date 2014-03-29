@@ -1289,8 +1289,9 @@ void whistory::sample_fissile_points(){
 
 	std::cout << "Copying to starting points...\n";
 
-	cudaMemcpy(d_space,d_fissile_points,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
-	cudaMemcpy(d_E,    d_fissile_energy,N*sizeof(source_point),cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_space,	d_fissile_points	,N*sizeof(source_point),	cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_E,    	d_fissile_energy	,N*sizeof(float),			cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_rxn,  	rxn 				,N*sizeof(unsigned),		cudaMemcpyHostToDevice);
 	//cudaFree(d_fissile_points);
 
 	std::cout << "Done.\n";
@@ -1389,7 +1390,7 @@ void whistory::reset_cycle(float keff_cycle){
 	//pop them in!  should be the right size now due to keff rebasing  
 	pop_source( NUM_THREADS, N, d_isonum, d_remap, d_scanned, d_remap, d_yield, d_done, d_index, d_rxn, d_space, d_E , d_rn_bank , d_xs_data_energy, d_fissile_points, d_fissile_energy, d_awr_list);
 	cscatter( stream[0], NUM_THREADS, 0,  N, 0 , d_remap, d_isonum, d_index, d_rn_bank, d_fissile_energy, d_space, d_rxn, d_awr_list, d_Q, d_done, d_xs_data_scatter, d_xs_data_energy);
-	printf("CUDA ERROR-pop, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
+	//printf("CUDA ERROR-pop, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 
 	// rest run arrays
 	cudaMemcpy( d_space,	d_fissile_points,	N*sizeof(source_point),	cudaMemcpyDeviceToDevice );
@@ -1480,9 +1481,9 @@ void whistory::run(){
 
 		//write source positions to file if converged
 		//if(converged){
-		//	write_to_file(d_space,d_E,N,fiss_name,"a+");
+			write_to_file(d_space,d_E,N,fiss_name,"a+");
 		//}
-		printf("not printing fissile points\n");
+		//printf("not printing fissile points\n");
 
 		Nrun=N;
 		edges[0]  = 0; 
@@ -1553,8 +1554,11 @@ void whistory::run(){
 
 			//exit(0);
 
-			//std::cout << "cycle done, press enter to continue...\n";
-			//std::cin.ignore();
+			//write_to_file(d_space,N,"space","w");
+			write_to_file(d_remap,d_rxn,N,"remap","w");
+
+			std::cout << "cycle done, press enter to continue...\n";
+			std::cin.ignore();
 
 
 		}

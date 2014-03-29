@@ -54,6 +54,7 @@ RT_PROGRAM void camera()
 
 	// first trace to find closest hit, set bc flag
 	rtTrace(top_object, ray, payload);
+	//rtPrintf("did first trace, type %u\n",trace_type);
 	positions_buffer[launch_index].surf_dist = payload.surf_dist; 
 	if(trace_type==2){
 		if(payload.hitbuff[0].cell == outer_cell){
@@ -62,6 +63,7 @@ RT_PROGRAM void camera()
 		}
 		else{
 			positions_buffer[launch_index].enforce_BC=0;
+			//rtPrintf("DO NOT enforce BC\n");
 		}
 	}
 

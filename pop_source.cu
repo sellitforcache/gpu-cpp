@@ -20,7 +20,7 @@ __global__ void pop_source_kernel(unsigned N, unsigned* isonum, unsigned* comple
 	unsigned 		this_yield 	= yield[tid];
 	unsigned 		dex  		= index[tid];
 	float 			this_E 		= E[tid];
-	unsigned 		this_rxn 	= rxn[tid];
+	unsigned 		this_rxn 	= rxn[tid]; 
 	unsigned 		rn 			= rn_bank[tid];
 	float * 		this_array 	= energydata[dex];
 	unsigned 		data_dex 	= 0;

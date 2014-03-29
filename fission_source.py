@@ -10,8 +10,8 @@ data=np.reshape(data,(-1,4))
 
 fig = pl.figure(figsize=(10,6))
 ax = fig.add_subplot(1,1,1)
-xmin = ymin = -5
-xmax = ymax =  5
+xmin = ymin = -15
+xmax = ymax =  15
 title = 'WARP 6e6 histories (2e6 discarded)\n Fission source distribution in hexagonal array of UO2 pins in water'
 ax.hist2d(data[:,0], data[:,1], range=[[xmin, xmax], [ymin, ymax]], bins=1024 , normed=True)#norm=LogNorm())
 fig.colorbar(ax.get_images()[0], ax=ax, ticks=np.linspace(0,.005,11), cmap=pl.cm.jet, label='Relative Probability')  #, norm=pl.matplotlib.colors.Normalize(vmin=5, vmax=10))
