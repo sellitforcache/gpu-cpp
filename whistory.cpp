@@ -1487,16 +1487,16 @@ void whistory::run(){
 
 		Nrun=N;
 		edges[0]  = 0; 
-		edges[1]  = Nrun-1; // assumes 0 indexing
-		edges[2]  = Nrun-1;
-		edges[3]  = Nrun-1;
-		edges[4]  = Nrun-1;
-		edges[5]  = Nrun-1;
-		edges[6]  = Nrun-1; // assumes 0 indexing
-		edges[7]  = Nrun-1;
-		edges[8]  = Nrun-1;
-		edges[9]  = Nrun-1;
-		edges[10] = Nrun-1;
+		edges[1]  = Nrun; // assumes 0 indexing
+		edges[2]  = Nrun;
+		edges[3]  = Nrun;
+		edges[4]  = Nrun;
+		edges[5]  = Nrun;
+		edges[6]  = Nrun; // assumes 0 indexing
+		edges[7]  = Nrun;
+		edges[8]  = Nrun;
+		edges[9]  = Nrun;
+		edges[10] = Nrun;
 
 		while(Nrun>0){
 			//printf("CUDA ERROR, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
@@ -1555,11 +1555,18 @@ void whistory::run(){
 			//exit(0);
 
 			//write_to_file(d_space,N,"space","w");
-			write_to_file(d_remap,d_rxn,N,"remap","w");
+			//write_to_file(d_remap,d_rxn,N,"remap","w");
 
-			std::cout << "cycle done, press enter to continue...\n";
-			std::cin.ignore();
+			//std::cout << "cycle done, press enter to continue...\n";
+			//std::cin.ignore();
 
+			if(Nrun<5000){
+				keff_cycle = reduce_yield();
+				reset_cycle(keff_cycle);
+				write_to_file(d_space,d_E,N,fiss_name,"a+");
+				exit(0);
+				break;
+			}
 
 		}
 
@@ -1730,7 +1737,7 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	// debug
 	printf("nactive = %u, edges %u %u %u %u %u %u %u %u %u %u %u \n",*num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5],edges[6],edges[7],edges[8],edges[9],edges[10]);
 	//printf("Nrun %u escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",Nrun,escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
-	//write_to_file(d_remap, d_rxn, N,"remap","w");
+	write_to_file(d_remap, d_rxn, N,"remap","w");
 
 	edges[0]  = 0; 
 	edges[1]  = 0; 

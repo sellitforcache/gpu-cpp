@@ -11,7 +11,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 
 	// return if terminated
 	unsigned this_rxn=rxn[tid_in];
-	if (this_rxn>=900){return;}
+	if (this_rxn>900){return;}
 
 	//remap
 	int tid=remap[tid_in];
