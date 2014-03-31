@@ -56,16 +56,16 @@ __global__ void reaction_edges_kernel( unsigned N, unsigned* edges, unsigned* rx
 	if(diff<0){return;}   
 
 	// check edge
-	if(rxn1<2 		& rxn2>=2)		{edges[1]  = tid+1; printf("setting starting edge of 2\n");}
-	if(rxn1<=2 		& rxn2>2)		{edges[2]  = tid+1; printf("setting ending edge of 2\n");}
-	if(rxn1<50 		& rxn2>=50)     {edges[3]  = tid+1; printf("setting starting edge of 50\n");}
-	if(rxn1<=90 	& rxn2>90)		{edges[4]  = tid+1; printf("setting ending edge of 50\n");}
-	if(rxn1<91 		& rxn2>=91)		{edges[5]  = tid+1; printf("setting starting edge of 91\n");}
-	if(rxn1<=91 	& rxn2>91)		{edges[6]  = tid+1; printf("setting ending edge of 91\n");}
-	if(rxn1<800 	& rxn2>=800)	{edges[7]  = tid+1; printf("setting starting edge of 800\n");}
-	if(rxn1<=800 	& rxn2>800)		{edges[8]  = tid+1; printf("setting ending edge of 800\n");}
-	if(rxn1<811 	& rxn2>=811)	{edges[9]  = tid+1; printf("setting starting edge of 811\n");}
-	if(rxn1<=845  	& rxn2>845)		{edges[10] = tid+1; printf("setting ending edge of 811\n");}
+	if(rxn1<2 		& rxn2>=2)		{edges[1]  = tid+1;} //printf("setting starting edge of 2\n");}
+	if(rxn1<=2 		& rxn2>2)		{edges[2]  = tid+1;} //printf("setting ending edge of 2\n");}
+	if(rxn1<50 		& rxn2>=50)     {edges[3]  = tid+1;} //printf("setting starting edge of 50\n");}
+	if(rxn1<=90 	& rxn2>90)		{edges[4]  = tid+1;} //printf("setting ending edge of 50\n");}
+	if(rxn1<91 		& rxn2>=91)		{edges[5]  = tid+1;} //printf("setting starting edge of 91\n");}
+	if(rxn1<=91 	& rxn2>91)		{edges[6]  = tid+1;} //printf("setting ending edge of 91\n");}
+	if(rxn1<800 	& rxn2>=800)	{edges[7]  = tid+1;} //printf("setting starting edge of 800\n");}
+	if(rxn1<=800 	& rxn2>800)		{edges[8]  = tid+1;} //printf("setting ending edge of 800\n");}
+	if(rxn1<811 	& rxn2>=811)	{edges[9]  = tid+1;} //printf("setting starting edge of 811\n");}
+	if(rxn1<=845  	& rxn2>845)		{edges[10] = tid+1;} //printf("setting ending edge of 811\n");}
 
 
 }

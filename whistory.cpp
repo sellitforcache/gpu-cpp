@@ -1560,13 +1560,13 @@ void whistory::run(){
 			//std::cout << "cycle done, press enter to continue...\n";
 			//std::cin.ignore();
 
-			if(Nrun<5000){
-				keff_cycle = reduce_yield();
-				reset_cycle(keff_cycle);
-				write_to_file(d_space,d_E,N,fiss_name,"a+");
-				exit(0);
-				break;
-			}
+			//if(Nrun<5000){
+			//	keff_cycle = reduce_yield();
+			//	reset_cycle(keff_cycle);
+			//	write_to_file(d_space,d_E,N,fiss_name,"a+");
+			//	exit(0);
+			//	break;
+			//}
 
 		}
 
@@ -1731,13 +1731,22 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	remap_start		= edges[7];
 	*fission_N 		= edges[10] - edges[9];
 	*fission_start	= edges[9];
+
+	//correct if necessary
+	if(escatter_N<0){escatter_N=0;}
+	if(iscatter_N<0){iscatter_N=0;}
+	if(cscatter_N<0){cscatter_N=0;}
+	if(remap_N<0){remap_N=0;}
+	if(fission_N<0){fission_N=0;}
+
+	//calculate total active
 	if(edges[0]==1){*num_active=0;}
 	else           {*num_active=*escatter_N + *iscatter_N + *cscatter_N + remap_N;}
 
 	// debug
-	printf("nactive = %u, edges %u %u %u %u %u %u %u %u %u %u %u \n",*num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5],edges[6],edges[7],edges[8],edges[9],edges[10]);
+	//printf("nactive = %u, edges %u %u %u %u %u %u %u %u %u %u %u \n",*num_active,edges[0],edges[1],edges[2],edges[3],edges[4],edges[5],edges[6],edges[7],edges[8],edges[9],edges[10]);
 	//printf("Nrun %u escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",Nrun,escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
-	write_to_file(d_remap, d_rxn, N,"remap","w");
+	//write_to_file(d_remap, d_rxn, N,"remap","w");
 
 	edges[0]  = 0; 
 	edges[1]  = 0; 
