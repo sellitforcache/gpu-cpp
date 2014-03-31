@@ -1480,9 +1480,9 @@ void whistory::run(){
 	while(iteration<n_cycles){
 
 		//write source positions to file if converged
-		//if(converged){
+		if(converged){
 			write_to_file(d_space,d_E,N,fiss_name,"a+");
-		//}
+		}
 		//printf("not printing fissile points\n");
 
 		Nrun=N;
@@ -1714,7 +1714,7 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	unsigned remap_start = 0;
 
 	// sort key/value of rxn/tid
-	res = cudppRadixSort(radixplan, d_rxn, d_remap, *num_active);  //everything in 900s doesn't need to be sorted anymore
+	res = cudppRadixSort(radixplan, d_rxn, d_remap, *num_active );  //everything in 900s doesn't need to be sorted anymore
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
 
 	// launch edge detection kernel, writes mapped d_edges array
@@ -1736,8 +1736,8 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	if(escatter_N<0){escatter_N=0;}
 	if(iscatter_N<0){iscatter_N=0;}
 	if(cscatter_N<0){cscatter_N=0;}
-	if(remap_N<0){remap_N=0;}
-	if(fission_N<0){fission_N=0;}
+	if(remap_N<0)   {remap_N=0;}
+	if(fission_N<0) {fission_N=0;}
 
 	//calculate total active
 	if(edges[0]==1){*num_active=0;}
@@ -1748,6 +1748,7 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	//printf("Nrun %u escatter start N %u %u iscatter start N %u %u cscatter start N %u %u fission start N %u %u\n",Nrun,escatter_start,escatter_N,iscatter_start,iscatter_N,cscatter_start,cscatter_N,fission_start,fission_N);
 	//write_to_file(d_remap, d_rxn, N,"remap","w");
 
+	// rezero edge vector (mapped, so is reflected on GPU)
 	edges[0]  = 0; 
 	edges[1]  = 0; 
 	edges[2]  = 0;
