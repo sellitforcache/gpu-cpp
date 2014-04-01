@@ -21,51 +21,126 @@ __global__ void reaction_edges_kernel( unsigned N, unsigned* edges, unsigned* rx
 	// 9  = lower bound for 811/845 block 
 	// 10 = upper bound for 811/845 block
 
-	unsigned rxn1, rxn2;
-	int diff = 0; 
-
-	// load data
+	unsigned rxn1, rxn2; 
 	rxn1 = rxn[tid];
-	if(tid < N-1){  //both elements if not last
+	if(tid<N-1){
 		rxn2 = rxn[tid+1];
-		diff = rxn2-rxn1;   //diff should be >0 since the list is sorted
-		if(diff<0){printf("non-ascending value found in reaction list at index = %u (%u -> %u)\n!",tid,rxn1,rxn2);}
 	}
-	else{  //check last or only element, do not return
-
-		if     (rxn1==2) 				{edges[2]  = tid+1;}
-		else if(rxn1>=50 & rxn1<=90)	{edges[4]  = tid+1;}
-		else if(rxn1==91)				{edges[6]  = tid+1;}
-		else if(rxn1==800)				{edges[8]  = tid+1;}
-		else if(rxn1>=811 & rxn1<=845)	{edges[10] = tid+1;}
-
+	else{  //check last element
+		if(rxn1==2){
+			edges[2] = tid+1;
+		}
+		else if(rxn1>=51 & rxn1<=90){
+			edges[4] = tid+1;
+		}
+		else if(rxn1==91){
+			edges[6] = tid+1;
+		}
+		else if(rxn1==800 & rxn1==800){
+			edges[8] = tid+1;
+		}
+		else if(rxn1>=811 & rxn1<=845){
+			edges[10] = tid+1;  //batch is done, set done flag
+			//edges[0] = 1;
+		}
+		else if(rxn1>=900){
+			//edges[0]=1;   //batch is definitely done, set done flag
+		}
+		return;
 	}
 
-	// first (or only) element doesn't have a preceeding, write it in as the start of something, do not return
+	// first element doesn't have a preceeding
 	if(tid==0){
-
-		if     (rxn1==2) 				{edges[1] = 0;}
-		else if(rxn1>=50 & rxn1<=90)	{edges[3] = 0;}
-		else if(rxn1==91)				{edges[5] = 0;}
-		else if(rxn1==800)				{edges[7] = 0;}
-		else if(rxn1>=811 & rxn1<=845)	{edges[9] = 0;  edges[0]=1;}
-		
+		if(rxn1==2){
+			edges[1] = tid;
+		}
+		else if(rxn1>=51 & rxn1<=90){
+			edges[3] = tid;
+		}
+		else if(rxn1==91){
+			edges[5] = tid;
+		}
+		else if(rxn1==800 & rxn1==800){
+			edges[7] = tid;
+		}
+		else if(rxn1>=811 & rxn1<=845){
+			edges[9] = tid;  //batch is done, set done flag
+			edges[0] = 1;
+		}
+		else if(rxn1>=900){
+			edges[10]=1;   //batch is definitely done, set done flag
+		}
+		return;
 	}
+	else{
+		
+		if(rxn1<2){   //can test start of 2   
+			if(rxn2==2){
+				edges[1]=tid+1;
+				//return;
+			}
+		}
+		else{         //can test the end of 2
+			if(rxn1==2 & rxn2>2){
+				edges[2]=tid+1;
+				//return;
+			}
+		}
 
-	// return if the same element, or if last/only element (diff will not be set and remain at 0)
-	if(diff<0){return;}   
+		if(rxn1<51){   //can test start of 51-90   
+			if(rxn2>=51 & rxn2 <91){
+				edges[3]=tid+1;
+				//printf("found iscatter start %u\n",tid+1);
+				//return;
+			}
+		}
+		else{         //can test the end of 51-90
+			if(rxn1>=51 & rxn1<=90 & rxn2>90){
+				edges[4]=tid+1;
+				//return;
+			}
+		}
 
-	// check edge
-	if(rxn1<2 		& rxn2>=2)		{edges[1]  = tid+1;} //printf("setting starting edge of 2\n");}
-	if(rxn1<=2 		& rxn2>2)		{edges[2]  = tid+1;} //printf("setting ending edge of 2\n");}
-	if(rxn1<50 		& rxn2>=50)     {edges[3]  = tid+1;} //printf("setting starting edge of 50\n");}
-	if(rxn1<=90 	& rxn2>90)		{edges[4]  = tid+1;} //printf("setting ending edge of 50\n");}
-	if(rxn1<91 		& rxn2>=91)		{edges[5]  = tid+1;} //printf("setting starting edge of 91\n");}
-	if(rxn1<=91 	& rxn2>91)		{edges[6]  = tid+1;} //printf("setting ending edge of 91\n");}
-	if(rxn1<800 	& rxn2>=800)	{edges[7]  = tid+1;} //printf("setting starting edge of 800\n");}
-	if(rxn1<=800 	& rxn2>800)		{edges[8]  = tid+1;} //printf("setting ending edge of 800\n");}
-	if(rxn1<811 	& rxn2>=811)	{edges[9]  = tid+1;} //printf("setting starting edge of 811\n");}
-	if(rxn1<=845  	& rxn2>845)		{edges[10] = tid+1;} //printf("setting ending edge of 811\n");}
+		if(rxn1<91){   //can test start of 91  
+			if(rxn2==91){
+				edges[5]=tid+1;
+				//return;
+			}
+		}
+		else{         //can test the end of 91
+			if(rxn1==91 & rxn2>91){
+				edges[6]=tid+1;
+				//return;
+			}
+		}
+
+		if(rxn1<800){   //can test start of 800  
+			if(rxn2==800){
+				edges[7]=tid+1;
+				//return;
+			}
+		}
+		else{         //can test the end of 800
+			if(rxn1==800 & rxn2>800){
+				edges[8]=tid+1;
+				//return;
+			}
+		}
+
+		if(rxn1<811){   //can test start of 811-845  
+			if(rxn2>=811 & rxn2 <=845){
+				edges[9]=tid+1;
+				//return;
+			} 
+		}
+		else{         //can test the end of 811-845
+			if(rxn1>=811 & rxn1<=845 & rxn2>845){
+				edges[10]=tid+1;
+				//return;
+			}
+		}
+
+	}
 
 
 }

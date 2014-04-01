@@ -1714,6 +1714,8 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	unsigned remap_start = 0;
 
 	// sort key/value of rxn/tid
+	printf("num_active %u\n", *num_active);
+	//write_to_file(d_remap, d_rxn, *num_active,"remap","w");
 	res = cudppRadixSort(radixplan, d_rxn, d_remap, *num_active );  //everything in 900s doesn't need to be sorted anymore
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
 
