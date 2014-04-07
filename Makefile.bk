@@ -46,7 +46,9 @@ COBJS =	mt19937ar.o \
 		wgeometry.o \
 		optix_stuff.o \
 		primitive.o \
-		device_copies.o
+		write_to_file.o \
+		reaction_edges.o \
+		device_copies.o \
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -170,6 +172,12 @@ flip_done.o:
 device_copies.o:
 	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c device_copies.cu
 
+reaction_edges.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c reaction_edges.cu
+
+write_to_file.o:
+	$(NVCC) $(ARCH) $(NVCC_FLAGS) -c write_to_file.cu
+
 whistory.o:
 	$(CXX) $(C_FLAGS)  $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PNG_FLAGS) $(PYTHON_FLAGS) $(CUDA_FLAGS)  -c whistory.cpp
 
@@ -180,7 +188,7 @@ primitive.o:
 	$(CXX) $(C_FLAGS)  -c primitive.cpp
 
 optix_stuff.o: device_copies.o
-	$(CXX) $(C_FLAGS)  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
+	$(CXX) -m64 -fPIC  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
 
 libwarp.so: $(ptx_objects) $(COBJS)
 	$(NVCC) --shared $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
