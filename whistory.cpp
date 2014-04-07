@@ -74,6 +74,7 @@ void whistory::init(){
 	cudaMalloc( &d_yield				, Ndataset*sizeof(unsigned) );
 	cudaMalloc( &d_index				, Ndataset*sizeof(unsigned) );
 	cudaMalloc( &d_tally_score  		, n_tally*sizeof(float));
+	cudaMalloc( &d_tally_square  		, n_tally*sizeof(float));
 	cudaMalloc( &d_tally_count  		, n_tally*sizeof(unsigned));
 	cudaMalloc( &d_reduced_yields 		, 1*sizeof(unsigned));
 	cudaMalloc( &d_reduced_done 		, 1*sizeof(unsigned));
@@ -96,6 +97,7 @@ void whistory::init(){
 	Q 					= new float 		[Ndataset];
 	rn_bank  			= new unsigned 		[Ndataset*RNUM_PER_THREAD];
 	tally_score 		= new float 		[n_tally];
+	tally_square 		= new float 		[n_tally];
 	tally_count 		= new unsigned 		[n_tally];
 	index     			= new unsigned 		[Ndataset];
 	cellnum 			= new unsigned 		[Ndataset];
@@ -242,7 +244,7 @@ void whistory::init_host(){
 void whistory::init_RNG(){
 	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
-	curandSetPseudoRandomGeneratorSeed( rand_gen , 123456789ULL );
+	curandSetPseudoRandomGeneratorSeed( rand_gen , time( NULL ) );//123456789ULL );
 	curandGenerate( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD *sizeof(unsigned) , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
@@ -408,6 +410,7 @@ void whistory::copy_to_device(){
 	// zero out tally arrays
 	std::cout << "  Zeroing tally arrays... ";
 	cudaMemcpy( d_tally_score, 	zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
+	cudaMemcpy( d_tally_square, zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
 	cudaMemcpy( d_tally_count,	zeros,	n_tally*sizeof(unsigned), cudaMemcpyHostToDevice); 	
 	std::cout << "Done.\n";
 
@@ -1524,7 +1527,7 @@ void whistory::run(){
 
 			// run tally kernel to compute spectra
 			if(converged){
-				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_remap, d_space, d_E, d_tally_score, d_tally_count, d_done, d_cellnum, d_rxn);
+				tally_spec( NUM_THREADS, Nrun, n_tally, tally_cell, d_remap, d_space, d_E, d_tally_score, d_tally_square, d_tally_count, d_done, d_cellnum, d_rxn);
 				//printf("CUDA ERROR4, %s\n",cudaGetErrorString(cudaPeekAtLastError()));
 			}
 
@@ -1647,15 +1650,26 @@ void whistory::write_results(float runtime, float keff, std::string opentype){
 void whistory::write_tally(unsigned tallynum){
 
 	//tallynum is unused at this point
+	float tally_err = 0;
+	float this_square = 0;
+	float this_score_normed = 0;
+	float this_mean = 0;
+	float this_count = 0;
 
 	// copy down from device
-	cudaMemcpy( tally_score, d_tally_score , n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
-	cudaMemcpy( tally_count, d_tally_count , n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
+	cudaMemcpy( tally_score,  d_tally_score ,  n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
+	cudaMemcpy( tally_square, d_tally_square , n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
+	cudaMemcpy( tally_count,  d_tally_count ,  n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
 	// write tally values
 	FILE* tfile = fopen(filename.c_str(),"w");
 	for (int k=0;k<n_tally;k++){
-		fprintf(tfile,"%10.8E %u\n",tally_score[k]/(N*(n_cycles)),tally_count[k]);
+		this_score_normed  = tally_score[k]/(N*(n_cycles));
+		this_count  = (float) tally_count[k];
+		this_mean = tally_score[k] / this_count;
+		this_square = tally_square[k];
+		tally_err = sqrtf( 1.0/(this_count - 1.0) * (1.0/this_count * this_square - (this_mean*this_mean) ) ) / this_score_normed;
+		fprintf(tfile,"%10.8E %10.8E\n",this_score_normed,tally_err);
 	}
 	fclose(tfile);
 
@@ -1716,7 +1730,6 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 
 	// sort key/value of rxn/tid
 	printf("num_active %u\n", *num_active);
-	//write_to_file(d_remap, d_rxn, *num_active,"remap","w");
 	res = cudppRadixSort(radixplan, d_rxn, d_remap, *num_active );  //everything in 900s doesn't need to be sorted anymore
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
 

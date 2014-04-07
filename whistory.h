@@ -60,7 +60,8 @@ class whistory {
     float *         Q;
     unsigned *		rn_bank;
     float * 		awr_list;
-    float * 		tally_score;
+    float *         tally_score;
+    float *         tally_square;
     unsigned * 		tally_count;
     unsigned 		tally_cell;
     unsigned * 		index;
@@ -93,6 +94,7 @@ class whistory {
 	unsigned *         d_rn_bank;
 	float * 		d_awr_list;
 	float * 		d_tally_score;
+    float *         d_tally_square;
 	unsigned * 		d_tally_count;
 	unsigned * 		d_index;
 	unsigned *      d_cellnum;

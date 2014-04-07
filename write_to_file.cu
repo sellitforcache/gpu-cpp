@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <stdio.h>
 #include <cuda.h>
 
 void write_to_file(unsigned* array_in , unsigned N , std::string filename){
