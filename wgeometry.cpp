@@ -1,6 +1,7 @@
 #include <vector> 
 #include <iostream>
 #include <sstream>
+#include <stdio.h>
 #include <cmath>
 #include <assert.h>
 #include <time.h>
