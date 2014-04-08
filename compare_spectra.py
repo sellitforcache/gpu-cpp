@@ -111,6 +111,7 @@ elif case== 'godiva':
 	tally      = numpy.loadtxt('godiva.tally')
 	tallybins  = numpy.loadtxt('godiva.tallybins')
 	serpdata   = get_serpent_det('../serpent-benchmark/godiva_det0.m')
+	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in a bare Pu-239 sphere (Godiva)'
 elif case== 'assembly':
 	tally      = numpy.loadtxt('uh2o-assembly.tally')
 	tallybins  = numpy.loadtxt('uh2o-assembly.tallybins')
@@ -157,9 +158,9 @@ else:
 
 fig = pylab.figure(figsize=(10,6))
 ax = fig.add_subplot(1,1,1)
-ax.semilogx(serpE,numpy.divide(serpF-newflux,serpF),linestyle='steps-mid',label='Relative Difference')
-ax.semilogx(serpE,serpErr,linestyle='steps-mid',label='WARP Rel. Err.')
-ax.semilogx(avg,warp_err,linestyle='steps-mid',label='Serpent Rel. Err.')
+ax.semilogx(serpE,serpErr,'b',linestyle='steps-mid',label='Serpent Rel. Err.')
+ax.semilogx(avg,warp_err,'r',linestyle='steps-mid',label='WARP Rel. Err.')
+ax.semilogx(serpE,numpy.divide(serpF-newflux,serpF),'g',linestyle='steps-mid',label='Flux Relative Error')
 ax.set_xlabel('Energy (MeV)')
 ax.set_title(title)
 handles, labels = ax.get_legend_handles_labels()

@@ -12,7 +12,7 @@ since 32-bit math is being used, 30 bits are used here
 	const float norm   		= 9.31322574615478515625E-10;	// 2^-30
 	unsigned nextint = (a * in[0] +  c) & mask; 			// mod by truncation
 	float randout = nextint*norm;
-	if(randout==1.0){
+	if(randout>=1.0){
 		randout=0.9999999;
 		//printf("RN=1.0  %u %u %10.8E\n",in[0],nextint,randout);
 	}

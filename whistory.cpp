@@ -126,7 +126,7 @@ void whistory::init(){
 	init_RNG();
 	init_CUDPP();
 	load_cross_sections();
-	create_quad_tree();
+	//create_quad_tree();
 	copy_to_device();
 }
 whistory::~whistory(){
@@ -242,9 +242,10 @@ void whistory::init_host(){
 
 }
 void whistory::init_RNG(){
-	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32..." << "\e[m \n";
+	unsigned seed = time( NULL );
+	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32 with seed of " << seed << "..." << "\e[m \n";
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
-	curandSetPseudoRandomGeneratorSeed( rand_gen , time( NULL ) );//123456789ULL );
+	curandSetPseudoRandomGeneratorSeed( rand_gen , seed );  //123456789ULL );
 	curandGenerate( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD *sizeof(unsigned) , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
@@ -1448,7 +1449,7 @@ void whistory::run(){
 	int iteration_total=0;
 	unsigned converged = 0;
 	unsigned active_size1, active_gap, escatter_N, escatter_start, iscatter_N, iscatter_start, cscatter_N, cscatter_start, fission_N, fission_start;
-	std::string fiss_name;
+	std::string fiss_name, stats_name;
 	float runtime = get_time();
 
 	//set mask to ones
@@ -1481,6 +1482,11 @@ void whistory::run(){
 	FILE* ffile = fopen(fiss_name.c_str(),"w");
 	fclose(ffile);
 
+	// open file for run stats
+	stats_name=filename;
+	stats_name.append(".stats");
+	FILE* statsfile = fopen(stats_name.c_str(),"w");
+
 	while(iteration<n_cycles){
 
 		//write source positions to file if converged
@@ -1511,6 +1517,9 @@ void whistory::run(){
 			//else if(RUN_FLAG==1){
 			//	Nrun=N;
 			//}
+
+			//record stats
+			fprintf(statsfile,"%u %10.8E\n",Nrun,get_time());
 			
 			// find what material we are in and nearest surface distance
 			trace(2, Nrun);
@@ -1608,6 +1617,8 @@ void whistory::run(){
 		else{
 			std::cout << "Converging fission source... skipped cycle " << iteration_total+1 <<"\n";
 		}
+
+		fprintf(statsfile,"---- iteration %u done ----\n",iteration);
 		
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
@@ -1634,6 +1645,7 @@ void whistory::run(){
 	}
 
 	write_results(runtime,keff,"w");
+	fclose(statsfile);
 
 }
 void whistory::write_results(float runtime, float keff, std::string opentype){
@@ -1652,7 +1664,7 @@ void whistory::write_tally(unsigned tallynum){
 	//tallynum is unused at this point
 	float tally_err = 0;
 	float this_square = 0;
-	float this_score_normed = 0;
+	//float this_score_normed = 0;
 	float this_mean = 0;
 	float this_count = 0;
 
@@ -1662,14 +1674,15 @@ void whistory::write_tally(unsigned tallynum){
 	cudaMemcpy( tally_count,  d_tally_count ,  n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
 	// write tally values
-	FILE* tfile = fopen(filename.c_str(),"w");
+	std::string tallyname = filename+".tally";
+	FILE* tfile = fopen(tallyname.c_str(),"w");
 	for (int k=0;k<n_tally;k++){
-		this_score_normed  = tally_score[k]/(N*(n_cycles));
-		this_count  = (float) tally_count[k];
-		this_mean = tally_score[k] / this_count;
-		this_square = tally_square[k];
-		tally_err = sqrtf( 1.0/(this_count - 1.0) * (1.0/this_count * this_square - (this_mean*this_mean) ) ) / this_score_normed;
-		fprintf(tfile,"%10.8E %10.8E\n",this_score_normed,tally_err);
+		//this_score_normed  	= 			tally_score[k]/(N*(n_cycles));
+		this_count  		= (float) 	tally_count[k];
+		this_mean 			= 			tally_score[k] / this_count;
+		this_square 		= 			tally_square[k];
+		tally_err 			= sqrtf( 1.0/(this_count - 1.0) * ( this_square/this_count - (this_mean*this_mean) ) ) / this_mean;
+		fprintf(tfile,"%10.8E %10.8E\n",this_mean*this_count/(N*n_cycles),tally_err*(N*n_cycles)/this_count);
 	}
 	fclose(tfile);
 
@@ -1677,8 +1690,8 @@ void whistory::write_tally(unsigned tallynum){
 	float Emin = 1e-11;
 	float Emax = 20.0;
 	float edge = 0.0;
-	filename=filename+"bins";
-	tfile = fopen(filename.c_str(),"w");
+	std::string binsname = filename+".tallybins";
+	tfile = fopen(binsname.c_str(),"w");
 	for (int k=0;k<=n_tally;k++){
 		edge = Emin*powf((Emax/Emin), ((float)k)/ ((float)n_tally) );
 		fprintf(tfile,"%10.8E\n",edge);
@@ -1729,7 +1742,6 @@ void whistory::remap_active(unsigned* num_active, unsigned* escatter_N, unsigned
 	unsigned remap_start = 0;
 
 	// sort key/value of rxn/tid
-	printf("num_active %u\n", *num_active);
 	res = cudppRadixSort(radixplan, d_rxn, d_remap, *num_active );  //everything in 900s doesn't need to be sorted anymore
 	if (res != CUDPP_SUCCESS){fprintf(stderr, "Error in sorting reactions\n");exit(-1);}
 
