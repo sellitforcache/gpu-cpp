@@ -27,8 +27,8 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	my_bin_index = logf(my_E/Emin)/logf(Emax/Emin)*(Ntally);
 
 	//score the bins atomicly, could be bad if many neutrons are in a single bin since this will serialize their operations
-	atomicAdd(&tally_score [my_bin_index],  1.0/macro_t );
-	atomicAdd(&tally_square[my_bin_index], (1.0/macro_t) * (1.0/macro_t));
+	atomicAdd(&tally_score [my_bin_index], 1.0/macro_t );
+	atomicAdd(&tally_square[my_bin_index], 1.0/(macro_t * macro_t));
 	atomicInc(&tally_count [my_bin_index], 4294967295);
 
 	//printf("%6.4E\n",macro_t);
