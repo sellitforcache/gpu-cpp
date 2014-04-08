@@ -10,6 +10,7 @@ class optix_stuff{
 	unsigned compute_device;
 	unsigned GEOM_FLAG;
 	void make_geom_xform(wgeometry);
+	void make_geom_xform_common(wgeometry);
 	void make_geom_prim(wgeometry);
 	void init_internal(wgeometry, unsigned, std::string);
 public:

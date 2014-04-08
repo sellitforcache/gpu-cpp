@@ -58,7 +58,7 @@ int main(int argc, char** argv){
 
 	//sphere geom
 	geom.add_primitive();
-	geom.primitives[0].type=3;
+	geom.primitives[0].type=0;
 	geom.primitives[0].material=2;
 	geom.primitives[0].min[0]=-18.0;
 	geom.primitives[0].min[1]=-18.0;

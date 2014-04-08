@@ -71,8 +71,8 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	else if(accel_type.compare("Lbvh")==0) {traverse_type="Bvh";}
 	else if(accel_type.compare("TriangleKdTree")==0){traverse_type="KdTree";}
 
-	// set geom type  0=primitive instancing, 1=transform instancing
-	GEOM_FLAG = 0;
+	// set geom type  0=primitive instancing, 1=transform instancing, 2=transform instancing with common primitives
+	GEOM_FLAG = 1;
 
 	//set image type
 	image_type = "cell";
@@ -184,9 +184,12 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	outer_cell_type = problem_geom.get_outer_cell_dims(outer_cell_dims);
 
 	// make all geometry instances
-	if(GEOM_FLAG){
+	if(GEOM_FLAG==1){
 		make_geom_xform(problem_geom);
 	}
+	else if(GEOM_FLAG==2){
+		make_geom_xform_common(problem_geom);
+	} 
 	else{
 		make_geom_prim(problem_geom);
 	}
@@ -334,6 +337,134 @@ void optix_stuff::make_geom_xform(wgeometry problem_geom){
         
 			//put geom instance into geomgroup
 			this_geom_group -> setChild( 0, ginst );
+    
+        	//make transforms as necessary and attach to root node
+        	//printf("cell %d: applying transform %d -  dx=%f dy=%f dz=%f theta=%f phi=%f\n",cellnum,k,dx,dy,dz,theta,phi);
+
+			m[ 0] = cos(theta)*cos(phi);    m[ 1] = -cos(theta)*sin(phi);   m[ 2] = sin(theta);     m[ 3] = dx;
+			m[ 4] = sin(phi);               m[ 5] = cos(phi);               m[ 6] = 0.0f;           m[ 7] = dy;
+			m[ 8] = -sin(theta)*cos(phi);   m[ 9] = sin(theta)*sin(phi);    m[10] = cos(theta);     m[11] = dz;
+			m[12] = 0.0f;                   m[13] = 0.0f;                   m[14] = 0.0f;           m[15] = 1.0f;
+  
+			this_transform = context -> createTransform();
+			this_transform -> setChild(this_geom_group);
+			this_transform -> setMatrix( 0, m, 0 );
+			top_level_group -> setChild( uniqueindex , this_transform );
+			uniqueindex++;
+
+		}
+
+	}
+
+}
+void optix_stuff::make_geom_xform_common(wgeometry problem_geom){
+
+	using namespace optix;
+
+	Group 				top_level_group;
+	Variable 			top_object;
+	Acceleration 		top_level_acceleration;
+	Acceleration 		this_accel;
+
+	GeometryGroup 		this_geom_group;
+	Variable 			this_geom_min;
+	Variable 			this_geom_max;
+	Geometry 			this_geom;
+	GeometryInstance 	ginst;
+	Material 			material;
+	Program  			intersection_program;
+	Program  			bounding_box_program;
+	Program  			closest_hit_program;
+	Transform 			this_transform;
+	Acceleration  		acceleration;
+	Variable  			cellnum_var;
+	Variable  			cellmat_var;
+	Variable 			cellfissile_var;
+
+	char 				path_to_ptx[512];
+	unsigned 			cellnum,cellmat;
+	float 				dx,dy,dz,theta,phi;
+	float 				m[16];
+	unsigned 			uniqueindex = 0;
+	unsigned 			is_fissile = 0;
+
+	// Make top level group/accel as children of the top level object
+	this_accel 	= context -> createAcceleration(accel_type.c_str(),traverse_type.c_str());
+	this_accel 	-> markDirty();
+	top_level_group = context->createGroup();
+	top_level_group ->setChildCount(problem_geom.get_transform_count());   // every primitive has at least 1 transform, so the total number of transforms is the number of instances
+	top_level_group -> setAcceleration( this_accel );
+	context["top_object"]-> set( top_level_group );
+
+	for(int j=0;j<problem_geom.get_primitive_count();j++){
+
+		//create this geometry type
+		this_geom = context->createGeometry();
+		this_geom -> setPrimitiveCount(1u);
+
+		//set intersection and BB programs
+		if      (problem_geom.primitives[j].type == 0)	{sprintf( path_to_ptx, "%s", "box.ptx" );}
+		else if (problem_geom.primitives[j].type == 1)	{sprintf( path_to_ptx, "%s", "cylinder.ptx" );}
+		else if (problem_geom.primitives[j].type == 2)	{sprintf( path_to_ptx, "%s", "hex.ptx" );}
+		bounding_box_program = context->createProgramFromPTXFile( path_to_ptx, "bounds" );
+		intersection_program = context->createProgramFromPTXFile( path_to_ptx, "intersect" );
+		this_geom -> setBoundingBoxProgram ( bounding_box_program );
+		this_geom -> setIntersectionProgram( intersection_program );
+
+		//set hit programs to material
+		sprintf( path_to_ptx, "%s", "hits.ptx" );
+		closest_hit_program = context->createProgramFromPTXFile( path_to_ptx, "closest_hit" );
+		material = context -> createMaterial();
+		material -> setClosestHitProgram( 0, closest_hit_program );
+
+		//set program variables for this instance
+    	this_geom_min = this_geom["mins"];
+    	this_geom_max = this_geom["maxs"];
+    	this_geom_min -> set3fv( problem_geom.primitives[j].min );
+    	this_geom_max -> set3fv( problem_geom.primitives[j].max );
+
+    	//create instances
+		ginst = context -> createGeometryInstance();
+		ginst -> setGeometry( this_geom );
+		ginst -> setMaterialCount( 1u );
+		ginst -> setMaterial( 0, material );
+
+		//set cell-specific variables
+		cellnum_var 	= ginst["cellnum"];
+		cellmat_var 	= ginst["cellmat"];
+		cellfissile_var = ginst["cellfissile"];
+		cellnum_var 	-> setUint(cellnum);
+		cellmat_var 	-> setUint(cellmat);
+		cellfissile_var -> setUint(is_fissile);
+		//std::cout << "cellnum,matnum,isfiss " << cellnum << " " << cellmat << " " << is_fissile << "\n";
+
+		// make geometry group for this primitive (to attach acceleration to)
+		this_accel = context->createAcceleration(accel_type.c_str(),traverse_type.c_str());
+		this_accel -> markDirty();
+		this_geom_group = context -> createGeometryGroup();
+		this_geom_group -> setChildCount( 1u );
+		this_geom_group -> setAcceleration( this_accel );
+
+		//put geom instance into geomgroup
+		this_geom_group -> setChild( 0, ginst );
+
+		for (int k=0;k<problem_geom.primitives[j].n_transforms;k++){
+
+			dx =          problem_geom.primitives[j].transforms[k].dx;
+			dy =          problem_geom.primitives[j].transforms[k].dy;
+			dz =          problem_geom.primitives[j].transforms[k].dz;
+			theta =       problem_geom.primitives[j].transforms[k].theta;
+			phi =         problem_geom.primitives[j].transforms[k].phi;
+			cellnum =     problem_geom.primitives[j].transforms[k].cellnum;
+			cellmat =     problem_geom.primitives[j].transforms[k].cellmat;
+			for(int z=0;z<problem_geom.get_material_count();z++){
+				if (cellmat == problem_geom.materials[z].matnum){
+					is_fissile =  problem_geom.materials[z].is_fissile;   // set fissile flag
+					cellmat    = problem_geom.materials[z].id;            // hash the material number to the ID, which is the matrix index, not that user-set number
+					break;
+				}
+			}
+			//std::cout << "cellnum " << cellnum << " matnum " << cellmat << " is fissile " << is_fissile << "\n";
     
         	//make transforms as necessary and attach to root node
         	//printf("cell %d: applying transform %d -  dx=%f dy=%f dz=%f theta=%f phi=%f\n",cellnum,k,dx,dy,dz,theta,phi);
@@ -638,7 +769,8 @@ float optix_stuff::trace_test(){
 }
 void optix_stuff::print(){
 	std::string instancing;
-	if(GEOM_FLAG){instancing="transform";}
+	if(GEOM_FLAG==1){instancing="transform";}
+	else if(GEOM_FLAG==2){instancing="common node transform";}
 	else         {instancing="primitive";}
 	std::cout << "\e[1;32m" << "--- OptiX SUMMARY ---" << "\e[m \n";
 	std::cout << "  Using \e[1;31m"<< instancing <<"\e[m-based instancing\n";
