@@ -5,7 +5,6 @@ set title "black BC, pin, u235-fuel, water"
 % --- pincell
 
 surf 1 cyl      0 0 1 -20   20
-%surf 1 cuboid  -1 1 -1 1 -20 20
 surf 2 cuboid  -5 5 -5 5 -25 25
 
 % --- Cell definitions:
@@ -37,8 +36,8 @@ set bc 1 1 1
 
 ene leth 3 1024 1e-11 20
 ene lin  2 1024 1e-11 20
-det fluxlog dc 2  de leth dt -3
-det fluxlin dc 2  de lin  dt -3
+det fluxlog dc 1  de leth dt -3
+det fluxlin dc 1  de lin  dt -3
 
 % --- Geometry and mesh plots:
 
