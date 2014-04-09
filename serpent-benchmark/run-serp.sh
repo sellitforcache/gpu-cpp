@@ -1,7 +1,7 @@
 #! /bin/bash
 
 sss2.omp.gcc godiva
-sss2.omp.gcc homfuel_crit
-sss2.omp.gcc uh2o-pincell
-sss2.omp.gcc uh20-assembly
+sss2.omp.gcc homfuel
+sss2.omp.gcc pincell
+sss2.omp.gcc assembly
 

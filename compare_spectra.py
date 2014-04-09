@@ -41,14 +41,14 @@ def get_mcnp_mctal(filepath):
 if case== 'homfuel':
 	tally      = numpy.loadtxt('homfuel.tally')
 	tallybins  = numpy.loadtxt('homfuel.tallybins')
-	serpdata   = get_serpent_det('serpent-benchmark/homfuel_crit_det0.m')
-	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/homfuelcrit.tally')
+	serpdata   = get_serpent_det('serpent-benchmark/homfuel_det0.m')
+	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/homfuel.tally')
 	mcnp_vol = 555.647209455
 	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in homogenized block of UO2 and water'	
 elif case== 'uh2o-pincell':
-	tally      = numpy.loadtxt('uh2o-pincell.tally')
-	tallybins  = numpy.loadtxt('uh2o-pincell.tallybins')
-	serpdata   = get_serpent_det('serpent-benchmark/uh2o-pincell_det0.m')
+	tally      = numpy.loadtxt('pincell.tally')
+	tallybins  = numpy.loadtxt('pincell.tallybins')
+	serpdata   = get_serpent_det('serpent-benchmark/pincell_det0.m')
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/pincell.tally')
 	mcnp_vol = 555.647209455
 	title='Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in the water of surrpunding a single UO2 pin'
@@ -60,9 +60,9 @@ elif case== 'godiva':
 	mcnp_vol = 555.647209455
 	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in a bare Pu-239 sphere (Godiva)'
 elif case== 'assembly':
-	tally      = numpy.loadtxt('uh2o-assembly.tally')
-	tallybins  = numpy.loadtxt('uh2o-assembly.tallybins')
-	serpdata   = get_serpent_det('serpent-benchmark/uh2o-assembly_det0.m')
+	tally      = numpy.loadtxt('assembly.tally')
+	tallybins  = numpy.loadtxt('assembly.tallybins')
+	serpdata   = get_serpent_det('serpent-benchmark/assembly_det0.m')
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/assembly.tally')
 	mcnp_vol = 555.647209455
 	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in the water of a hexagonal array of UO2 pins'
