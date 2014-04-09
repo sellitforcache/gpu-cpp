@@ -19,7 +19,7 @@ elif case=='pincell':
 elif case=='assembly':
 	xmin = ymin = -50
 	xmax = ymax =  50
-data=np.array(open("/Users/rmb/code/gpu-cpp/fission_points."+case).read().split(),dtype=float)
+data=np.array(open("/Users/rmb/code/gpu-cpp/"+case+".fission_points").read().split(),dtype=float)
 data=np.reshape(data,(-1,4))
 
 fig = pl.figure(figsize=(10,6))

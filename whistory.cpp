@@ -1477,8 +1477,8 @@ void whistory::run(){
 	std::cout << "\e[1;32m" << "--- Skipping "<< n_skip << " cycles, Running "<< n_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
 
 	// make sure fissile_points file is cleared
-	fiss_name="fission_points.";
-	fiss_name.append(filename);
+	fiss_name=filename;
+	fiss_name.append(".fission_points");
 	FILE* ffile = fopen(fiss_name.c_str(),"w");
 	fclose(ffile);
 
