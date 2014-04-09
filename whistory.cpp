@@ -27,7 +27,7 @@
 optix_stuff optix_obj;
 //wgeometry geom_obj;
 
-whistory::whistory(int Nin, wgeometry problem_geom_in){
+whistory::whistory(unsigned Nin, wgeometry problem_geom_in){
 // do problem gemetry stuff first
 	problem_geom = problem_geom_in;
 	// set tally vector length

@@ -13,6 +13,7 @@ int main(int argc, char* argv[]){
 
 	// names
 	unsigned tallycell = 999;
+	unsigned N = 0;
 	std::string tallyname, filename;
 	std::string assemblyname = "uh2o-assembly";
 	std::string homfuelname = "homfuel";
@@ -20,8 +21,8 @@ int main(int argc, char* argv[]){
 	std::string pincellname  = "uh2o-pincell";
 
 	// check
-	if(argc==1){
-		printf("MUST ENTER A RUN TYPE : %s, %s, %s, or %s\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() );
+	if(argc<=2){
+		printf("MUST ENTER A RUN TYPE : %s, %s, %s, or %s; and a number of particles to run!\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() );
 		exit(0);
 	}
 
@@ -330,6 +331,8 @@ int main(int argc, char* argv[]){
 		exit(0);
 	}
 
+	// get number of histories to do
+	N = atoi(argv[2]);
 
 	// finalize geom
 	geom.set_outer_cell(999);
@@ -357,7 +360,7 @@ int main(int argc, char* argv[]){
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
-	int N = 1e5;
+	//int N = 1e5;
 	whistory hist ( N , geom );
 	hist.set_device(0);
 	hist.init();

@@ -9,7 +9,7 @@ kcode 100000 1.0 20 60
 ksrc 0 0 0
 print
 mode n
-prdmp 50 50 50
+prdmp 60 60 60
 f4:n 1
 e4    9.99999996E-12
       1.02804640E-11

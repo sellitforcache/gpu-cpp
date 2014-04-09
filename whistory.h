@@ -160,7 +160,7 @@ class whistory {
     void  write_to_file(unsigned*  , unsigned*, unsigned , std::string, std::string );
     void  write_results(float,float,std::string);
 public:
-     whistory(int,wgeometry);
+     whistory(unsigned,wgeometry);
     ~whistory();
     void print_xs_data();
     void print_pointers();
