@@ -162,7 +162,7 @@ int main(int argc, char* argv[]){
 		geom.add_material(2,0,n_topes,dens_water,topes,fracs_water);
 
 		// run stuff
-		tallycell = 999;
+		tallycell = 1;
 		filename = assemblyname;
 		tallyname = assemblyname;
 		tallyname.append(".tally");
