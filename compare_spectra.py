@@ -24,6 +24,23 @@ def get_serpent_det(filepath):
 		dex = dex + 1
 	return alldata
 
+def get_mcnp_det(filepath):
+	fobj    = open(filepath)
+	fstr    = fobj.read()
+	names   = re.findall('[a-zA-Z]+ *= *\[',fstr)
+	data    = re.findall('\[ *\n[\w\s+-.]+\];',fstr)
+	alldata = dict()
+	dex     = 0
+	for name in names:
+		varname  = name.split()[0]
+		moredata = re.findall(' [ .+-eE0-9^\[]+\n',data[dex])
+		thisarray = numpy.array(moredata[0].split(),dtype=float)
+		for line in moredata[1:]:
+			thisarray=numpy.vstack((thisarray,numpy.array(line.split(),dtype=float)))
+		alldata[varname]=numpy.mat(thisarray)
+		dex = dex + 1
+	return alldata
+
 
 if   case=='water':
 	tally      = numpy.loadtxt('water.tally')

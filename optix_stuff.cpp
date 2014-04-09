@@ -72,7 +72,7 @@ void optix_stuff::init_internal(wgeometry problem_geom, unsigned compute_device_
 	else if(accel_type.compare("TriangleKdTree")==0){traverse_type="KdTree";}
 
 	// set geom type  0=primitive instancing, 1=transform instancing, 2=transform instancing with common primitives
-	GEOM_FLAG = 1;
+	GEOM_FLAG = 0;
 
 	//set image type
 	image_type = "cell";
