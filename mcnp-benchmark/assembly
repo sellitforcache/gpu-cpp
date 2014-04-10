@@ -1,12 +1,12 @@
 assembly uo2/water
- 1 1 -15     -1                   u=1  imp:n=1 tmp=8.617332478e-11 $ pin
- 2 2 -3       1                   u=1  imp:n=1 tmp=8.617332478e-11 $ water
- 3 1 -15     -1                   u=2  imp:n=1 tmp=8.617332478e-11 $ tally pin
+ 1 1 -15     -1                   u=1  imp:n=1 tmp=2.5852e-08 $ pin
+ 2 2 -3       1                   u=1  imp:n=1 tmp=2.5852e-08 $ water
+ 3 1 -15     -1                   u=2  imp:n=1 tmp=2.5852e-08 $ tally pin
                                                vol=125.663706144 
- 4 2 -3       1                   u=2  imp:n=1 tmp=8.617332478e-11 $ water
- 5 2 -3      -1                   u=3  imp:n=1 tmp=8.617332478e-11 $ water pin
- 6 2 -3       1                   u=3  imp:n=1 tmp=8.617332478e-11 $ water pin
- 7 0         -2             lat=2 u=4  imp:n=1 tmp=8.617332478e-11 $ lattice
+ 4 2 -3       1                   u=2  imp:n=1 tmp=2.5852e-08 $ water
+ 5 2 -3      -1                   u=3  imp:n=1 tmp=2.5852e-08 $ water pin
+ 6 2 -3       1                   u=3  imp:n=1 tmp=2.5852e-08 $ water pin
+ 7 0         -2             lat=2 u=4  imp:n=1 tmp=2.5852e-08 $ lattice
                      fill=-15:15 -15:15 0:0
       3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
       3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 3

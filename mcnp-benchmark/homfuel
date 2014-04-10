@@ -1,5 +1,5 @@
 homogenized uo2/water
- 1 1 -10   1 -2 3 -4 5 -6  imp:n=1 tmp=8.617332478e-11 $ material
+ 1 1 -10   1 -2 3 -4 5 -6  imp:n=1 tmp=2.5852e-08 $ material
 99 0       -1:2:-3:4:-5:6  imp:n=0                     $ Outside world
 
 1 px -1000
