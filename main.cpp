@@ -26,6 +26,9 @@ int main(int argc, char* argv[]){
 		exit(0);
 	}
 
+	// get number of histories to do
+	N = atoi(argv[2]);
+
 	// set up geometry
 	wgeometry geom;
 
@@ -331,9 +334,6 @@ int main(int argc, char* argv[]){
 		exit(0);
 	}
 
-	// get number of histories to do
-	N = atoi(argv[2]);
-
 	// finalize geom
 	geom.set_outer_cell(999);
 	geom.update();
@@ -360,7 +360,6 @@ int main(int argc, char* argv[]){
 	// INIT CUDA and HISTORY STUFF and LOAD/UNIONIZE CROS SECTIONS //
 	/////////////////////////////////////////////////////////////////
 
-	//int N = 1e5;
 	whistory hist ( N , geom );
 	hist.set_device(0);
 	hist.init();
