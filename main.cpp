@@ -15,10 +15,10 @@ int main(int argc, char* argv[]){
 	unsigned tallycell = 999;
 	unsigned N = 0;
 	std::string tallyname, filename;
-	std::string assemblyname = "uh2o-assembly";
+	std::string assemblyname = "assembly";
 	std::string homfuelname = "homfuel";
 	std::string godivaname   = "godiva";
-	std::string pincellname  = "uh2o-pincell";
+	std::string pincellname  = "pincell";
 
 	// check
 	if(argc<=2){

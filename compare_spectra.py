@@ -39,29 +39,29 @@ def get_mcnp_mctal(filepath):
 	return alldata
 
 if case== 'homfuel':
-	tally      = numpy.loadtxt('homfuel.tally')
-	tallybins  = numpy.loadtxt('homfuel.tallybins')
+	tally      = numpy.loadtxt('gpu-benchmark/homfuel.tally')
+	tallybins  = numpy.loadtxt('gpu-benchmark/homfuel.tallybins')
 	serpdata   = get_serpent_det('serpent-benchmark/homfuel_det0.m')
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/homfuel.tally')
 	mcnp_vol = 2000*2000*2000
 	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in homogenized block of UO2 and water'	
 elif case== 'uh2o-pincell':
-	tally      = numpy.loadtxt('pincell.tally')
-	tallybins  = numpy.loadtxt('pincell.tallybins')
+	tally      = numpy.loadtxt('gpu-benchmark/pincell.tally')
+	tallybins  = numpy.loadtxt('gpu-benchmark/pincell.tallybins')
 	serpdata   = get_serpent_det('serpent-benchmark/pincell_det0.m')
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/pincell.tally')
 	mcnp_vol = 125.663706144
 	title='Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in the water of surrpunding a single UO2 pin'
 elif case== 'godiva':
-	tally      = numpy.loadtxt('godiva.tally')
-	tallybins  = numpy.loadtxt('godiva.tallybins')
+	tally      = numpy.loadtxt('gpu-benchmark/godiva.tally')
+	tallybins  = numpy.loadtxt('gpu-benchmark/godiva.tallybins')
 	serpdata   = get_serpent_det('serpent-benchmark/godiva_det0.m')
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/godiva.tally')
 	mcnp_vol = 555.647209455
 	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in a bare Pu-239 sphere (Godiva)'
 elif case== 'assembly':
-	tally      = numpy.loadtxt('assembly.tally')
-	tallybins  = numpy.loadtxt('assembly.tallybins')
+	tally      = numpy.loadtxt('gpu-benchmark/assembly.tally')
+	tallybins  = numpy.loadtxt('gpu-benchmark/assembly.tallybins')
 	serpdata   = get_serpent_det('serpent-benchmark/assembly_det0.m')
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/assembly.tally')
 	mcnp_vol = 125.663706144
