@@ -45,7 +45,7 @@ if case== 'homfuel':
 	mcnpdata   = get_mcnp_mctal('mcnp-benchmark/homfuel.tally')
 	mcnp_vol = 2000*2000*2000
 	title = 'Serpent2 (Serial) vs. WARP 6e6 histories (2e6 discarded)\n Flux in homogenized block of UO2 and water'	
-elif case== 'uh2o-pincell':
+elif case== 'pincell':
 	tally      = numpy.loadtxt('gpu-benchmark/pincell.tally')
 	tallybins  = numpy.loadtxt('gpu-benchmark/pincell.tallybins')
 	serpdata   = get_serpent_det('serpent-benchmark/pincell_det0.m')

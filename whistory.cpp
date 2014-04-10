@@ -1653,7 +1653,7 @@ void whistory::write_results(float runtime, float keff, std::string opentype){
 	std::string resname = filename;
 	resname.append(".results");
 	FILE* f  = fopen(resname.c_str(),opentype.c_str());
-	fprintf(f,"runtime = % 6.4E s    k_eff = % 6.4E     \ncycles total %u skipped %u scored %u \n %u source neutrons per cycle\n",runtime,keff,n_skip+n_cycles,n_skip,n_cycles,N);
+	fprintf(f,"runtime = % 6.4E m    k_eff = % 6.4E     \ncycles total %u skipped %u scored %u \n %u source neutrons per cycle\n",runtime/60.0,keff,n_skip+n_cycles,n_skip,n_cycles,N);
 	fclose(f);
 
 }
