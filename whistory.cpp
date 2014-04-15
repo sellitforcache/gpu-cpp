@@ -117,7 +117,7 @@ void whistory::init(){
 	init_RNG();
 	init_CUDPP();
 	load_cross_sections();
-	create_quad_tree();
+	//create_quad_tree();
 	copy_to_device();
 }
 whistory::~whistory(){
@@ -1407,6 +1407,12 @@ void whistory::run(){
 	std::cout << "\e[1;32m" << "--- Running in " << runtype << " source mode --- " << "\e[m \n";
 	std::cout << "\e[1;32m" << "--- Skipping "<< n_skip << " cycles, Running "<< n_cycles << " ACTIVE CYCLES, "<< N << " histories each--- " << "\e[m \n";
 
+	// open file for run stats
+	std::string stats_name;
+	stats_name=filename;
+	stats_name.append(".stats");
+	FILE* statsfile = fopen(stats_name.c_str(),"w");
+
 	while(iteration<n_cycles){
 
 		//write source positions to file if converged
@@ -1421,6 +1427,9 @@ void whistory::run(){
 			else if(RUN_FLAG==1){
 				Nrun=N;
 			}
+
+			//record stats
+			fprintf(statsfile,"%u %10.8E\n",Nrun,get_time());
 
 			// find what material we are in and nearest surface distance
 			trace(2);
@@ -1526,6 +1535,7 @@ void whistory::run(){
 	}
 
 	write_results(runtime,keff,"w");
+	fclose(statsfile);
 
 }
 void whistory::write_results(float runtime, float keff, std::string opentype){
