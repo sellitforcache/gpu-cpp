@@ -15,14 +15,16 @@ int main(int argc, char* argv[]){
 	unsigned tallycell = 999;
 	unsigned N = 0;
 	std::string tallyname, filename;
+	std::string runtype = "criticality";
 	std::string assemblyname = "assembly";
 	std::string homfuelname = "homfuel";
 	std::string godivaname   = "godiva";
 	std::string pincellname  = "pincell";
+	std::string fixedname  = "fixed_1ev_u235";
 
 	// check
 	if(argc<=2){
-		printf("MUST ENTER A RUN TYPE : %s, %s, %s, or %s; and a number of particles to run!\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() );
+		printf("MUST ENTER A RUN TYPE : %s, %s, %s, %s, or %s; and a number of particles to run!\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() , fixedname.c_str() );
 		exit(0);
 	}
 
@@ -329,8 +331,40 @@ int main(int argc, char* argv[]){
 		geom.primitives[1].transforms[0].theta   = 0;
 		geom.primitives[1].transforms[0].phi     = 0;
 	}
+	else if(fixedname.compare(argv[1])==0){
+		// u235
+		unsigned topes[1]={92235};
+		float    fracs[1]={1};
+		float 	 dens = 3;
+		geom.add_material(1,1,1,dens,topes,fracs);
+
+		// run stuff
+		tallycell = 999;
+		filename =  fixedname;
+		tallyname = fixedname;
+		tallyname.append(".tally");
+		runtype = "fixed";
+
+		//simple geom
+		geom.add_primitive();
+		geom.primitives[0].type=0;
+		geom.primitives[0].material=1;
+		geom.primitives[0].min[0]=-10.0;
+		geom.primitives[0].min[1]=-10.0;
+		geom.primitives[0].min[2]=-10.0;
+		geom.primitives[0].max[0]= 10.0;
+		geom.primitives[0].max[1]= 10.0;
+		geom.primitives[0].max[2]= 10.0;
+		geom.primitives[0].add_transform();
+		geom.primitives[0].transforms[0].cellnum = 999;
+		geom.primitives[0].transforms[0].dx      = 0;
+		geom.primitives[0].transforms[0].dy      = 0;
+		geom.primitives[0].transforms[0].dz      = 0;
+		geom.primitives[0].transforms[0].theta   = 0;
+		geom.primitives[0].transforms[0].phi     = 0;
+	}
 	else{
-		printf("MUST ENTER A *VALID* RUN TYPE : %s, %s, %s, or %s\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() );
+		printf("MUST ENTER A *VALID* RUN TYPE : %s, %s, %s, %s, or %s\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() , fixedname.c_str());
 		exit(0);
 	}
 
@@ -370,7 +404,7 @@ int main(int argc, char* argv[]){
 	// converge fission source and run //
 	/////////////////////////////////////
 
-	hist.set_run_type("criticality");
+	hist.set_run_type(runtype);
 	hist.set_tally_cell(tallycell);
 	hist.set_run_param(40,20);  //run, skip
 	filename.append(".nonremap");

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
+#include <stdio.h>
 #include <assert.h>
 #include <time.h>
 #include <string.h>

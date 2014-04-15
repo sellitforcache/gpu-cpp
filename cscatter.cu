@@ -149,20 +149,13 @@ __global__ void cscatter_kernel(unsigned N, unsigned RNUM_PER_THREAD, unsigned* 
 		mu = logf(rn1*expf(A)+(1.0-rn1)*expf(-A))/A;
 	}
 
-	// sample new phi
-	phi = 2.0*pi*get_rand(&rn);
-
-	// pre rotation directions
+	// rotate direction vector
 	hats_old = v_n_cm / v_n_cm.norm2();
-	//  create a perpendicular roation vector 
-	//wfloat3 rotation_hat( 0.0, 0.0, 1.0 );
-	wfloat3 rotation_hat = hats_target.cross( v_n_cm );
-	rotation_hat = rotation_hat / rotation_hat.norm2();
-	//  do rotations, polar first, then azimuthal
-	v_n_cm.rodrigues_rotation( rotation_hat, acosf(mu) );
-	v_n_cm.rodrigues_rotation( hats_old,     phi       );
+	hats_old = hats_old.rotate(mu, get_rand(&rn));
+
 	//  scale to sampled energy
-	v_n_cm = v_n_cm/v_n_cm.norm2() * sqrtf(2.0*sampled_E/m_n);
+	v_n_cm = hats_old * sqrtf(2.0*sampled_E/m_n);
+	
 	// transform back to L
 	v_n_lf = v_n_cm + v_cm;
 	hats_new = v_n_lf / v_n_lf.norm2();
