@@ -245,7 +245,7 @@ void whistory::init_RNG(){
 	unsigned seed = time( NULL );
 	std::cout << "\e[1;32m" << "Initializing random number bank on device using MTGP32 with seed of " << seed << "..." << "\e[m \n";
 	curandCreateGenerator( &rand_gen , CURAND_RNG_PSEUDO_MTGP32 );  //mersenne twister type
-	curandSetPseudoRandomGeneratorSeed( rand_gen , seed );  //123456789ULL );
+	curandSetPseudoRandomGeneratorSeed( rand_gen , 123456789ULL );
 	curandGenerate( rand_gen , d_rn_bank , Ndataset * RNUM_PER_THREAD );
 	cudaMemcpy(rn_bank , d_rn_bank , Ndataset * RNUM_PER_THREAD *sizeof(unsigned) , cudaMemcpyDeviceToHost); // copy bank back to keep seeds
 }
