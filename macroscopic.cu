@@ -84,7 +84,7 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 		tope=999999999;
 		// enforce BC
 		if (enforce_BC){
-			isdone = 0;
+			isdone = 1;
 			enforce_BC=1;
 			this_rxn  = 888;
 			//printf("leaked tid %u xyz % 6.4E % 6.4E % 6.4E dir % 6.4E % 6.4E % 6.4E\n",tid,x,y,z,xhat,yhat,zhat);

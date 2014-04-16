@@ -27,7 +27,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
 	atomicInc(&tally_count[my_bin_index], 4294967295);
 
-	if(enforce_BC){done[tid]=1;}
+	//if(enforce_BC){done[tid]=1;}
 
 	//printf("%6.4E\n",macro_t);
 
