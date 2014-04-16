@@ -332,11 +332,11 @@ int main(int argc, char* argv[]){
 		geom.primitives[1].transforms[0].phi     = 0;
 	}
 	else if(fixedname.compare(argv[1])==0){
-		// u235
-		unsigned topes[1]={92235};
-		float    fracs[1]={1};
-		float 	 dens = 3;
-		geom.add_material(1,1,1,dens,topes,fracs);
+		// homogenized UO2 
+		unsigned topes[4]={92235,92238,8016,1001};
+		float    fracs[4]={.01 , 0.99,   3,   2};
+		float 	 dens = 10;
+		geom.add_material(1,1,4,dens,topes,fracs);
 
 		// run stuff
 		tallycell = 999;
@@ -349,12 +349,12 @@ int main(int argc, char* argv[]){
 		geom.add_primitive();
 		geom.primitives[0].type=0;
 		geom.primitives[0].material=1;
-		geom.primitives[0].min[0]=-10.0;
-		geom.primitives[0].min[1]=-10.0;
-		geom.primitives[0].min[2]=-10.0;
-		geom.primitives[0].max[0]= 10.0;
-		geom.primitives[0].max[1]= 10.0;
-		geom.primitives[0].max[2]= 10.0;
+		geom.primitives[0].min[0]=-1000.0;
+		geom.primitives[0].min[1]=-1000.0;
+		geom.primitives[0].min[2]=-1000.0;
+		geom.primitives[0].max[0]= 1000.0;
+		geom.primitives[0].max[1]= 1000.0;
+		geom.primitives[0].max[2]= 1000.0;
 		geom.primitives[0].add_transform();
 		geom.primitives[0].transforms[0].cellnum = 999;
 		geom.primitives[0].transforms[0].dx      = 0;

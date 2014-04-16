@@ -4,7 +4,7 @@ set title "black BC, water"
 
 % --- box
 
-surf 1 cube 0 0 0 10
+surf 1 cube 0 0 0 1000
 
 % --- Cell definitions:
 
@@ -13,8 +13,11 @@ cell 99  0  outside  1  % Outside world
 
 % --- Fuel materials:
 
-mat fuel1   -3.00
- 92235.03c   1
+mat fuel1   -10.00
+ 92235.03c   .01
+ 92238.03c   .99
+  8016.03c   3
+  1001.03c   2
 
 % --- Cross section data library file path:
 
