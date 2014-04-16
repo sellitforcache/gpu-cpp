@@ -1429,9 +1429,6 @@ void whistory::run(){
 				Nrun=N;
 			}
 
-			//record stats
-			fprintf(statsfile,"%u %10.8E\n",Nrun,get_time());
-
 			// find what material we are in and nearest surface distance
 			trace(2);
 
@@ -1469,6 +1466,9 @@ void whistory::run(){
 
 			// remap threads to still active data
 			Nrun = map_active();
+
+			//record stats
+			fprintf(statsfile,"%u %10.8E\n",Nrun,get_time());
 
 			//std::cout << "cycle done, press enter to continue...\n";
 			//std::cin.ignore();
