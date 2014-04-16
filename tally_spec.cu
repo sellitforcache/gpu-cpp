@@ -10,7 +10,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	if (done[tid]){return;}
 	if (cellnum[tid]!=tally_cell){return;}
 	if (rxn[tid]==999){return;}
-
+	unsigned enforce_BC = space[tid].enforce_BC;
 
 	//int k;
 	float 		my_E   			= E[tid];
@@ -26,6 +26,8 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	//score the bins atomicly, could be bad if many neutrons are in a single bin since this will serialize their operations
 	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
 	atomicInc(&tally_count[my_bin_index], 4294967295);
+
+	if(enforce_BC){done[tid]=1;}
 
 	//printf("%6.4E\n",macro_t);
 
