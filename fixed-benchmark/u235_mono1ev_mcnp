@@ -1,5 +1,5 @@
 homogenized uo2/water                                                           
- 1 1 -10   1 -2 3 -4 5 -6  imp:n=1 tmp=2.5852e-08 $ material                    
+ 1 1 -3   1 -2 3 -4 5 -6  imp:n=1 tmp=2.5852e-08 $ material                    
 99 0       -1:2:-3:4:-5:6  imp:n=0                $ Outside world          
                                   
 1 px -10                        
@@ -9,13 +9,13 @@ homogenized uo2/water
 5 pz -10                    
 6 pz  10                    
                             
-m1    92235.70c   1          
-                             
-sdef   POS=0. 0. 0.  ERG=1e-6
+m1    92235.70c   1                                 
+sdef   POS=0 0 0  
+       ERG=1e-6
 nps   40000000           
 print                        
 mode n                       
-prdmp 60 60 60               
+prdmp 40000000 40000000 40000000
 f4:n 1                       
 e4    9.99999996E-12         
       1.02804640E-11         

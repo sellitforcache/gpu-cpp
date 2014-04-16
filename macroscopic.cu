@@ -89,7 +89,9 @@ __global__ void macroscopic_kernel(unsigned N, unsigned n_isotopes, unsigned n_m
 			this_rxn  = 888;
 			//printf("leaked tid %u xyz % 6.4E % 6.4E % 6.4E dir % 6.4E % 6.4E % 6.4E\n",tid,x,y,z,xhat,yhat,zhat);
 		}
-		enforce_BC = 0;
+		else{
+			enforce_BC = 0;
+		}
 	}
 	else{  //move to sampled distance, null reaction
 		if( diff <= 5e-5 ){ samp_dist = surf_dist - 5e-5; }  //adjust if diff is within epsilon so the next trace will hit the surface!

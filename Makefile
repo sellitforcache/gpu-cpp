@@ -1,22 +1,23 @@
 #
-CC =  /usr/local/Cellar/gcc46/4.6.4/bin/gcc-4.6
-CXX = /usr/local/Cellar/gcc46/4.6.4/bin/g++-4.6
-OPTIX = /Developer/OptiX
-NVCC = nvcc -ccbin=/usr/local/Cellar/gcc46/4.6.4/bin
+CC =  gcc
+CXX = g++
+OPTIX = /usr/local/OptiX-3.0.1
+NVCC = nvcc
 ARCH = -arch sm_30
 C_FLAGS = -O3 -m64 -fPIC
 NVCC_FLAGS = -m64  -use_fast_math --compiler-options '-fPIC'
 CURAND_LIBS = -lcurand
-OPTIX_FLAGS = -I$(OPTIX)/include/ -L$(OPTIX)/lib64 
-OPTIX_LIBS = -loptix
+OPTIX_FLAGS = -I$(OPTIX)/include -L$(OPTIX)/lib64 
+OPTIX_LIBS = -loptix 
 CUDA_FLAGS = -I/usr/local/cuda/include -L/usr/local/cuda/lib
 CUDPP_PATH = /usr/local/cudpp-2.1/
 CUDPP_FLAGS = -I/$(CUDPP_PATH)/include -L/$(CUDPP_PATH)/lib
 CUDPP_LIBS = -lcudpp_hash -lcudpp
-PYTHON_FLAGS = -I/System/Library/Frameworks/Python.framework/Headers
+PYTHON_FLAGS = -I/usr/local/anaconda/include/python2.7 -L/usr/local/anaconda/lib/
 PYTHON_LIBS = -lpython2.7
-PNG_FLAGS = 
+PNG_FLAGS = -L/
 PNG_LIBS = -lpng15
+LIBS =
 
 
 COBJS =	mt19937ar.o \
@@ -45,7 +46,7 @@ COBJS =	mt19937ar.o \
 		wgeometry.o \
 		optix_stuff.o \
 		primitive.o \
-		device_copies.o \
+		device_copies.o
 
 ptx_objects = 	camera.ptx \
 				hits.ptx \
@@ -179,13 +180,13 @@ primitive.o:
 	$(CXX) $(C_FLAGS)  -c primitive.cpp
 
 optix_stuff.o: device_copies.o
-	$(CXX) -m64 -fPIC  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
+	$(CXX) $(C_FLAGS)  $(OPTIX_FLAGS) $(CUDA_FLAGS) $(PNG_FLAGS) -c optix_stuff.cpp
 
 libwarp.so: $(ptx_objects) $(COBJS)
 	$(NVCC) --shared $(NVCC_FLAGS) $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS) $(PNG_FLAGS) $(CURAND_LIBS) $(OPTIX_LIBS) $(CUDPP_LIBS) $(PYTHON_LIBS) $(PNG_LIBS) $(COBJS)  -o libwarp.so
 
 gpu: libwarp.so
-	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp main.cpp -o $@
+	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/mnt/scratch/gpu-cpp -lwarp main.cpp -o $@
 
 optixtest: libwarp.so
 	$(NVCC) -m64 $(OPTIX_FLAGS) $(CUDPP_FLAGS) $(PYTHON_FLAGS)  -L/Users/rmb/code/gpu-cpp -lwarp -loptix optixtest.cpp -o $@
