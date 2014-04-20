@@ -333,10 +333,10 @@ int main(int argc, char* argv[]){
 	}
 	else if(fixedname.compare(argv[1])==0){
 		// homogenized UO2 
-		unsigned topes[4]={92235,92238,8016,1001};
-		float    fracs[4]={.01 , 0.99,   3,   2};
+		unsigned topes[5]={92235,92238,8016,1001,5010};
+		float    fracs[5]={.01 , 0.99,   3,   2, 0.01};
 		float 	 dens = 10;
-		geom.add_material(1,1,4,dens,topes,fracs);
+		geom.add_material(1,1,5,dens,topes,fracs);
 
 		// run stuff
 		tallycell = 999;
