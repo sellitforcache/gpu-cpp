@@ -219,12 +219,12 @@ int main(int argc, char* argv[]){
 		geom.add_primitive();
 		geom.primitives[0].type=0;
 		geom.primitives[0].material=1;
-		geom.primitives[0].min[0]=-1000.0;
-		geom.primitives[0].min[1]=-1000.0;
-		geom.primitives[0].min[2]=-1000.0;
-		geom.primitives[0].max[0]= 1000.0;
-		geom.primitives[0].max[1]= 1000.0;
-		geom.primitives[0].max[2]= 1000.0;
+		geom.primitives[0].min[0]=-100.0;
+		geom.primitives[0].min[1]=-100.0;
+		geom.primitives[0].min[2]=-100.0;
+		geom.primitives[0].max[0]= 100.0;
+		geom.primitives[0].max[1]= 100.0;
+		geom.primitives[0].max[2]= 100.0;
 		geom.primitives[0].add_transform();
 		geom.primitives[0].transforms[0].cellnum = 999;
 		geom.primitives[0].transforms[0].dx      = 0;

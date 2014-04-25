@@ -19,6 +19,7 @@ sdef   POS=0 0 0
 nps   40000000           
 print                        
 mode n                       
+iunr 1
 prdmp 40000000 40000000 40000000
 f4:n 1                       
 e4    9.99999996E-12         
