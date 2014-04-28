@@ -20,11 +20,12 @@ int main(int argc, char* argv[]){
 	std::string homfuelname = "homfuel";
 	std::string godivaname   = "godiva";
 	std::string pincellname  = "pincell";
-	std::string fixedname  = "fixed_1ev_u235";
+	std::string fixedname   = "fixed_1ev_homfuel";
+	std::string fixedname2  = "fixed_2mev_water";
 
 	// check
 	if(argc<=2){
-		printf("MUST ENTER A RUN TYPE : %s, %s, %s, %s, or %s; and a number of particles to run!\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() , fixedname.c_str() );
+		printf("MUST ENTER A RUN TYPE : %s, %s, %s, %s, %s, or %s; and a number of particles to run!\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() , fixedname.c_str() , fixedname2.c_str() );
 		exit(0);
 	}
 
@@ -363,8 +364,40 @@ int main(int argc, char* argv[]){
 		geom.primitives[0].transforms[0].theta   = 0;
 		geom.primitives[0].transforms[0].phi     = 0;
 	}
+	else if(fixedname2.compare(argv[1])==0){
+		// homogenized UO2 
+		unsigned topes[2]={8016,1001};
+		float    fracs[2]={  1,   2,};
+		float 	 dens = 1;
+		geom.add_material(1,0,2,dens,topes,fracs);
+
+		// run stuff
+		tallycell = 999;
+		filename =  fixedname2;
+		tallyname = fixedname2;
+		tallyname.append(".tally");
+		runtype = "fixed";
+
+		//simple geom
+		geom.add_primitive();
+		geom.primitives[0].type=0;
+		geom.primitives[0].material=1;
+		geom.primitives[0].min[0]=-1000.0;
+		geom.primitives[0].min[1]=-1000.0;
+		geom.primitives[0].min[2]=-1000.0;
+		geom.primitives[0].max[0]= 1000.0;
+		geom.primitives[0].max[1]= 1000.0;
+		geom.primitives[0].max[2]= 1000.0;
+		geom.primitives[0].add_transform();
+		geom.primitives[0].transforms[0].cellnum = 999;
+		geom.primitives[0].transforms[0].dx      = 0;
+		geom.primitives[0].transforms[0].dy      = 0;
+		geom.primitives[0].transforms[0].dz      = 0;
+		geom.primitives[0].transforms[0].theta   = 0;
+		geom.primitives[0].transforms[0].phi     = 0;
+	}
 	else{
-		printf("MUST ENTER A *VALID* RUN TYPE : %s, %s, %s, %s, or %s\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() , fixedname.c_str());
+		printf("MUST ENTER A *VALID* RUN TYPE : %s, %s, %s, %s, or %s\n",assemblyname.c_str(),homfuelname.c_str(), godivaname.c_str(),  pincellname.c_str() , fixedname.c_str(), fixedname2.c_str());
 		exit(0);
 	}
 
