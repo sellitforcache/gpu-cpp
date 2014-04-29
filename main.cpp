@@ -201,11 +201,9 @@ int main(int argc, char* argv[]){
 	else if(homfuelname.compare(argv[1])==0){
 		// homogenized UO2 
 		unsigned topes[4]={92235,92238,8016,1001};
-		float    fracs[4]={.01 , 0.99,   3,   2};
+		float    fracs[4]={.1 , 0.9,   3,   2};
 		float 	 dens = 10;
 		geom.add_material(1,1,4,dens,topes,fracs);
-		geom.add_material(2,0,4,dens,topes,fracs);
-		geom.add_material(3,0,4,dens,topes,fracs);
 		
 		// run stuff
 		tallycell = 999;
@@ -217,12 +215,12 @@ int main(int argc, char* argv[]){
 		geom.add_primitive();
 		geom.primitives[0].type=0;
 		geom.primitives[0].material=1;
-		geom.primitives[0].min[0]=-100.0;
-		geom.primitives[0].min[1]=-100.0;
-		geom.primitives[0].min[2]=-100.0;
-		geom.primitives[0].max[0]= 100.0;
-		geom.primitives[0].max[1]= 100.0;
-		geom.primitives[0].max[2]= 100.0;
+		geom.primitives[0].min[0]=-30.0;
+		geom.primitives[0].min[1]=-30.0;
+		geom.primitives[0].min[2]=-30.0;
+		geom.primitives[0].max[0]= 30.0;
+		geom.primitives[0].max[1]= 30.0;
+		geom.primitives[0].max[2]= 30.0;
 		geom.primitives[0].add_transform();
 		geom.primitives[0].transforms[0].cellnum = 999;
 		geom.primitives[0].transforms[0].dx      = 0;
