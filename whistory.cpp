@@ -94,6 +94,8 @@ void whistory::init(){
 	rn_bank  			= new unsigned 		[Ndataset*RNUM_PER_THREAD];
 	tally_score 		= new float 		[n_tally];
 	tally_count 		= new unsigned 		[n_tally];
+	tally_score_final	= new double [n_tally];
+	tally_count_final 	= new long unsigned [n_tally];
 	index     			= new unsigned 		[Ndataset];
 	cellnum 			= new unsigned 		[Ndataset];
 	matnum 				= new unsigned 		[Ndataset];
@@ -158,6 +160,8 @@ whistory::~whistory(){
 	delete yield; 
 	delete tally_count;
 	delete tally_score;
+	delete tally_count_final;
+	delete tally_score_final;
 	delete zeros;
 	delete ones;
 	// for loops to deallocate everything in the pointer arrays
@@ -395,6 +399,8 @@ void whistory::copy_to_device(){
 	std::cout << "  Zeroing tally arrays... ";
 	cudaMemcpy( d_tally_score, 	zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
 	cudaMemcpy( d_tally_count,	zeros,	n_tally*sizeof(unsigned), cudaMemcpyHostToDevice); 	
+	memcpy( tally_score_final  , zeros, n_tally*sizeof(float));
+	memcpy( tally_count_final  , zeros, n_tally*sizeof(unsigned) ) ;
 	std::cout << "Done.\n";
 
 
@@ -1510,6 +1516,17 @@ void whistory::run(){
 		else{
 			std::cout << "Converging fission source... skipped cycle " << iteration_total+1 <<"\n";
 		}
+
+		//accumulate tallies
+		cudaMemcpy(tally_score,d_tally_score,n_tally*sizeof(float)   ,cudaMemcpyDeviceToHost);
+		cudaMemcpy(tally_count,d_tally_count,n_tally*sizeof(unsigned),cudaMemcpyDeviceToHost);
+		for(int u=0;u<n_tally;u++){
+			tally_score_final[u] += (double) (tally_score[u]/( n_cycles  *  (float)N ));
+			tally_count_final[u] += (long unsigned) tally_count[u];
+		}
+		cudaMemcpy( d_tally_score,zeros,n_tally*sizeof(float)   ,cudaMemcpyHostToDevice);
+		cudaMemcpy( d_tally_count,zeros,n_tally*sizeof(unsigned),cudaMemcpyHostToDevice);
+		
 		
 		//std::cout << "cycle done, press enter to continue...\n";
 		//std::cin.ignore();
@@ -1555,13 +1572,13 @@ void whistory::write_tally(unsigned tallynum){
 	//tallynum is unused at this point
 
 	// copy down from device
-	cudaMemcpy( tally_score, d_tally_score , n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
-	cudaMemcpy( tally_count, d_tally_count , n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
+	//cudaMemcpy( tally_score, d_tally_score , n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
+	//cudaMemcpy( tally_count, d_tally_count , n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
 	// write tally values
 	FILE* tfile = fopen(filename.c_str(),"w");
 	for (int k=0;k<n_tally;k++){
-		fprintf(tfile,"%10.8E %u\n",tally_score[k],tally_count[k]);
+		fprintf(tfile,"%10.8lE %lu\n",tally_score_final[k],tally_count_final[k]);
 	}
 	fclose(tfile);
 

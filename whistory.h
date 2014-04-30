@@ -58,6 +58,8 @@ class whistory {
     float *         Q;
     unsigned *		rn_bank;
     float * 		awr_list;
+    double * 		tally_score_final;
+    long unsigned * 	tally_count_final;
     float * 		tally_score;
     unsigned * 		tally_count;
     unsigned 		tally_cell;

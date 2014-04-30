@@ -12,6 +12,8 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	if (rxn[tid]==999){return;}
 	unsigned enforce_BC = space[tid].enforce_BC;
 
+	if(enforce_BC){done[tid]=1;return;}
+	
 	//int k;
 	float 		my_E   			= E[tid];
 	float 		macro_t 		= space[tid].macro_t;
@@ -27,7 +29,6 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	atomicAdd(&tally_score[my_bin_index], 1.0/macro_t);
 	atomicInc(&tally_count[my_bin_index], 4294967295);
 
-	//if(enforce_BC){done[tid]=1;}
 
 	//printf("%6.4E\n",macro_t);
 
