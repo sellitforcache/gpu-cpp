@@ -399,8 +399,10 @@ void whistory::copy_to_device(){
 	std::cout << "  Zeroing tally arrays... ";
 	cudaMemcpy( d_tally_score, 	zeros,	n_tally*sizeof(float),    cudaMemcpyHostToDevice); 	
 	cudaMemcpy( d_tally_count,	zeros,	n_tally*sizeof(unsigned), cudaMemcpyHostToDevice); 	
-	memcpy( tally_score_final  , zeros, n_tally*sizeof(float));
-	memcpy( tally_count_final  , zeros, n_tally*sizeof(unsigned) ) ;
+	for(int u=0;u<n_tally;u++){
+		tally_score_final[u] = 0.0;
+		tally_count_final[u] = 0;
+	}
 	std::cout << "Done.\n";
 
 
@@ -1518,14 +1520,7 @@ void whistory::run(){
 		}
 
 		//accumulate tallies
-		cudaMemcpy(tally_score,d_tally_score,n_tally*sizeof(float)   ,cudaMemcpyDeviceToHost);
-		cudaMemcpy(tally_count,d_tally_count,n_tally*sizeof(unsigned),cudaMemcpyDeviceToHost);
-		for(int u=0;u<n_tally;u++){
-			tally_score_final[u] += (double) (tally_score[u]/( n_cycles  *  (float)N ));
-			tally_count_final[u] += (long unsigned) tally_count[u];
-		}
-		cudaMemcpy( d_tally_score,zeros,n_tally*sizeof(float)   ,cudaMemcpyHostToDevice);
-		cudaMemcpy( d_tally_count,zeros,n_tally*sizeof(unsigned),cudaMemcpyHostToDevice);
+		accumulate_tally();
 		
 		
 		//std::cout << "cycle done, press enter to continue...\n";
@@ -1593,6 +1588,23 @@ void whistory::write_tally(unsigned tallynum){
 		fprintf(tfile,"%10.8E\n",edge);
 	}
 	fclose(tfile);
+
+}
+void whistory::accumulate_tally(){
+
+	unsigned u = 0;
+
+	// copy down
+	cudaMemcpy( tally_score , d_tally_score , n_tally*sizeof(float)    , cudaMemcpyDeviceToHost);
+	cudaMemcpy( tally_count , d_tally_count , n_tally*sizeof(unsigned) , cudaMemcpyDeviceToHost);
+	// add to accumulation vectors
+	for(u=0;u<n_tally;u++){
+		tally_score_final[u] += (double) (tally_score[u]/( n_cycles  *  (float)N ));
+		tally_count_final[u] += (long unsigned) tally_count[u];
+	}
+	// reset device vectors
+	cudaMemcpy( d_tally_score , zeros , n_tally*sizeof(float)    , cudaMemcpyHostToDevice);
+	cudaMemcpy( d_tally_count , zeros , n_tally*sizeof(unsigned) , cudaMemcpyHostToDevice);
 
 }
 float whistory::get_time(){

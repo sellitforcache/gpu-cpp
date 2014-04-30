@@ -145,6 +145,7 @@ class whistory {
     float get_time();
     void prep_secondaries();
     unsigned map_active();
+    void  accumulate_tally();
     void  write_to_file(source_point*  , unsigned , std::string , std::string);
     void  write_to_file(unsigned*  , unsigned , std::string, std::string );
     void  write_results(float,float,std::string);
