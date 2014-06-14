@@ -1521,10 +1521,6 @@ void whistory::run(){
 
 		//accumulate tallies
 		accumulate_tally();
-		
-		
-		//std::cout << "cycle done, press enter to continue...\n";
-		//std::cin.ignore();
 
 		// set convergence flag
 		if( iteration_total == n_skip-1){ 
@@ -1565,10 +1561,6 @@ void whistory::write_results(float runtime, float keff, std::string opentype){
 void whistory::write_tally(unsigned tallynum){
 
 	//tallynum is unused at this point
-
-	// copy down from device
-	//cudaMemcpy( tally_score, d_tally_score , n_tally*sizeof(float),    cudaMemcpyDeviceToHost);
-	//cudaMemcpy( tally_count, d_tally_count , n_tally*sizeof(unsigned), cudaMemcpyDeviceToHost);
 
 	// write tally values
 	FILE* tfile = fopen(filename.c_str(),"w");
