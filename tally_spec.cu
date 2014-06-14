@@ -12,7 +12,7 @@ __global__ void tally_spec_kernel(unsigned N, unsigned Ntally, unsigned tally_ce
 	if (rxn[tid]==999){return;}
 	unsigned enforce_BC = space[tid].enforce_BC;
 
-	if(enforce_BC){done[tid]=1;return;}
+	//if(enforce_BC){done[tid]=1;return;}
 	
 	//int k;
 	float 		my_E   			= E[tid];

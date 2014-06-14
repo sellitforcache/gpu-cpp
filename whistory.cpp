@@ -1519,8 +1519,12 @@ void whistory::run(){
 			std::cout << "Converging fission source... skipped cycle " << iteration_total+1 <<"\n";
 		}
 
-		//accumulate tallies
-		accumulate_tally();
+		//accumulate tallies, but not while not converged
+		if(converged){accumulate_tally();}
+		
+		
+		//std::cout << "cycle done, press enter to continue...\n";
+		//std::cin.ignore();
 
 		// set convergence flag
 		if( iteration_total == n_skip-1){ 
